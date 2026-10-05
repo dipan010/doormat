@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- CSV and TSV extraction via the stdlib `csv` module (single sheet, named after the file)
+- `.xls` extraction via optional `xlrd>=2.0` (`gridmap[xls]`); formulas and comments are not available
+- `.ods` extraction via optional `odfpy>=1.4` (`gridmap[ods]`), including formulas and annotations
+- `.xlsm` accepted and routed through the xlsx extractor
+- `gridmap[all]` extra installing both optional dependencies
+- Magic-byte validation for `.xlsx`, `.xlsm`, `.xls` and `.ods` before parsing
+
+### Changed
+
+- `python/gridmap/extract.py` split into the `gridmap.extract` package with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
+- `gridmap.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
+
 ## [0.1.0] - 2026-06-29
 
 ### Added

@@ -1,6 +1,6 @@
 # gridmap
 
-A spatial document graph engine that detects credentials stored in xlsx spreadsheets. It analyzes spatial proximity between cells, content features, and scoring heuristics to infer typed relationships — finding passwords, tokens, and secrets that live next to their labels in grid layouts. Built as a Rust core with Python bindings via PyO3.
+A spatial document graph engine that detects credentials stored in spreadsheets. It analyzes spatial proximity between cells, content features, and scoring heuristics to infer typed relationships — finding passwords, tokens, and secrets that live next to their labels in grid layouts. Built as a Rust core with Python bindings via PyO3.
 
 **Status: 0.1.0 alpha**
 
@@ -27,6 +27,17 @@ for cred in doc.credentials(min_confidence=120):
 # Access all inferred relationships regardless of confidence
 all_rels = doc.relationships()
 ```
+
+## Supported formats
+
+| Format | Extensions | Formulas | Comments | Extra dependency |
+|---|---|---|---|---|
+| Excel (OOXML) | `.xlsx`, `.xlsm` | yes | yes | none (openpyxl) |
+| Excel 97-2003 | `.xls` | no | no | `xlrd>=2.0` (`pip install gridmap[xls]`) |
+| OpenDocument | `.ods` | yes | yes | `odfpy>=1.4` (`pip install gridmap[ods]`) |
+| Delimited text | `.csv`, `.tsv` | no | no | none (stdlib `csv`) |
+
+The format is chosen by file extension, and binary formats are checked against their magic bytes before parsing. CSV and TSV files are treated as a single sheet named after the file. `pip install gridmap[all]` installs both optional dependencies.
 
 ## How it works
 
@@ -62,7 +73,7 @@ Measured on Apple Silicon (aarch64) using criterion.rs on synthetic fixtures. Re
 ## What it does NOT do
 
 - **Plugin system** — credential detection is the only built-in detection type. A plugin interface will be added when a second detection type is needed.
-- **Non-xlsx formats** — only `.xlsx` files are supported. `.xlsm`, `.ods`, `.csv`, and other formats are not yet handled.
+- **Formulas and comments in `.xls`** — xlrd 2.x does not expose them, so formula-hidden and comment-hidden detection only works for `.xlsx`, `.xlsm` and `.ods`. CSV and TSV have no formulas or comments to inspect.
 - **ML-based scoring** — confidence scores are heuristic (distance + content bonuses), not derived from a trained model. They work well on structured spreadsheets but may produce false positives on unusual layouts.
 - **JS/Java/Swift bindings** — Python is the only language binding. Others are planned but not yet built.
 - **CLI tool** — gridmap is API-only. There is no command-line interface.

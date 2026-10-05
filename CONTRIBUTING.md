@@ -77,7 +77,7 @@ Runs all 14 fixture workbooks through `gridmap.load()` and compares detected cre
 
 ## Adding a new detection pathway
 
-1. Identify which pipeline phase the detection belongs in. See `gridmap_implementation.md` for module ownership:
+1. Identify which pipeline phase the detection belongs in. Each Rust module in `crates/gridmap-core/src/` owns one domain:
    - Inline patterns: `detection.rs` (`detect_inline_credentials`)
    - Formula analysis: `detection.rs` (`analyze_formulas`)
    - Comment analysis: `detection.rs` (`analyze_comments`)
@@ -109,7 +109,7 @@ Runs all 14 fixture workbooks through `gridmap.load()` and compares detected cre
 2. All existing tests must pass (`cargo test --workspace` + `pytest`).
 3. New public functions require tests and doc comments (`///` in Rust, docstrings in Python).
 4. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`.
-5. No `TODO` comments in committed code. Track deferred work in issues or `gridmap_state.md`.
+5. No `TODO` comments in committed code. Track deferred work in issues or `STATUS.md`.
 6. Rust: `cargo clippy --workspace -- -D warnings` and `cargo fmt` must pass.
 7. Python: type hints on all public function signatures, frozen dataclasses for return types.
 8. Benchmark regression check: run `cargo bench --bench pipeline` and verify no phase regresses more than 5% vs the current baseline.
