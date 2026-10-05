@@ -28,3 +28,8 @@ bench/fixtures/07_split_password.xlsx
 bench/fixtures/12_multilingual.xlsx
 crates/gridmap-core/benches/PROFILING_RESULTS.md
 RELEASE_CHECKLIST.md
+
+# Phase 2 corpus (third-party data, never committed)
+.venv/
+bench/corpus/data/
+bench/corpus/results/
