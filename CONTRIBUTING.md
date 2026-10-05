@@ -11,7 +11,7 @@
 ### Setup
 
 ```bash
-git clone https://github.com/dipanghosh/gridmap.git
+git clone https://github.com/dipan010/gridmap.git
 cd gridmap
 
 # Install Python build and test dependencies

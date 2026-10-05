@@ -16,7 +16,6 @@ Last reviewed: 2026-10-06
 
 ## Blockers
 
-- **`pyproject.toml` table bug** (from `96d8928`): `license`, `readme`, `authors`, `keywords` and `classifiers` sit after `[project.optional-dependencies]`, so they parse as extras instead of project metadata. Move them back under `[project]` before Phase 3. The `Homepage` URL also says `dipanghosh/gridmap` while the remote is `dipan010/gridmap`.
 
 - **The PyPI name `gridmap` is taken** (v0.15.0, a DRMAA grid-engine mapper). `pip install gridmap` in the README installs someone else's package. A new distribution name is needed before any release. The import name can stay `gridmap` if desired, but a distinct one avoids confusion.
 - Overlaps with `path-finder/credential-pipeline` (same problem: credentials in spreadsheets, rule-based). Decide whether they stay separate or one feeds the other.

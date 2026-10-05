@@ -7,7 +7,7 @@ description = "Spatial document graph engine for credential detection in spreads
 authors = ["Dipan Ghosh"]
 keywords = ["dlp", "credentials", "security", "spreadsheet"]
 categories = ["text-processing", "parser-implementations"]
-repository = "https://github.com/dipanghosh/gridmap"
+repository = "https://github.com/dipan010/gridmap"
 readme = "../../README.md"
 
 [dependencies]

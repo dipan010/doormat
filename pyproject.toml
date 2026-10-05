@@ -8,11 +8,6 @@ description = "Spatial document graph engine for credential detection in spreads
 requires-python = ">=3.9"
 dependencies = ["openpyxl"]
 dynamic = ["version"]
-
-[project.optional-dependencies]
-xls = ["xlrd>=2.0"]
-ods = ["odfpy>=1.4"]
-all = ["xlrd>=2.0", "odfpy>=1.4"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = [
@@ -36,11 +31,16 @@ classifiers = [
     "Programming Language :: Rust",
 ]
 
+[project.optional-dependencies]
+xls = ["xlrd>=2.0"]
+ods = ["odfpy>=1.4"]
+all = ["xlrd>=2.0", "odfpy>=1.4"]
+
 [project.urls]
-Homepage = "https://github.com/dipanghosh/gridmap"
-Repository = "https://github.com/dipanghosh/gridmap"
-Issues = "https://github.com/dipanghosh/gridmap/issues"
-Changelog = "https://github.com/dipanghosh/gridmap/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/dipan010/gridmap"
+Repository = "https://github.com/dipan010/gridmap"
+Issues = "https://github.com/dipan010/gridmap/issues"
+Changelog = "https://github.com/dipan010/gridmap/blob/main/CHANGELOG.md"
 
 [tool.maturin]
 manifest-path = "crates/gridmap-py/Cargo.toml"
