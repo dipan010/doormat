@@ -147,10 +147,9 @@ def extract_xlsx(filepath: str | Path) -> list[list[tuple]]:
 
     try:
         sheets: list[list[tuple]] = []
-        for name in wb.sheetnames:
-            ws = wb[name]
-            sheet_state = ws.sheet_state
-            cells = extract_single_sheet(ws, name, sheet_state)
+        # wb.worksheets excludes chartsheets, which hold no cells
+        for ws in wb.worksheets:
+            cells = extract_single_sheet(ws, ws.title, ws.sheet_state)
             sheets.append(cells)
     finally:
         wb.close()

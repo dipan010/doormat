@@ -7,6 +7,7 @@ from pathlib import Path
 
 import openpyxl
 import pytest
+from openpyxl.chart import BarChart, Reference
 
 from gridmap.extract import (
     clean_comment,
@@ -221,3 +222,18 @@ def test_extract_workbook_accepts_path_object(tmp_xlsx):
     sheets_str = extract_workbook(str(p))
     sheets_path = extract_workbook(p)
     assert len(sheets_str) == len(sheets_path)
+
+
+def test_extract_workbook_skips_chartsheet(tmp_xlsx):
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "Password"
+    wb.active["B1"] = "s3cRet!99"
+    chart = BarChart()
+    chart.add_data(Reference(wb.active, min_col=2, min_row=1, max_row=1))
+    wb.create_chartsheet("Chart1").add_chart(chart)
+    p = tmp_xlsx(wb)
+    wb.close()
+
+    sheets = extract_workbook(p)
+    assert len(sheets) == 1
+    assert [c[2] for c in sheets[0]] == ["Password", "s3cRet!99"]
