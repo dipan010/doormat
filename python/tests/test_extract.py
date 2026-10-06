@@ -1,4 +1,4 @@
-"""Tests for doormat.extract — xlsx cell extraction via openpyxl."""
+"""Tests for doormat.extract: xlsx cell extraction via openpyxl."""
 
 from __future__ import annotations
 

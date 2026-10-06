@@ -1,6 +1,6 @@
 """Extract raw cell tuples from CSV and TSV files.
 
-Uses the stdlib csv module — no additional dependencies required.
+Uses the stdlib csv module, so no additional dependencies required.
 CSV/TSV files are treated as single-sheet documents with no formulas,
 comments, or merged cells.
 """

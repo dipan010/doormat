@@ -108,7 +108,7 @@ impl CellStore {
             t_rows.push(cell.row);
             t_cols.push(cell.col);
             // Push into MutableUtf8Array (copies bytes into contiguous
-            // buffer incrementally — no second-pass copy needed)
+            // buffer incrementally, no second-pass copy needed)
             m_values.push(Some(cell.value.as_str()));
             m_formulas.push(Some(cell.formula.as_str()));
             m_sheet_names.push(Some(cell.sheet_name.as_str()));

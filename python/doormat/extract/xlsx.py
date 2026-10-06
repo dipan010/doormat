@@ -104,7 +104,7 @@ def extract_single_sheet(
             coord = (r, c)
             is_merged_origin = coord in merge_origins
 
-            # FIX 3: duplicate (row, col) — merge comment into existing
+            # FIX 3: duplicate (row, col): merge comment into existing
             if coord in seen:
                 idx = seen[coord]
                 if comment:

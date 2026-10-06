@@ -1,4 +1,4 @@
-"""Extraction subpackage — format-specific extractors for doormat.
+"""Extraction subpackage: format-specific extractors for doormat.
 
 Each extractor reads a spreadsheet file and returns a normalized
 list[list[tuple]] where each tuple is:

@@ -81,7 +81,7 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 /// Pair password headers with their best-matching neighbor value cells.
 ///
 /// For each cell with `FLAG_IS_PASSWORD_HEADER`:
-/// 1. Try `detect_split_password` — if found, emit with confidence 200.0
+/// 1. Try `detect_split_password`; if found, emit with confidence 200.0
 /// 2. Otherwise, query all neighbors within `NEIGHBOR_RADIUS`
 /// 3. Filter to `CellType::Value` only, skip already-used values
 /// 4. Score each via `score_candidate`, pick best above `RELATIONSHIP_THRESHOLD`

@@ -1,4 +1,4 @@
-# doormat — Status
+# doormat: Status
 
 Last reviewed: 2026-10-07
 
@@ -21,13 +21,13 @@ Last reviewed: 2026-10-07
 
 ## Phases to completion
 
-### Phase 1 — Repair the docs ✅ (2026-10-06)
+### Phase 1: Repair the docs ✅ (2026-10-06)
 - [x] Update README "What it does NOT do" and feature list for CSV/TSV/ODS/XLS support.
 - [x] Fix `CLAUDE.md`'s "Project files you must read": point it at README, CHANGELOG and this file, or restore the spec and state files from history (`git show <sha>^:doormat_state.md`).
 - [x] Add a CHANGELOG `[Unreleased]` entry for the multi-format work.
 - **Exit:** a new session following CLAUDE.md reads files that exist and describe the code.
 
-### Phase 2 — Real-world validation ✅ (2026-10-07)
+### Phase 2: Real-world validation ✅ (2026-10-07)
 - [x] Build a small anonymised or realistic corpus beyond the 14 synthetic fixtures (the README's own "Next" item).
   - Enron corpus (15,929 files) via `bench/corpus/`, CC BY 4.0. Method, rubric and results in `bench/corpus/README.md`.
 - [x] Report P/R on it honestly; 100% on synthetic data is not a claim about real workbooks.
@@ -46,13 +46,13 @@ Follow-ups found in Phase 2 (not blocking):
 - openpyxl extraction is >99% of wall time on large workbooks (27.5 s vs 0.1 s in the core for 170k cells).
 - `FORMULA_KEYWORD_REGEX` has the same missing word boundary as the old inline regex (no corpus hits, but `spin`/`monkey` would match).
 
-### Phase 3 — Release engineering
+### Phase 3: Release engineering
 - [x] Choose a free PyPI name: **`doormat`** (2026-10-07; free on PyPI and crates.io at the time of checking, reserved only on first upload). Package, import, crates and docs renamed; GitHub repo rename to `dipan010/doormat` pending.
 - [ ] Add GitHub Actions: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check`, `pytest`, harness. (CLAUDE.md defers CI to after v0.1.0; building wheels for five targets makes it worth doing now. Update CLAUDE.md's "What NOT to build" if so.)
 - [ ] maturin wheel matrix (linux x86_64/aarch64, macOS x86_64/arm64, windows x86_64) with PyPI trusted publishing on tag.
 - **Exit:** CI green on every push; a tag produces wheels.
 
-### Phase 4 — Publish
+### Phase 4: Publish
 - [ ] Work through `RELEASE_CHECKLIST.md`; publish to TestPyPI, then PyPI.
 - [ ] `pip install <name>==0.1.0` from a clean venv; GitHub release with the CHANGELOG body.
 - [ ] Write-up / LinkedIn post: spatial credential inference, the benchmark numbers, the Rust core / thin wrapper design.

@@ -1,121 +1,151 @@
-# doormat
+<h1 align="center">doormat</h1>
 
-People hide the key under the doormat, and they hide passwords in the cell next to the label that says "Password". doormat looks there.
+<p align="center">
+  <em>Find the passwords people leave next to the label that says "Password".</em>
+</p>
 
-It is a spatial document graph engine that detects credentials stored in spreadsheets. It analyzes spatial proximity between cells, content features, and scoring heuristics to infer typed relationships — finding passwords, tokens, and secrets that live next to their labels in grid layouts. Built as a Rust core with Python bindings via PyO3.
+<p align="center">
+  <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
+  <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg">
+  <img alt="Rust core" src="https://img.shields.io/badge/core-Rust-orange.svg">
+  <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-yellow.svg">
+</p>
 
-**Status: 0.1.0 alpha**
+---
 
-## Install
+People hide the spare key under the doormat. They hide passwords the same way: in the spreadsheet cell right next to `Password:`, in a cell that reads `pwd = hunter2`, or inside a database connection string. **doormat** reads `.xlsx`, `.xls`, `.ods`, `.csv` and `.tsv` files, models each sheet as a 2D grid, and pairs credential labels with the values around them.
+
+- **Spatial, not just regex.** Scores every candidate value by its distance and direction from a credential label, its character mix and entropy, and nearby username or URL labels.
+- **Finds what grep misses.** Credentials split across cells, built with `CONCAT` in formulas, or tucked into cell comments.
+- **Fast.** Rust core with sheet-level parallelism: about 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
+- **Measured on real data.** Precision and recall are reported on the public Enron spreadsheet corpus, not just synthetic fixtures. See [Accuracy](#accuracy).
+- **Offline and dependency-light.** One runtime dependency (`openpyxl`). No network calls, no model downloads.
+
+## Installation
 
 ```bash
 pip install doormat
 ```
 
-> **Note:** doormat is not yet published to PyPI. To install from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Optional readers for legacy formats:
+
+```bash
+pip install "doormat[xls]"   # Excel 97-2003 via xlrd
+pip install "doormat[ods]"   # OpenDocument via odfpy
+pip install "doormat[all]"   # both
+```
+
+> [!NOTE]
+> doormat is not on PyPI yet; the first release is in preparation. Until then, install from source as described in [CONTRIBUTING.md](CONTRIBUTING.md). Building requires a Rust toolchain and [maturin](https://www.maturin.rs).
 
 ## Quickstart
 
 ```python
 import doormat
 
-doc = doormat.load("workbook.xlsx")
-
+doc = doormat.load("it_handover.xlsx")
 print(f"Scanned {doc.sheet_count} sheets, {doc.cell_count} cells")
 
 for cred in doc.credentials(min_confidence=120):
-    print(f"  {cred.key} = {cred.value}  (confidence: {cred.confidence:.0f}, reason: {cred.reason})")
-
-# Access all inferred relationships regardless of confidence
-all_rels = doc.relationships()
+    print(f"{cred.key!r} -> {cred.value!r}  score={cred.confidence:.0f}  ({cred.reason})")
 ```
 
-## Supported formats
+```text
+Scanned 2 sheets, 7 cells
+'Password' -> 's3cRet!99'  score=210  (distance=100;length>=8;upper;lower;digit;special;username_nearby;url_nearby)
+'VPN password' -> 'hunter2!'  score=250  (inline_same_cell)
+```
 
-| Format | Extensions | Formulas | Comments | Extra dependency |
-|---|---|---|---|---|
-| Excel (OOXML) | `.xlsx`, `.xlsm` | yes | yes | none (openpyxl) |
-| Excel 97-2003 | `.xls` | no | no | `xlrd>=2.0` (`pip install doormat[xls]`) |
-| OpenDocument | `.ods` | yes | yes | `odfpy>=1.4` (`pip install doormat[ods]`) |
-| Delimited text | `.csv`, `.tsv` | no | no | none (stdlib `csv`) |
+## API
 
-The format is chosen by file extension, and binary formats are checked against their magic bytes before parsing. CSV and TSV files are treated as a single sheet named after the file. `pip install doormat[all]` installs both optional dependencies.
-
-## How it works
-
-doormat treats a spreadsheet as a 2D spatial document. Each cell has coordinates, a value, and optional metadata (formulas, comments). The engine builds a columnar store of all cells using Arrow-backed arrays, then runs a multi-phase pipeline to find credential-like patterns.
-
-The pipeline starts with feature extraction: normalizing cell text, computing character-class flags (uppercase, lowercase, digits, special characters), calculating Shannon entropy, and matching against a multilingual set of password/username/URL header keywords using Aho-Corasick multi-pattern matching. These features are stored as bitmasks for fast downstream filtering.
-
-Candidate cells — those with header keywords, high entropy, formulas, comments, or inline credential patterns — are selected and classified as headers, section titles, or values. Spatially adjacent candidates are clustered into regions via BFS over a 7x7 neighbor grid. Each password header is then paired with its best-scoring neighbor value cell, considering distance, character complexity, entropy, region membership, and contextual signals like nearby username or URL headers.
-
-The scoring is heuristic, not ML-derived. Confidence scores reflect the sum of spatial and content-based bonuses. A score above 120 typically indicates a real credential; scores above 200 indicate high-confidence inline or formula-embedded detections. Sheet-level parallelism via Rayon makes workbook processing scale linearly with core count.
-
-## Performance
-
-Measured on Apple Silicon (aarch64) using criterion.rs on synthetic fixtures. Real-world performance may vary depending on workbook complexity and credential storage patterns.
-
-| Workbook size | Time (Rust core) |
+| Name | Description |
 |---|---|
-| 1 sheet, 1K cells | 180 µs |
-| 1 sheet, 5K cells | 927 µs |
-| 10 sheets, 5K cells each | 3.3 ms |
-| 10K cells (from_raw only) | 718 µs |
-| 100K cells (from_raw only) | 7.4 ms |
+| `doormat.load(path)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension or a file whose signature does not match it. |
+| `GridDoc.credentials(min_confidence=0.0)` | Relationships at or above a confidence score. `120` is a sensible default; scores above `200` are high-confidence inline or formula detections. |
+| `GridDoc.relationships()` | Every inferred key/value relationship, regardless of score. |
+| `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook. |
+| `Relationship` | Frozen dataclass with `key`, `value`, `confidence` and `reason` (a `;`-separated breakdown of the score). |
 
 ## What it detects
 
-- **Spatial-adjacent credentials** — a password header cell ("Password", "Pwd", "Token", etc.) with the credential value in a neighboring cell (right, below, or nearby within a 3-cell radius)
-- **Inline credentials** — key-value pairs embedded in a single cell (e.g., `password: s3cret!`)
-- **Split-across-cells credentials** — password values split vertically across 2-5 cells below a header
-- **Formula-hidden credentials** — credentials assembled via CONCAT or embedded as string literals in formulas
-- **Comment-hidden credentials** — credential values stored in cell comments, either on a password header cell or containing an inline credential pattern
-- **Multilingual headers** — password keywords detected in 15+ languages including English, German, Spanish, French, Portuguese, Russian, Japanese, Chinese, Korean, Dutch, Polish, and Swedish
+| Pattern | Example |
+|---|---|
+| Value beside a label | `Password:` in A1, the value in B1 or A2 (within a 3-cell radius) |
+| Inline key/value | `Password: s3cret!`, `PWD=s3cret!`, `Password - s3cret!` |
+| Split across cells | A value spread over 2 to 5 cells under a header |
+| Built in a formula | `=CONCAT("password", "S3cure#1")`, or a `password: ...` string literal in a formula |
+| Hidden in a comment | A comment on a password header, or a comment containing `password: ...` |
+| Multilingual labels | Password keywords in 15+ languages, including German, Spanish, French, Portuguese, Russian, Japanese, Chinese and Korean |
 
-## What it does NOT do
+## Supported formats
 
-- **Plugin system** — credential detection is the only built-in detection type. A plugin interface will be added when a second detection type is needed.
-- **Formulas and comments in `.xls`** — xlrd 2.x does not expose them, so formula-hidden and comment-hidden detection only works for `.xlsx`, `.xlsm` and `.ods`. CSV and TSV have no formulas or comments to inspect.
-- **ML-based scoring** — confidence scores are heuristic (distance + content bonuses), not derived from a trained model. They work well on structured spreadsheets but may produce false positives on unusual layouts.
-- **JS/Java/Swift bindings** — Python is the only language binding. Others are planned but not yet built.
-- **CLI tool** — doormat is API-only. There is no command-line interface.
+| Format | Extensions | Formulas | Comments | Extra |
+|---|---|---|---|---|
+| Excel (OOXML) | `.xlsx`, `.xlsm` | yes | yes | none |
+| Excel 97-2003 | `.xls` | no | no | `doormat[xls]` |
+| OpenDocument | `.ods` | yes | yes | `doormat[ods]` |
+| Delimited text | `.csv`, `.tsv` | n/a | n/a | none |
 
-## Real-world accuracy
+The reader is chosen by file extension, and binary formats are checked against their magic bytes before parsing. CSV and TSV files are treated as one sheet named after the file.
 
-The 100% precision and recall below are on 14 synthetic fixtures. On real spreadsheets (the public Enron corpus, 15,929 files, see [`bench/corpus/`](bench/corpus/README.md)):
+## Accuracy
 
-| Engine | Precision | Recall |
+On 14 synthetic fixtures, one per detection pathway, doormat scores 100% precision and recall. Real spreadsheets are harder. On the public [Enron spreadsheet corpus](bench/corpus/README.md) (15,929 files):
+
+| Version | Precision | Recall |
 |---|---|---|
-| v0.1.0 | 16.5% (test split) | 32.5% (test split) |
-| current `main` | 55.8% (dev split, out of sample) | 32.0% (test split, in sample) |
+| 0.1.0 | 16.5% | 32.5% |
+| current `main` | 55.8% | 32.0% |
 
-Inline credentials (`Password: value`) are found with few false positives. Credentials next to their label (`Password:` | `value`) are usually found, but about half of spatial findings on the dev split are still wrong pairings (formulas, labels, empty password cells). Password *tables*, where a `Password` column holds one credential per row, are not detected yet and account for most missed credentials. Numbers are concentrated in a few files and recurring templates; the corpus README has the breakdown.
+Precision for `main` is measured on files that played no part in tuning; recall is measured on files that did, so treat it as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but about half of those findings are still wrong pairings (a formula or label instead of the value). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
-## Project status and roadmap
+## Performance
 
-**v0.1.0** (current) — core engine complete with all detection pathways, 121 Rust unit tests, 54 Python integration tests, 100% precision and 100% recall on 14 synthetic fixtures. Three optimization rounds delivered -24% end-to-end improvement on workbook processing.
+Rust core only, Apple Silicon, criterion.rs on synthetic workbooks:
 
-**Next:**
-- Password-table detection (one credential per row under a `Password` column)
-- CI/CD pipeline (GitHub Actions, wheel building, PyPI publishing)
-- JS bindings via napi-rs
-- Plugin system for additional detection types
+| Workbook | Time |
+|---|---|
+| 1 sheet, 1,000 cells | 180 µs |
+| 1 sheet, 5,000 cells | 927 µs |
+| 10 sheets, 5,000 cells each | 3.3 ms |
 
-**Deferred:**
-- Explicit SIMD intrinsics
-- Polars-style columnar architecture
-- GPU support
-- numba/cython acceleration
+On very large real workbooks, reading the file with openpyxl dominates: 27.5 s to read a 170,000-cell workbook against 0.1 s of detection.
+
+## How it works
+
+1. **Extract.** Python reads every cell, formula and comment in a single pass and sends the workbook to Rust in one call.
+2. **Featurize.** Each cell is normalized once and tagged with bitmask flags (character classes, header keywords via Aho-Corasick) and Shannon entropy.
+3. **Select candidates.** Cells with header keywords, high entropy, formulas, comments or inline patterns are kept and classified as headers or values.
+4. **Group.** Adjacent candidates are clustered into regions with a breadth-first search over a 7x7 neighbourhood.
+5. **Pair and score.** Each credential label is paired with its best-scoring neighbour using distance, character mix, entropy, region membership and nearby username or URL labels. Labels, prose and formulas are penalized.
+
+Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no trained model.
+
+## Limitations
+
+- **Password tables are not detected.** A `Password` column with one credential per row is the most common pattern doormat misses today.
+- **No cell locations yet.** A `Relationship` carries the label and value but not the sheet, row and column. This is planned before the first PyPI release.
+- **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
+- **Python only.** Bindings for other languages are planned, as is a command-line tool.
+
+## Roadmap
+
+- Cell locations on every finding
+- Password-table detection
+- CI, prebuilt wheels for Linux, macOS and Windows, and the first PyPI release
+
+Progress is tracked in [STATUS.md](STATUS.md) and changes in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, testing, and PR guidelines.
+Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source, running the tests and the benchmark harness, and adding a detection pathway.
+
+## Acknowledgements
+
+Real-world evaluation uses the Enron spreadsheet corpus by Felienne Hermans and Emerson Murphy-Hill ("Enron's Spreadsheets and Related Emails: A Dataset and Analysis", ICSE 2015), licensed CC BY 4.0. The corpus is not redistributed in this repository.
 
 ## License
 
-Licensed under either of
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
-
-at your option.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in doormat by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.

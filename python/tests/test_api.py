@@ -1,4 +1,4 @@
-"""Tests for doormat.api — load(), GridDoc, Relationship."""
+"""Tests for doormat.api: load(), GridDoc, Relationship."""
 
 from __future__ import annotations
 

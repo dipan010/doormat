@@ -6,7 +6,7 @@ use crate::types::*;
 ///
 /// Returns `(score, reason)` where reason is a semicolon-separated
 /// breakdown of contributing factors. All bonuses use precomputed
-/// feature_flags — no regex runs during scoring.
+/// feature_flags; no regex runs during scoring.
 pub fn score_candidate(
     store: &CellStore,
     header_id: u32,

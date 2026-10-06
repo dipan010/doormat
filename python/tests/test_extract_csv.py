@@ -1,4 +1,4 @@
-"""Tests for doormat.extract.csv_tsv — CSV and TSV cell extraction."""
+"""Tests for doormat.extract.csv_tsv: CSV and TSV cell extraction."""
 
 from __future__ import annotations
 

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "doormat"
-description = "Spatial document graph engine for credential detection in spreadsheets"
+description = "Find passwords and secrets hidden in spreadsheets (xlsx, xls, ods, csv) with spatial analysis and a fast Rust core"
 requires-python = ">=3.9"
 dependencies = ["openpyxl"]
 dynamic = ["version"]
@@ -13,21 +13,28 @@ readme = "README.md"
 authors = [
     {name = "Dipan Ghosh"},
 ]
-keywords = ["dlp", "credentials", "security", "xlsx", "spreadsheet", "spatial-inference"]
+keywords = [
+    "secrets", "secret-detection", "credentials", "password", "security", "dlp",
+    "spreadsheet", "excel", "xlsx", "ods", "csv", "rust",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
     "Topic :: Security",
     "Topic :: Office/Business :: Office Suites",
-    "License :: OSI Approved :: MIT License",
-    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development :: Quality Assurance",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Rust",
 ]
 
@@ -38,6 +45,7 @@ all = ["xlrd>=2.0", "odfpy>=1.4"]
 
 [project.urls]
 Homepage = "https://github.com/dipan010/doormat"
+Documentation = "https://github.com/dipan010/doormat#readme"
 Repository = "https://github.com/dipan010/doormat"
 Issues = "https://github.com/dipan010/doormat/issues"
 Changelog = "https://github.com/dipan010/doormat/blob/main/CHANGELOG.md"

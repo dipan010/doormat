@@ -1,4 +1,4 @@
-"""Tests for doormat.extract.ods — ODS extraction via odfpy."""
+"""Tests for doormat.extract.ods: ODS extraction via odfpy."""
 
 from __future__ import annotations
 

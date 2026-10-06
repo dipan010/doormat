@@ -1,4 +1,4 @@
-"""Tests for doormat.extract.xls — legacy .xls extraction via xlrd."""
+"""Tests for doormat.extract.xls: legacy .xls extraction via xlrd."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def sample_xls(tmp_path):
     try:
         import xlwt
     except ImportError:
-        pytest.skip("xlwt not installed — needed to create .xls test fixtures")
+        pytest.skip("xlwt not installed; needed to create .xls test fixtures")
     wb = xlwt.Workbook()
     ws = wb.add_sheet("Sheet1")
     ws.write(0, 0, "Password")
