@@ -41,6 +41,11 @@ numbers are in-sample and out-of-sample precision is measured on dev.
   found by labelling that pool form the recall denominator. This measures
   recall on *keyword-discoverable* credentials only. Credentials with no
   nearby label are invisible to both, so true recall is likely lower.
+  In practice the denominator was built from the password-family hits only
+  (`password`, `pwd`, `pw`, `pin`, `passcode` and inline patterns); cells
+  matching only `user id`, `user name` or `login` were not reviewed. Where a
+  `Password` header topped a table, every cell in that column was counted,
+  not just the pool hit.
 - **Robustness:** error rate, timeout rate and throughput over the whole corpus.
 
 The archive holds 15,929 files: 15,871 `.xlsx` (converted by the dataset
@@ -71,6 +76,9 @@ It is a **false positive** when the value is any of:
 
 **Unsure** is allowed and is reported separately, never folded into TP or FP.
 
+All labels were assigned by a single reviewer, who also designed the fixes.
+There has been no second-annotator agreement check.
+
 Labels never record plaintext. `labels_test.jsonl` and `labels_dev.jsonl`
 rows hold `md5`, `sheet`, `header`, `cell`, `value_sha256`, `label`
 (`tp`/`fp`) and `note`. `creds_test.json` lists the credential cells (no
@@ -88,7 +96,7 @@ extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 |---|---|---|---|---|---|
 | test | v0.1.0 | 334 | **16.5%** (55) | **32.5%** (55/169) | Clean: labelled before any code change |
 | test | after fixes | 83 | 65.1% (54) | 32.0% (54/169) | In-sample: fixes were designed from these errors |
-| dev | after fixes | 181 | **55.8%** (101) | not measured | Out of sample for the fixes |
+| dev | after fixes | 181 | **55.8%** (101) | not measured | Out of sample for the split-password and scoring fixes; the inline digit-token rule was chosen on dev (2 of the 181 findings) |
 
 Read these with the concentration in mind. 31 of the 54 post-fix test true
 positives come from one directory file. 100 of the 169 test credentials sit

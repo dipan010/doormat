@@ -84,10 +84,10 @@ The 100% precision and recall below are on 14 synthetic fixtures. On real spread
 
 | Engine | Precision | Recall |
 |---|---|---|
-| v0.1.0 | 16.5% | 32.5% |
-| current `main` | 55.8% (dev split, out of sample) | 32.0% (test split) |
+| v0.1.0 | 16.5% (test split) | 32.5% (test split) |
+| current `main` | 55.8% (dev split, out of sample) | 32.0% (test split, in sample) |
 
-Credentials written next to their label (`Password:` | `value`) or inline (`Password: value`) are found reliably. Password *tables*, where a `Password` column holds one credential per row, are not detected yet and account for most missed credentials. Numbers are concentrated in a few files and recurring templates; the corpus README has the breakdown.
+Inline credentials (`Password: value`) are found with few false positives. Credentials next to their label (`Password:` | `value`) are usually found, but about half of spatial findings on the dev split are still wrong pairings (formulas, labels, empty password cells). Password *tables*, where a `Password` column holds one credential per row, are not detected yet and account for most missed credentials. Numbers are concentrated in a few files and recurring templates; the corpus README has the breakdown.
 
 ## Project status and roadmap
 
