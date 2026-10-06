@@ -1,4 +1,4 @@
-"""Tests for gridmap.extract — xlsx cell extraction via openpyxl."""
+"""Tests for doormat.extract — xlsx cell extraction via openpyxl."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import openpyxl
 import pytest
 from openpyxl.chart import BarChart, Reference
 
-from gridmap.extract import (
+from doormat.extract import (
     clean_comment,
     collect_merge_origins,
     extract_single_sheet,

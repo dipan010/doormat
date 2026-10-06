@@ -1,6 +1,6 @@
-//! PyO3 bindings for gridmap-core.
+//! PyO3 bindings for doormat-core.
 //!
-//! This crate provides Python-callable wrappers around the gridmap detection
+//! This crate provides Python-callable wrappers around the doormat detection
 //! pipeline. It handles type conversion between Python tuples/dicts and Rust
 //! types — no detection logic lives here.
 
@@ -13,9 +13,9 @@ use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use gridmap_core::pipeline;
-use gridmap_core::store::RawCell;
-use gridmap_core::types::Relationship;
+use doormat_core::pipeline;
+use doormat_core::store::RawCell;
+use doormat_core::types::Relationship;
 
 /// Convert a Python tuple (row, col, value, formula, comment, sheet_name, is_merged_origin)
 /// into a Rust RawCell.
@@ -50,10 +50,10 @@ fn relationships_to_py(py: Python<'_>, rels: Vec<Relationship>) -> PyResult<Vec<
         .collect()
 }
 
-/// Returns the gridmap-core version string.
+/// Returns the doormat-core version string.
 #[pyfunction]
 fn version() -> &'static str {
-    gridmap_core::version()
+    doormat_core::version()
 }
 
 /// Run the full detection pipeline on a single sheet's cells.
@@ -71,7 +71,7 @@ fn process_sheet(py: Python<'_>, cells: Vec<Bound<'_, pyo3::types::PyTuple>>) ->
         .collect::<PyResult<Vec<_>>>()?;
 
     let results = panic::catch_unwind(AssertUnwindSafe(|| pipeline::process_sheet(raw_cells)))
-        .map_err(|_| PyRuntimeError::new_err("gridmap-core panicked during process_sheet"))?;
+        .map_err(|_| PyRuntimeError::new_err("doormat-core panicked during process_sheet"))?;
 
     relationships_to_py(py, results)
 }
@@ -96,7 +96,7 @@ fn process_workbook(py: Python<'_>, sheets: Vec<Vec<Bound<'_, pyo3::types::PyTup
         .collect::<PyResult<Vec<_>>>()?;
 
     let results = panic::catch_unwind(AssertUnwindSafe(|| pipeline::process_workbook(raw_sheets)))
-        .map_err(|_| PyRuntimeError::new_err("gridmap-core panicked during process_workbook"))?;
+        .map_err(|_| PyRuntimeError::new_err("doormat-core panicked during process_workbook"))?;
 
     relationships_to_py(py, results)
 }

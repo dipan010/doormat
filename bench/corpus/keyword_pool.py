@@ -1,12 +1,12 @@
-"""Build the recall candidate pool without using gridmap's detection pipeline.
+"""Build the recall candidate pool without using doormat's detection pipeline.
 
 Every cell of every corpus file is matched against plain credential keywords and
 inline ``key: value`` patterns. Matching cells are written to results/pool.jsonl (or pool_<split>.jsonl)
 with their location. Labelling that pool gives the recall denominator: the
-credentials a reviewer could find by keyword search, independent of gridmap's
+credentials a reviewer could find by keyword search, independent of doormat's
 header sets, scoring and thresholds.
 
-Only gridmap's extractors are shared (to read the files the same way); nothing
+Only doormat's extractors are shared (to read the files the same way); nothing
 from the Rust core is called.
 
 Usage:
@@ -23,7 +23,7 @@ import re
 import signal
 from pathlib import Path
 
-from gridmap.api import _get_format_registry
+from doormat.api import _get_format_registry
 
 from scan import DATA_DIR, RESULTS_DIR, FileTimeout, _on_alarm, split_of
 

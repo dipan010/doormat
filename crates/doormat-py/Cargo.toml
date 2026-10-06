@@ -1,13 +1,13 @@
 [package]
-name = "gridmap-py"
+name = "doormat-py"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "PyO3 bindings for gridmap spatial credential detection engine"
+description = "PyO3 bindings for doormat spatial credential detection engine"
 authors = ["Dipan Ghosh"]
 keywords = ["dlp", "credentials", "security", "pyo3"]
 categories = ["api-bindings"]
-repository = "https://github.com/dipan010/gridmap"
+repository = "https://github.com/dipan010/doormat"
 readme = "../../README.md"
 
 [lib]
@@ -15,5 +15,5 @@ name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-gridmap-core = { path = "../gridmap-core" }
+doormat-core = { path = "../doormat-core" }
 pyo3 = { version = "0.22", features = ["extension-module"] }

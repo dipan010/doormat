@@ -1,4 +1,4 @@
-"""User-facing API for gridmap: load(), GridDoc, and Relationship."""
+"""User-facing API for doormat: load(), GridDoc, and Relationship."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from gridmap import _core
-from gridmap.extract import extract_xlsx
+from doormat import _core
+from doormat.extract import extract_xlsx
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
 # Lazy imports for optional deps are handled inside the extractor functions.
@@ -20,9 +20,9 @@ def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list
     Extractor functions for optional dependencies (xlrd, odfpy) use lazy
     imports so that ImportError is raised only when the format is used.
     """
-    from gridmap.extract.csv_tsv import extract_csv
-    from gridmap.extract.ods import extract_ods
-    from gridmap.extract.xls import extract_xls
+    from doormat.extract.csv_tsv import extract_csv
+    from doormat.extract.ods import extract_ods
+    from doormat.extract.xls import extract_xls
 
     return {
         ".xlsx": (b"PK\x03\x04", extract_xlsx),
@@ -71,7 +71,7 @@ class Relationship:
 
 @dataclass(frozen=True)
 class GridDoc:
-    """Result of processing a spreadsheet file through the gridmap engine.
+    """Result of processing a spreadsheet file through the doormat engine.
 
     Attributes:
         filepath: Path to the source spreadsheet file.
@@ -132,9 +132,9 @@ def load(filepath: str | Path) -> GridDoc:
 
     Example::
 
-        import gridmap
+        import doormat
 
-        doc = gridmap.load("workbook.xlsx")
+        doc = doormat.load("workbook.xlsx")
         for cred in doc.credentials(min_confidence=120):
             print(f"{cred.key} = {cred.value}")
     """

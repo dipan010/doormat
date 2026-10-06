@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "gridmap"
+name = "doormat"
 description = "Spatial document graph engine for credential detection in spreadsheets"
 requires-python = ">=3.9"
 dependencies = ["openpyxl"]
@@ -37,13 +37,13 @@ ods = ["odfpy>=1.4"]
 all = ["xlrd>=2.0", "odfpy>=1.4"]
 
 [project.urls]
-Homepage = "https://github.com/dipan010/gridmap"
-Repository = "https://github.com/dipan010/gridmap"
-Issues = "https://github.com/dipan010/gridmap/issues"
-Changelog = "https://github.com/dipan010/gridmap/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/dipan010/doormat"
+Repository = "https://github.com/dipan010/doormat"
+Issues = "https://github.com/dipan010/doormat/issues"
+Changelog = "https://github.com/dipan010/doormat/blob/main/CHANGELOG.md"
 
 [tool.maturin]
-manifest-path = "crates/gridmap-py/Cargo.toml"
+manifest-path = "crates/doormat-py/Cargo.toml"
 python-source = "python"
-module-name = "gridmap._core"
+module-name = "doormat._core"
 features = ["pyo3/extension-module"]

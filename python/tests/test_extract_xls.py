@@ -1,4 +1,4 @@
-"""Tests for gridmap.extract.xls — legacy .xls extraction via xlrd."""
+"""Tests for doormat.extract.xls — legacy .xls extraction via xlrd."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from gridmap.extract.xls import extract_xls
+from doormat.extract.xls import extract_xls
 
 
 def test_missing_xlrd_raises_import_error(tmp_path):

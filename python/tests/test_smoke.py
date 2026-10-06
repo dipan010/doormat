@@ -1,4 +1,4 @@
-from gridmap import version
+from doormat import version
 
 
 def test_version_returns_string():

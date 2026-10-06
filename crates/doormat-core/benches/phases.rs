@@ -1,4 +1,4 @@
-//! Per-phase criterion benchmarks for gridmap pipeline profiling.
+//! Per-phase criterion benchmarks for doormat pipeline profiling.
 //!
 //! Each benchmark isolates a single pipeline phase so we can identify
 //! the actual bottleneck. Uses `iter_batched` with `SmallInput` to
@@ -8,15 +8,15 @@ mod fixtures;
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
-use gridmap_core::candidates::{classify_cells, reduce_candidate_space};
-use gridmap_core::detection::{analyze_comments, analyze_formulas, detect_inline_credentials};
-use gridmap_core::features::precompute_features;
-use gridmap_core::inference::infer_relationships;
-use gridmap_core::pipeline::deduplicate;
-use gridmap_core::regions::detect_regions;
-use gridmap_core::spatial::DISTANCE_TABLE;
-use gridmap_core::store::CellStore;
-use gridmap_core::types::Relationship;
+use doormat_core::candidates::{classify_cells, reduce_candidate_space};
+use doormat_core::detection::{analyze_comments, analyze_formulas, detect_inline_credentials};
+use doormat_core::features::precompute_features;
+use doormat_core::inference::infer_relationships;
+use doormat_core::pipeline::deduplicate;
+use doormat_core::regions::detect_regions;
+use doormat_core::spatial::DISTANCE_TABLE;
+use doormat_core::store::CellStore;
+use doormat_core::types::Relationship;
 
 // ---------- Phase benchmarks ----------
 

@@ -1,4 +1,4 @@
-//! gridmap-core: spatial document graph engine for credential detection.
+//! doormat-core: spatial document graph engine for credential detection.
 //!
 //! This crate provides the core detection pipeline that analyzes 2D grid
 //! documents (spreadsheets) and infers typed relationships between cells

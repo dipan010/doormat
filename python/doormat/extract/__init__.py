@@ -1,4 +1,4 @@
-"""Extraction subpackage — format-specific extractors for gridmap.
+"""Extraction subpackage — format-specific extractors for doormat.
 
 Each extractor reads a spreadsheet file and returns a normalized
 list[list[tuple]] where each tuple is:
@@ -7,10 +7,10 @@ list[list[tuple]] where each tuple is:
 
 from __future__ import annotations
 
-from gridmap.extract.csv_tsv import extract_csv
-from gridmap.extract.ods import extract_ods
-from gridmap.extract.xls import extract_xls
-from gridmap.extract.xlsx import (
+from doormat.extract.csv_tsv import extract_csv
+from doormat.extract.ods import extract_ods
+from doormat.extract.xls import extract_xls
+from doormat.extract.xlsx import (
     clean_comment,
     collect_merge_origins,
     extract_single_sheet,

@@ -9,11 +9,11 @@ use ahash::{AHashMap, AHashSet};
 use arrow2::array::{BooleanArray, UInt32Array, Utf8Array};
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
-use gridmap_core::candidates::{classify_cells, reduce_candidate_space};
-use gridmap_core::regions::detect_regions;
-use gridmap_core::spatial::query_radius;
-use gridmap_core::store::{CellStore, RawCell};
-use gridmap_core::types::NEIGHBOR_RADIUS;
+use doormat_core::candidates::{classify_cells, reduce_candidate_space};
+use doormat_core::regions::detect_regions;
+use doormat_core::spatial::query_radius;
+use doormat_core::store::{CellStore, RawCell};
+use doormat_core::types::NEIGHBOR_RADIUS;
 
 // =====================================================================
 // from_raw sub-phases
@@ -376,8 +376,8 @@ fn bench_region_construction(c: &mut Criterion) {
                         let mut value_ids = Vec::new();
                         for &id in cell_ids {
                             match store.get_cell_type(id) {
-                                gridmap_core::types::CellType::Header => header_ids.push(id),
-                                gridmap_core::types::CellType::Value => value_ids.push(id),
+                                doormat_core::types::CellType::Header => header_ids.push(id),
+                                doormat_core::types::CellType::Value => value_ids.push(id),
                                 _ => {}
                             }
                         }

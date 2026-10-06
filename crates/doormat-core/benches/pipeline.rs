@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 
-use gridmap_core::pipeline::{process_sheet, process_workbook};
-use gridmap_core::store::RawCell;
+use doormat_core::pipeline::{process_sheet, process_workbook};
+use doormat_core::store::RawCell;
 
 fn make_cells(n: usize) -> Vec<RawCell> {
     let cols = 10;
@@ -36,14 +36,14 @@ fn bench_from_raw(c: &mut Criterion) {
     let cells_10k = make_cells(10_000);
     c.bench_function("from_raw_10k", |b| {
         b.iter(|| {
-            let _ = gridmap_core::store::CellStore::from_raw(cells_10k.clone());
+            let _ = doormat_core::store::CellStore::from_raw(cells_10k.clone());
         })
     });
 
     let cells_100k = make_cells(100_000);
     c.bench_function("from_raw_100k", |b| {
         b.iter(|| {
-            let _ = gridmap_core::store::CellStore::from_raw(cells_100k.clone());
+            let _ = doormat_core::store::CellStore::from_raw(cells_100k.clone());
         })
     });
 }

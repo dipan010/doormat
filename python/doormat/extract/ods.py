@@ -12,7 +12,7 @@ from pathlib import Path
 def extract_ods(filepath: str | Path) -> list[list[tuple]]:
     """Extract cells from an .ods file as raw cell tuples.
 
-    Requires ``odfpy >= 1.4``. Installs via ``pip install gridmap[ods]``.
+    Requires ``odfpy >= 1.4``. Installs via ``pip install doormat[ods]``.
 
     Args:
         filepath: Path to the .ods file.
@@ -33,7 +33,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
     except ImportError:
         raise ImportError(
             "odfpy is required for .ods support. "
-            "Install it with: pip install gridmap[ods]"
+            "Install it with: pip install doormat[ods]"
         ) from None
 
     filepath = Path(filepath)

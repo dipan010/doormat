@@ -1,7 +1,7 @@
-"""Run gridmap over every spreadsheet in the corpus and record one JSONL row per file.
+"""Run doormat over every spreadsheet in the corpus and record one JSONL row per file.
 
-Each sheet is sent through ``gridmap._core.process_sheet`` separately so that
-findings can be mapped back to (sheet, row, col). ``gridmap.load()`` returns
+Each sheet is sent through ``doormat._core.process_sheet`` separately so that
+findings can be mapped back to (sheet, row, col). ``doormat.load()`` returns
 only internal per-sheet cell indices, which are ambiguous across sheets.
 
 Usage:
@@ -20,8 +20,8 @@ import time
 import warnings
 from pathlib import Path
 
-from gridmap import _core
-from gridmap.api import _get_format_registry
+from doormat import _core
+from doormat.api import _get_format_registry
 
 CORPUS_DIR = Path(__file__).resolve().parent
 DATA_DIR = CORPUS_DIR / "data" / "spreadsheets"

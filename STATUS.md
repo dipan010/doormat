@@ -1,10 +1,10 @@
-# gridmap — Status
+# doormat — Status
 
 Last reviewed: 2026-10-07
 
 | Built | Documented | Hosted | Posted |
 |---|---|---|---|
-| ✅ v0.1.0 alpha: core engine, all detection pathways | ✅ README, CHANGELOG, CONTRIBUTING, RELEASE_CHECKLIST match the code (Phase 1 done 2026-10-06) | ❌ Not on PyPI; public repo `dipan010/gridmap` only | ❌ |
+| ✅ v0.1.0 alpha: core engine, all detection pathways | ✅ README, CHANGELOG, CONTRIBUTING, RELEASE_CHECKLIST match the code (Phase 1 done 2026-10-06) | ❌ Not on PyPI; public repo `dipan010/doormat` only | ❌ |
 
 ## Where it stands
 
@@ -17,13 +17,13 @@ Last reviewed: 2026-10-07
 ## Blockers
 
 
-- **The PyPI name `gridmap` is taken** (v0.15.0, a DRMAA grid-engine mapper). `pip install gridmap` in the README installs someone else's package. A new distribution name is needed before any release. The import name can stay `gridmap` if desired, but a distinct one avoids confusion.
+- None. (The PyPI name `gridmap` belonged to another project; the project was renamed to `doormat` on 2026-10-07.)
 
 ## Phases to completion
 
 ### Phase 1 — Repair the docs ✅ (2026-10-06)
 - [x] Update README "What it does NOT do" and feature list for CSV/TSV/ODS/XLS support.
-- [x] Fix `CLAUDE.md`'s "Project files you must read": point it at README, CHANGELOG and this file, or restore the spec and state files from history (`git show <sha>^:gridmap_state.md`).
+- [x] Fix `CLAUDE.md`'s "Project files you must read": point it at README, CHANGELOG and this file, or restore the spec and state files from history (`git show <sha>^:doormat_state.md`).
 - [x] Add a CHANGELOG `[Unreleased]` entry for the multi-format work.
 - **Exit:** a new session following CLAUDE.md reads files that exist and describe the code.
 
@@ -35,7 +35,7 @@ Last reviewed: 2026-10-07
   - After three fixes (inline regex, split-password guards, label/whitespace penalties): dev P 55.8% (out of sample), test P 65.1% / R 32.0% (in sample). Test split is now frozen.
   - Numbers are concentrated: one directory file and a few recurring service-account templates dominate. Distinct (key, value) precision: test 72%, dev 31%.
 - [x] Decide the relationship with path-finder's credential-pipeline.
-  - 2026-10-07: **shelved until gridmap is published.** Compared on the same Enron test split (169 credentials): credential-pipeline's accepted findings reached 9.5% recall (16/169, 0/100 table credentials) against gridmap's 32.0%, and 18.3% even counting its 1,467 flagged-for-review claims; median 150 ms/file vs 28 ms. Its masking/export/quarantine layer is the reusable part if it is revived as an app on top of gridmap.
+  - 2026-10-07: **shelved until doormat is published.** Compared on the same Enron test split (169 credentials): credential-pipeline's accepted findings reached 9.5% recall (16/169, 0/100 table credentials) against doormat's 32.0%, and 18.3% even counting its 1,467 flagged-for-review claims; median 150 ms/file vs 28 ms. Its masking/export/quarantine layer is the reusable part if it is revived as an app on top of doormat.
 - **Exit:** P/R numbers on non-synthetic data in README. (Met 2026-10-07.)
 
 Follow-ups found in Phase 2 (not blocking):
@@ -47,7 +47,7 @@ Follow-ups found in Phase 2 (not blocking):
 - `FORMULA_KEYWORD_REGEX` has the same missing word boundary as the old inline regex (no corpus hits, but `spin`/`monkey` would match).
 
 ### Phase 3 — Release engineering
-- [ ] Choose and reserve a free PyPI name (check `pypi.org/pypi/<name>/json` returns 404); update `pyproject.toml`, README install line, and the version const in `crates/gridmap-core/src/lib.rs`.
+- [x] Choose a free PyPI name: **`doormat`** (2026-10-07; free on PyPI and crates.io at the time of checking, reserved only on first upload). Package, import, crates and docs renamed; GitHub repo rename to `dipan010/doormat` pending.
 - [ ] Add GitHub Actions: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check`, `pytest`, harness. (CLAUDE.md defers CI to after v0.1.0; building wheels for five targets makes it worth doing now. Update CLAUDE.md's "What NOT to build" if so.)
 - [ ] maturin wheel matrix (linux x86_64/aarch64, macOS x86_64/arm64, windows x86_64) with PyPI trusted publishing on tag.
 - **Exit:** CI green on every push; a tag produces wheels.

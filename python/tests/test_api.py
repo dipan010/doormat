@@ -1,4 +1,4 @@
-"""Tests for gridmap.api — load(), GridDoc, Relationship."""
+"""Tests for doormat.api — load(), GridDoc, Relationship."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from pathlib import Path
 import openpyxl
 import pytest
 
-import gridmap
-from gridmap.api import GridDoc, Relationship, load
+import doormat
+from doormat.api import GridDoc, Relationship, load
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_griddoc_is_frozen(credential_xlsx):
 
 def test_load_nonexistent_raises():
     with pytest.raises(FileNotFoundError):
-        load("/tmp/does_not_exist_gridmap_test.xlsx")
+        load("/tmp/does_not_exist_doormat_test.xlsx")
 
 
 def test_load_unsupported_extension_raises(tmp_path):
@@ -206,27 +206,27 @@ def test_relationship_repr(credential_xlsx):
     assert str(rel.confidence) in r
 
 
-# ---------- gridmap.__init__ exports ----------
+# ---------- doormat.__init__ exports ----------
 
 
 def test_exports_load():
-    assert hasattr(gridmap, "load")
-    assert gridmap.load is load
+    assert hasattr(doormat, "load")
+    assert doormat.load is load
 
 
 def test_exports_griddoc():
-    assert hasattr(gridmap, "GridDoc")
-    assert gridmap.GridDoc is GridDoc
+    assert hasattr(doormat, "GridDoc")
+    assert doormat.GridDoc is GridDoc
 
 
 def test_exports_relationship():
-    assert hasattr(gridmap, "Relationship")
-    assert gridmap.Relationship is Relationship
+    assert hasattr(doormat, "Relationship")
+    assert doormat.Relationship is Relationship
 
 
 def test_exports_version():
-    assert hasattr(gridmap, "version")
-    v = gridmap.version()
+    assert hasattr(doormat, "version")
+    v = doormat.version()
     assert isinstance(v, str)
     assert len(v) > 0
 

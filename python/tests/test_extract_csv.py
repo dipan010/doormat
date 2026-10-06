@@ -1,4 +1,4 @@
-"""Tests for gridmap.extract.csv_tsv — CSV and TSV cell extraction."""
+"""Tests for doormat.extract.csv_tsv — CSV and TSV cell extraction."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from gridmap.extract.csv_tsv import extract_csv
+from doormat.extract.csv_tsv import extract_csv
 
 
 def test_basic_csv(tmp_path):

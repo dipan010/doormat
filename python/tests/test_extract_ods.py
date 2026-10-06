@@ -1,4 +1,4 @@
-"""Tests for gridmap.extract.ods — ODS extraction via odfpy."""
+"""Tests for doormat.extract.ods — ODS extraction via odfpy."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from gridmap.extract.ods import extract_ods
+from doormat.extract.ods import extract_ods
 
 
 def test_missing_odfpy_raises_import_error(tmp_path):

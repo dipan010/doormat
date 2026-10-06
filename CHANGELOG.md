@@ -10,16 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - CSV and TSV extraction via the stdlib `csv` module (single sheet, named after the file)
-- `.xls` extraction via optional `xlrd>=2.0` (`gridmap[xls]`); formulas and comments are not available
-- `.ods` extraction via optional `odfpy>=1.4` (`gridmap[ods]`), including formulas and annotations
+- `.xls` extraction via optional `xlrd>=2.0` (`doormat[xls]`); formulas and comments are not available
+- `.ods` extraction via optional `odfpy>=1.4` (`doormat[ods]`), including formulas and annotations
 - `.xlsm` accepted and routed through the xlsx extractor
-- `gridmap[all]` extra installing both optional dependencies
+- `doormat[all]` extra installing both optional dependencies
 - Magic-byte validation for `.xlsx`, `.xlsm`, `.xls` and `.ods` before parsing
 
 ### Changed
 
-- `python/gridmap/extract.py` split into the `gridmap.extract` package with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
-- `gridmap.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
+- Renamed the project from `gridmap` to `doormat`, because the PyPI name `gridmap` belongs to another project. The Python import is now `doormat`, the crates are `doormat-core` and `doormat-py`, and the extension module is `doormat._core`. The public API (`load()`, `GridDoc`, `Relationship`) is unchanged
+- `python/gridmap/extract.py` split into the `gridmap.extract` package (now `doormat.extract`) with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
+- `doormat.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
 - Inline detection no longer matches whitespace-separated forms such as `(800) 555-0100 PIN 1234` or `password for Sheet = x`. On the Enron corpus these patterns were mostly false positives (offshore block names, pipeline interconnect IDs, prose)
 
 ### Fixed

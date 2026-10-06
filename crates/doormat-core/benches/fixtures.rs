@@ -11,7 +11,7 @@
 //!   - 5% formulas/comments
 //!   - 93% noise
 
-use gridmap_core::store::{CellStore, RawCell};
+use doormat_core::store::{CellStore, RawCell};
 
 /// Simple deterministic pseudo-random generator (xorshift32).
 /// Avoids pulling in a random crate as a dev-dependency.
@@ -140,16 +140,16 @@ pub fn large_cells() -> Vec<RawCell> {
 /// Build a CellStore with features precomputed (ready for candidate phases).
 pub fn build_store(cells: Vec<RawCell>) -> CellStore {
     let mut store = CellStore::from_raw(cells);
-    gridmap_core::features::precompute_features(&mut store);
+    doormat_core::features::precompute_features(&mut store);
     store
 }
 
 /// Build a CellStore with features + candidates + classification + regions done.
 pub fn build_full_pipeline_store(cells: Vec<RawCell>) -> (CellStore, Vec<u32>) {
     let mut store = CellStore::from_raw(cells);
-    gridmap_core::features::precompute_features(&mut store);
-    let candidates = gridmap_core::candidates::reduce_candidate_space(&store);
-    gridmap_core::candidates::classify_cells(&mut store, &candidates);
-    gridmap_core::regions::detect_regions(&mut store, &candidates);
+    doormat_core::features::precompute_features(&mut store);
+    let candidates = doormat_core::candidates::reduce_candidate_space(&store);
+    doormat_core::candidates::classify_cells(&mut store, &candidates);
+    doormat_core::regions::detect_regions(&mut store, &candidates);
     (store, candidates)
 }

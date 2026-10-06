@@ -1,4 +1,4 @@
-"""Generate xlsx test fixtures for gridmap benchmark/integration testing.
+"""Generate xlsx test fixtures for doormat benchmark/integration testing.
 
 Each fixture tests a specific detection pathway. Run this script to
 regenerate all 14 fixtures from scratch (reproducible, no manual editing).

@@ -1,4 +1,4 @@
-# Contributing to gridmap
+# Contributing to doormat
 
 ## Building from source
 
@@ -11,8 +11,8 @@
 ### Setup
 
 ```bash
-git clone https://github.com/dipan010/gridmap.git
-cd gridmap
+git clone https://github.com/dipan010/doormat.git
+cd doormat
 
 # Install Python build and test dependencies
 pip install maturin openpyxl pytest
@@ -73,11 +73,11 @@ Results are stored in `target/criterion/` and include HTML reports.
 python bench/harness/run_harness.py
 ```
 
-Runs all 14 fixture workbooks through `gridmap.load()` and compares detected credentials against `bench/fixtures/ground_truth.json`. Reports per-fixture and aggregate precision/recall. Target: P >= 0.9, R >= 0.85.
+Runs all 14 fixture workbooks through `doormat.load()` and compares detected credentials against `bench/fixtures/ground_truth.json`. Reports per-fixture and aggregate precision/recall. Target: P >= 0.9, R >= 0.85.
 
 ## Adding a new detection pathway
 
-1. Identify which pipeline phase the detection belongs in. Each Rust module in `crates/gridmap-core/src/` owns one domain:
+1. Identify which pipeline phase the detection belongs in. Each Rust module in `crates/doormat-core/src/` owns one domain:
    - Inline patterns: `detection.rs` (`detect_inline_credentials`)
    - Formula analysis: `detection.rs` (`analyze_formulas`)
    - Comment analysis: `detection.rs` (`analyze_comments`)

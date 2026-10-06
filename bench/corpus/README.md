@@ -1,6 +1,6 @@
 # Real-world corpus: Enron spreadsheets
 
-Phase 2 validates gridmap beyond the 14 synthetic fixtures using the Enron
+Phase 2 validates doormat beyond the 14 synthetic fixtures using the Enron
 spreadsheet corpus: 15,000+ spreadsheets extracted from the Enron email archive.
 
 > Hermans, F. and Murphy-Hill, E. "Enron's Spreadsheets and Related Emails:
@@ -15,7 +15,7 @@ The spreadsheets are third-party data and are never committed. `data/` and
 
 ```bash
 python bench/corpus/fetch_enron.py      # download, verify sha256, extract to data/
-python bench/corpus/scan.py --workers 4                # gridmap over every file -> results/scan.jsonl
+python bench/corpus/scan.py --workers 4                # doormat over every file -> results/scan.jsonl
 python bench/corpus/keyword_pool.py --split test       # recall pool -> results/pool_test.jsonl
 python bench/corpus/evaluate.py results/scan.jsonl     # precision and recall on the test split
 ```
@@ -33,11 +33,11 @@ numbers are in-sample and out-of-sample precision is measured on dev.
 
 ## Method
 
-- **Precision:** every gridmap finding at confidence >= 120 in the test split
+- **Precision:** every doormat finding at confidence >= 120 in the test split
   (or a random sample stratified by `reason` prefix if there are too many) is
   labelled with the rubric below.
 - **Recall:** `keyword_pool.py` scans every cell of every file for credential
-  keywords and inline `key: value` patterns without using gridmap. Credentials
+  keywords and inline `key: value` patterns without using doormat. Credentials
   found by labelling that pool form the recall denominator. This measures
   recall on *keyword-discoverable* credentials only. Credentials with no
   nearby label are invisible to both, so true recall is likely lower.

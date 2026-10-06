@@ -1,23 +1,25 @@
-# gridmap
+# doormat
 
-A spatial document graph engine that detects credentials stored in spreadsheets. It analyzes spatial proximity between cells, content features, and scoring heuristics to infer typed relationships — finding passwords, tokens, and secrets that live next to their labels in grid layouts. Built as a Rust core with Python bindings via PyO3.
+People hide the key under the doormat, and they hide passwords in the cell next to the label that says "Password". doormat looks there.
+
+It is a spatial document graph engine that detects credentials stored in spreadsheets. It analyzes spatial proximity between cells, content features, and scoring heuristics to infer typed relationships — finding passwords, tokens, and secrets that live next to their labels in grid layouts. Built as a Rust core with Python bindings via PyO3.
 
 **Status: 0.1.0 alpha**
 
 ## Install
 
 ```bash
-pip install gridmap
+pip install doormat
 ```
 
-> **Note:** gridmap is not yet published to PyPI. To install from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
+> **Note:** doormat is not yet published to PyPI. To install from source, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Quickstart
 
 ```python
-import gridmap
+import doormat
 
-doc = gridmap.load("workbook.xlsx")
+doc = doormat.load("workbook.xlsx")
 
 print(f"Scanned {doc.sheet_count} sheets, {doc.cell_count} cells")
 
@@ -33,15 +35,15 @@ all_rels = doc.relationships()
 | Format | Extensions | Formulas | Comments | Extra dependency |
 |---|---|---|---|---|
 | Excel (OOXML) | `.xlsx`, `.xlsm` | yes | yes | none (openpyxl) |
-| Excel 97-2003 | `.xls` | no | no | `xlrd>=2.0` (`pip install gridmap[xls]`) |
-| OpenDocument | `.ods` | yes | yes | `odfpy>=1.4` (`pip install gridmap[ods]`) |
+| Excel 97-2003 | `.xls` | no | no | `xlrd>=2.0` (`pip install doormat[xls]`) |
+| OpenDocument | `.ods` | yes | yes | `odfpy>=1.4` (`pip install doormat[ods]`) |
 | Delimited text | `.csv`, `.tsv` | no | no | none (stdlib `csv`) |
 
-The format is chosen by file extension, and binary formats are checked against their magic bytes before parsing. CSV and TSV files are treated as a single sheet named after the file. `pip install gridmap[all]` installs both optional dependencies.
+The format is chosen by file extension, and binary formats are checked against their magic bytes before parsing. CSV and TSV files are treated as a single sheet named after the file. `pip install doormat[all]` installs both optional dependencies.
 
 ## How it works
 
-gridmap treats a spreadsheet as a 2D spatial document. Each cell has coordinates, a value, and optional metadata (formulas, comments). The engine builds a columnar store of all cells using Arrow-backed arrays, then runs a multi-phase pipeline to find credential-like patterns.
+doormat treats a spreadsheet as a 2D spatial document. Each cell has coordinates, a value, and optional metadata (formulas, comments). The engine builds a columnar store of all cells using Arrow-backed arrays, then runs a multi-phase pipeline to find credential-like patterns.
 
 The pipeline starts with feature extraction: normalizing cell text, computing character-class flags (uppercase, lowercase, digits, special characters), calculating Shannon entropy, and matching against a multilingual set of password/username/URL header keywords using Aho-Corasick multi-pattern matching. These features are stored as bitmasks for fast downstream filtering.
 
@@ -76,7 +78,7 @@ Measured on Apple Silicon (aarch64) using criterion.rs on synthetic fixtures. Re
 - **Formulas and comments in `.xls`** — xlrd 2.x does not expose them, so formula-hidden and comment-hidden detection only works for `.xlsx`, `.xlsm` and `.ods`. CSV and TSV have no formulas or comments to inspect.
 - **ML-based scoring** — confidence scores are heuristic (distance + content bonuses), not derived from a trained model. They work well on structured spreadsheets but may produce false positives on unusual layouts.
 - **JS/Java/Swift bindings** — Python is the only language binding. Others are planned but not yet built.
-- **CLI tool** — gridmap is API-only. There is no command-line interface.
+- **CLI tool** — doormat is API-only. There is no command-line interface.
 
 ## Real-world accuracy
 

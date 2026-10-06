@@ -1,4 +1,4 @@
-"""Integration tests: run gridmap.load() against all fixtures and verify ground truth."""
+"""Integration tests: run doormat.load() against all fixtures and verify ground truth."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-import gridmap
+import doormat
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent.parent / "bench" / "fixtures"
 GROUND_TRUTH_PATH = FIXTURES_DIR / "ground_truth.json"
@@ -40,7 +40,7 @@ def finding_matches(rel, expected_entry: dict) -> bool:
 @pytest.mark.parametrize("fixture_path,expected", list(fixture_params()))
 def test_fixture_findings(fixture_path: Path, expected: list[dict]):
     """Each fixture's findings must match ground truth expectations."""
-    doc = gridmap.load(fixture_path)
+    doc = doormat.load(fixture_path)
     rels = doc.relationships()
 
     # Every expected finding must be present
@@ -56,6 +56,6 @@ def test_fixture_findings(fixture_path: Path, expected: list[dict]):
 def test_no_false_positives():
     """13_no_credentials.xlsx must return zero findings."""
     fixture_path = FIXTURES_DIR / "13_no_credentials.xlsx"
-    doc = gridmap.load(fixture_path)
+    doc = doormat.load(fixture_path)
     rels = doc.relationships()
     assert rels == [], f"Expected no findings, got: {rels}"

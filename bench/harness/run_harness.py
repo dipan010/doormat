@@ -1,6 +1,6 @@
-"""Precision/recall benchmark harness for gridmap fixtures.
+"""Precision/recall benchmark harness for doormat fixtures.
 
-Runs all fixtures through gridmap.load() and compares against ground truth.
+Runs all fixtures through doormat.load() and compares against ground truth.
 Prints a per-fixture and aggregate precision/recall report.
 
 Usage:
@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-import gridmap
+import doormat
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 GROUND_TRUTH_PATH = FIXTURES_DIR / "ground_truth.json"
@@ -37,7 +37,7 @@ def evaluate_fixture(
     filepath: Path, expected: list[dict]
 ) -> tuple[int, int, int]:
     """Evaluate a single fixture. Returns (true_positives, false_positives, false_negatives)."""
-    doc = gridmap.load(filepath)
+    doc = doormat.load(filepath)
     rels = doc.relationships()
 
     # Track which expected entries are matched

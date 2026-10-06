@@ -12,7 +12,7 @@ from pathlib import Path
 def extract_xls(filepath: str | Path) -> list[list[tuple]]:
     """Extract cells from a legacy .xls file as raw cell tuples.
 
-    Requires ``xlrd >= 2.0``. Installs via ``pip install gridmap[xls]``.
+    Requires ``xlrd >= 2.0``. Installs via ``pip install doormat[xls]``.
 
     Args:
         filepath: Path to the .xls file.
@@ -32,7 +32,7 @@ def extract_xls(filepath: str | Path) -> list[list[tuple]]:
     except ImportError:
         raise ImportError(
             "xlrd is required for .xls support. "
-            "Install it with: pip install gridmap[xls]"
+            "Install it with: pip install doormat[xls]"
         ) from None
 
     filepath = Path(filepath)
