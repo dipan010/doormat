@@ -91,6 +91,18 @@ pub fn score_candidate(
         parts.push("penalty_header=-80".into());
     }
 
+    // PENALTY: -80 if candidate is a form label ("Database:", "Post ID:")
+    if value.trim_end().ends_with(':') {
+        score -= 80.0;
+        parts.push("penalty_label=-80".into());
+    }
+
+    // PENALTY: -40 if candidate contains whitespace (prose, column headers)
+    if value.trim().contains(char::is_whitespace) {
+        score -= 40.0;
+        parts.push("penalty_whitespace=-40".into());
+    }
+
     // PENALTY: -50 if value too short
     if value.len() < MIN_CANDIDATE_LENGTH {
         score -= 50.0;
@@ -143,6 +155,37 @@ mod tests {
             score > RELATIONSHIP_THRESHOLD,
             "score {score} should exceed threshold {RELATIONSHIP_THRESHOLD}"
         );
+    }
+
+    #[test]
+    fn adjacent_value_beats_nearby_label() {
+        // Real value right of the header must outscore a label two rows up
+        let mut store = build_store(vec![
+            raw(0, 0, "Portfolio:", "", ""),
+            raw(0, 1, "WEST", "", ""),
+            raw(1, 0, "Username:", "", ""),
+            raw(1, 1, "jdoe", "", ""),
+            raw(2, 0, "Password:", "", ""),
+            raw(2, 1, "lantern", "", ""),
+        ]);
+        let candidates = reduce_candidate_space(&store);
+        classify_cells(&mut store, &candidates);
+        detect_regions(&mut store, &candidates);
+
+        let (value_score, _) = score_candidate(&store, 4, 5, &DISTANCE_TABLE);
+        let (label_score, reason) = score_candidate(&store, 4, 0, &DISTANCE_TABLE);
+        assert!(reason.contains("penalty_label"));
+        assert!(value_score > label_score);
+    }
+
+    #[test]
+    fn whitespace_candidate_penalised() {
+        let store = build_store(vec![
+            raw(0, 0, "Password", "", ""),
+            raw(0, 1, "Please enter the Password", "", ""),
+        ]);
+        let (_score, reason) = score_candidate(&store, 0, 1, &DISTANCE_TABLE);
+        assert!(reason.contains("penalty_whitespace"));
     }
 
     #[test]
@@ -285,7 +328,10 @@ mod tests {
         // Extract the distance component and verify it's in the expected range
         let dist_str = reason.split(';').next().unwrap();
         let dist_val: f32 = dist_str.strip_prefix("distance=").unwrap().parse().unwrap();
-        assert!((dist_val - 17.57).abs() < 0.5, "expected ~17.57, got {dist_val}");
+        assert!(
+            (dist_val - 17.57).abs() < 0.5,
+            "expected ~17.57, got {dist_val}"
+        );
         assert!(score < 100.0, "far cell should have lower distance score");
     }
 }

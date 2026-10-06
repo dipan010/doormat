@@ -5,10 +5,24 @@ use crate::spatial::{query_radius, DistanceTable};
 use crate::store::CellStore;
 use crate::types::*;
 
+/// True when the cell has a non-empty neighbour directly left or right.
+///
+/// A split-password fragment stands alone in its column. A cell with a
+/// horizontal neighbour is a form label (`Post ID:` | `812586`) or a table
+/// row holding a complete value of its own.
+fn has_horizontal_neighbour(store: &CellStore, row: u32, col: u32) -> bool {
+    [col.checked_sub(1), col.checked_add(1)]
+        .into_iter()
+        .flatten()
+        .filter_map(|c| store.coord_to_id.get(&(row, c)))
+        .any(|&id| !store.get_value(id as usize).trim().is_empty())
+}
+
 /// Walk up to 5 cells directly below `header_id` in the same column.
-/// Each cell must have `CellType::Value`, be non-empty, and not be a
-/// password header. If >= 2 parts found, each < 30 chars, and the
-/// combined string >= 6 chars, returns `(combined_value, first_below_cell_id)`.
+/// Each cell must have `CellType::Value`, be non-empty, not be a password
+/// header, not end in `:`, and have no horizontal neighbour. If >= 2 parts
+/// found, each < 30 chars, and the combined string >= 6 chars, returns
+/// `(combined_value, first_below_cell_id)`.
 fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u32)> {
     let h = header_id as usize;
     let header_row = store.get_row(h);
@@ -34,6 +48,12 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
                 break;
             }
             if value.len() >= 30 {
+                break;
+            }
+            if value.trim_end().ends_with(':') {
+                break;
+            }
+            if has_horizontal_neighbour(store, target_row, header_col) {
                 break;
             }
 
@@ -66,10 +86,7 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 /// 3. Filter to `CellType::Value` only, skip already-used values
 /// 4. Score each via `score_candidate`, pick best above `RELATIONSHIP_THRESHOLD`
 /// 5. Mark claimed values in `used_value_ids` to prevent double-assignment
-pub fn infer_relationships(
-    store: &CellStore,
-    dist_table: &DistanceTable,
-) -> Vec<Relationship> {
+pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec<Relationship> {
     let mut results: Vec<Relationship> = Vec::new();
     let mut used_value_ids: AHashSet<u32> = AHashSet::new();
 
@@ -173,10 +190,7 @@ mod tests {
 
     #[test]
     fn header_pairs_with_adjacent_value() {
-        let store = pipeline_store(vec![
-            raw(1, 1, "Password"),
-            raw(1, 2, "s3cret!!"),
-        ]);
+        let store = pipeline_store(vec![raw(1, 1, "Password"), raw(1, 2, "s3cret!!")]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].key, "Password");
@@ -202,10 +216,7 @@ mod tests {
     #[test]
     fn split_password_needs_two_parts() {
         // Only 1 cell below → no split
-        let store = pipeline_store(vec![
-            raw(0, 0, "Password"),
-            raw(1, 0, "abcdef"),
-        ]);
+        let store = pipeline_store(vec![raw(0, 0, "Password"), raw(1, 0, "abcdef")]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         // Should fall through to normal scoring, not split
         if !rels.is_empty() {
@@ -246,10 +257,7 @@ mod tests {
     #[test]
     fn no_value_cells_nearby() {
         // Only headers, no value cells
-        let store = pipeline_store(vec![
-            raw(0, 0, "Password"),
-            raw(0, 1, "Username"),
-        ]);
+        let store = pipeline_store(vec![raw(0, 0, "Password"), raw(0, 1, "Username")]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         // Both are headers, neither should pair with the other
         assert!(rels.is_empty());
@@ -258,10 +266,7 @@ mod tests {
     #[test]
     fn value_beyond_radius_not_found() {
         // Value at distance > NEIGHBOR_RADIUS (3)
-        let store = pipeline_store(vec![
-            raw(0, 0, "Password"),
-            raw(0, 10, "s3cret!!"),
-        ]);
+        let store = pipeline_store(vec![raw(0, 0, "Password"), raw(0, 10, "s3cret!!")]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         assert!(rels.is_empty());
     }
@@ -271,7 +276,7 @@ mod tests {
         // Cell below header is itself a password header → stops walk
         let store = pipeline_store(vec![
             raw(0, 0, "Password"),
-            raw(1, 0, "Token"),   // password header → breaks split walk
+            raw(1, 0, "Token"), // password header → breaks split walk
             raw(2, 0, "ab"),
             raw(3, 0, "cd"),
         ]);
@@ -281,6 +286,46 @@ mod tests {
                 assert_ne!(rel.reason, "split_password");
             }
         }
+    }
+
+    #[test]
+    fn split_password_rejects_form_labels() {
+        // Labels below the header each have their own value to the right
+        let store = pipeline_store(vec![
+            raw(0, 0, "Password:"),
+            raw(1, 0, "Price"),
+            raw(1, 1, "123456"),
+            raw(2, 0, "Basis"),
+            raw(2, 1, "12"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "split_password"));
+    }
+
+    #[test]
+    fn split_password_rejects_table_column() {
+        // A password column in a table: each row is a separate credential
+        let store = pipeline_store(vec![
+            raw(0, 0, "User ID"),
+            raw(0, 1, "Password"),
+            raw(1, 0, "usr1001"),
+            raw(1, 1, "alpha7"),
+            raw(2, 0, "usr1002"),
+            raw(2, 1, "bravo8"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "split_password"));
+    }
+
+    #[test]
+    fn split_password_rejects_colon_labels() {
+        let store = pipeline_store(vec![
+            raw(0, 0, "Password:"),
+            raw(1, 0, "Post ID:"),
+            raw(2, 0, "Region"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "split_password"));
     }
 
     #[test]

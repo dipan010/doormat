@@ -1,4 +1,6 @@
-use crate::candidates::{FORMULA_KEYWORD_REGEX, FORMULA_STRING_REGEX, INLINE_CREDENTIAL_REGEX};
+use crate::candidates::{
+    inline_value, FORMULA_KEYWORD_REGEX, FORMULA_STRING_REGEX, INLINE_CREDENTIAL_REGEX,
+};
 use crate::store::CellStore;
 use crate::types::*;
 
@@ -26,10 +28,7 @@ fn strip_quotes(s: &str) -> String {
 
 /// Detect credentials embedded directly in cell values using the inline
 /// credential regex. Returns relationships with confidence 250.0.
-pub fn detect_inline_credentials(
-    store: &CellStore,
-    candidate_ids: &[u32],
-) -> Vec<Relationship> {
+pub fn detect_inline_credentials(store: &CellStore, candidate_ids: &[u32]) -> Vec<Relationship> {
     candidate_ids
         .iter()
         .filter_map(|&cell_id| {
@@ -37,7 +36,7 @@ pub fn detect_inline_credentials(
             let value = store.get_value(id);
 
             let caps = INLINE_CREDENTIAL_REGEX.captures(value)?;
-            let captured = caps.get(1)?;
+            let captured = inline_value(&caps)?;
 
             let raw_value = strip_quotes(captured.as_str());
             if raw_value.len() < MIN_CANDIDATE_LENGTH {
@@ -65,10 +64,7 @@ pub fn detect_inline_credentials(
 ///
 /// Strategy 1: concatenate all quoted strings and try the inline regex.
 /// Strategy 2: if one quoted string is a keyword, the next string(s) are values.
-pub fn analyze_formulas(
-    store: &CellStore,
-    candidate_ids: &[u32],
-) -> Vec<Relationship> {
+pub fn analyze_formulas(store: &CellStore, candidate_ids: &[u32]) -> Vec<Relationship> {
     let mut results = Vec::new();
 
     for &cell_id in candidate_ids {
@@ -93,7 +89,7 @@ pub fn analyze_formulas(
         // Strategy 1: concatenate all strings, try inline match
         let concatenated = strings.join(" ");
         if let Some(caps) = INLINE_CREDENTIAL_REGEX.captures(&concatenated) {
-            if let Some(captured) = caps.get(1) {
+            if let Some(captured) = inline_value(&caps) {
                 let raw_value = strip_quotes(captured.as_str());
                 if raw_value.len() >= MIN_CANDIDATE_LENGTH {
                     let key = strip_key(&concatenated[..captured.start()]);
@@ -138,10 +134,7 @@ pub fn analyze_formulas(
 ///
 /// Mode 1: cell is a password header and the comment contains the credential.
 /// Mode 2: comment text itself contains a credential pattern.
-pub fn analyze_comments(
-    store: &CellStore,
-    candidate_ids: &[u32],
-) -> Vec<Relationship> {
+pub fn analyze_comments(store: &CellStore, candidate_ids: &[u32]) -> Vec<Relationship> {
     let mut results = Vec::new();
 
     for &cell_id in candidate_ids {
@@ -173,7 +166,7 @@ pub fn analyze_comments(
 
         // Mode 2: comment text contains a credential pattern
         if let Some(caps) = INLINE_CREDENTIAL_REGEX.captures(comment) {
-            if let Some(captured) = caps.get(1) {
+            if let Some(captured) = inline_value(&caps) {
                 let raw_value = strip_quotes(captured.as_str());
                 if raw_value.len() >= MIN_CANDIDATE_LENGTH {
                     let key = strip_key(&comment[..captured.start()]);

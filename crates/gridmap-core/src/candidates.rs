@@ -8,16 +8,31 @@ use crate::types::*;
 
 // ---------- WIN 3: compile regex patterns ONCE ----------
 
+/// Inline `key: value` credential pattern.
+///
+/// The keyword must be a whole word, so `spin`, `compass` and `by-pass` do not
+/// match. The separator must be `:`, `=` or a dash with whitespace on at least
+/// one side (`Password - X`), so prose like `pass through` does not match.
+/// Password-family keywords also accept a bare whitespace separator when the
+/// value is a single token containing a digit (`Password X333#`).
+///
+/// The value is in capture group 1 or 2; read it with [`inline_value`].
 pub(crate) static INLINE_CREDENTIAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?i)(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)[\s:=]+(.+)",
-    )
-    .unwrap()
+    Regex::new(concat!(
+        r"(?i)\b(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)\b",
+        r"(?:\s*[:=]\s*|\s+[-–]\s*|\s*[-–]\s+)(.+)",
+        r"|\b(?:password|passwd|pwd|passwort|contraseña|motdepasse|senha|пароль)\s+(\S*\d\S*)\s*$",
+    ))
+    .expect("inline credential regex is valid")
 });
 
-pub(crate) static FORMULA_STRING_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#""([^"]+)""#).unwrap()
-});
+/// Return the value matched by [`INLINE_CREDENTIAL_REGEX`], whichever branch matched.
+pub(crate) fn inline_value<'h>(caps: &regex::Captures<'h>) -> Option<regex::Match<'h>> {
+    caps.get(1).or_else(|| caps.get(2))
+}
+
+pub(crate) static FORMULA_STRING_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#""([^"]+)""#).unwrap());
 
 pub(crate) static FORMULA_KEYWORD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|token|key|pin)[\s:=]*$").unwrap()
@@ -25,7 +40,8 @@ pub(crate) static FORMULA_KEYWORD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 // ---------- Section-title special chars ----------
 
-const SECTION_SPECIAL_CHARS: &[char] = &['=', '@', '#', '$', '%', '^', '&', '*', '{', '}', '[', ']'];
+const SECTION_SPECIAL_CHARS: &[char] =
+    &['=', '@', '#', '$', '%', '^', '&', '*', '{', '}', '[', ']'];
 
 // ---------- Candidate space reduction ----------
 
@@ -272,6 +288,35 @@ mod tests {
     fn inline_regex_no_match() {
         assert!(!INLINE_CREDENTIAL_REGEX.is_match("Hello World"));
         assert!(!INLINE_CREDENTIAL_REGEX.is_match("12345"));
+    }
+
+    #[test]
+    fn inline_regex_requires_whole_word_keyword() {
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Spin Reserves 7%"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Compass Bank: Inc"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Humpass Bonds Intl"));
+    }
+
+    #[test]
+    fn inline_regex_rejects_prose_separator() {
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("100% pass through of premium costs"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Grants Pass Lateral"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Fuel Expense Pass-Through Plug"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Please enter the Password for the User ID"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Main Pass 99/100"));
+        assert!(!INLINE_CREDENTIAL_REGEX.is_match("Pipeline PIN 1234"));
+    }
+
+    #[test]
+    fn inline_regex_accepts_spaced_dash_and_digit_token() {
+        let value = |s: &str| {
+            let caps = INLINE_CREDENTIAL_REGEX.captures(s).unwrap();
+            inline_value(&caps).unwrap().as_str().to_string()
+        };
+        assert_eq!(value("Password - K7QWERTY"), "K7QWERTY");
+        assert_eq!(value("Password -4821"), "4821");
+        assert_eq!(value("UID=svc;PWD=hunter22"), "hunter22");
+        assert_eq!(value("Password Q9w8e7#"), "Q9w8e7#");
     }
 
     #[test]
