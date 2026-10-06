@@ -1,7 +1,7 @@
 """Build the recall candidate pool without using gridmap's detection pipeline.
 
 Every cell of every corpus file is matched against plain credential keywords and
-inline ``key: value`` patterns. Matching cells are written to results/pool.jsonl
+inline ``key: value`` patterns. Matching cells are written to results/pool.jsonl (or pool_<split>.jsonl)
 with their location. Labelling that pool gives the recall denominator: the
 credentials a reviewer could find by keyword search, independent of gridmap's
 header sets, scoring and thresholds.
@@ -10,7 +10,7 @@ Only gridmap's extractors are shared (to read the files the same way); nothing
 from the Rust core is called.
 
 Usage:
-    python bench/corpus/keyword_pool.py [--workers N] [--timeout SECONDS]
+    python bench/corpus/keyword_pool.py [--workers N] [--timeout SECONDS] [--split test|dev]
 """
 
 from __future__ import annotations
@@ -39,13 +39,16 @@ INLINE = re.compile(
 )
 
 
-def pool_file(args: tuple[str, int]) -> dict:
+def pool_file(args: tuple[str, int, str]) -> dict:
     """Return every keyword-matching cell in one file. Never raises."""
-    path_str, timeout = args
+    path_str, timeout, only_split = args
     path = Path(path_str)
     raw = path.read_bytes()
     md5 = hashlib.md5(raw).hexdigest()
     row: dict = {"file": path.name, "md5": md5, "split": split_of(md5), "status": "ok", "hits": []}
+    if only_split and row["split"] != only_split:
+        row["status"] = "other_split"
+        return row
     registry = _get_format_registry()
     entry = registry.get(path.suffix.lower())
     if entry is None or (entry[0] is not None and not raw.startswith(entry[0])):
@@ -75,19 +78,21 @@ def pool_file(args: tuple[str, int]) -> dict:
 
 
 def main() -> None:
-    """Build results/pool.jsonl over the whole corpus."""
+    """Build results/pool.jsonl over the corpus, or one split of it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workers", type=int, default=mp.cpu_count())
     parser.add_argument("--timeout", type=int, default=60)
+    parser.add_argument("--split", choices=("test", "dev"), default="")
     opts = parser.parse_args()
 
     files = sorted(p for p in DATA_DIR.rglob("*") if p.is_file())
     RESULTS_DIR.mkdir(exist_ok=True)
-    out_path = RESULTS_DIR / "pool.jsonl"
+    out_path = RESULTS_DIR / f"pool{'_' + opts.split if opts.split else ''}.jsonl"
     with mp.Pool(opts.workers, maxtasksperchild=200) as pool, out_path.open("w") as out:
-        jobs = ((str(p), opts.timeout) for p in files)
+        jobs = ((str(p), opts.timeout, opts.split) for p in files)
         for row in pool.imap_unordered(pool_file, jobs, chunksize=8):
-            out.write(json.dumps(row) + "\n")
+            if row["status"] != "other_split":
+                out.write(json.dumps(row) + "\n")
     print(f"{len(files)} files -> {out_path}")
 
 

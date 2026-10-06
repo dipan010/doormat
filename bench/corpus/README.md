@@ -15,15 +15,21 @@ The spreadsheets are third-party data and are never committed. `data/` and
 
 ```bash
 python bench/corpus/fetch_enron.py      # download, verify sha256, extract to data/
-python bench/corpus/scan.py             # gridmap over every file -> results/scan.jsonl
-python bench/corpus/keyword_pool.py     # independent recall pool -> results/pool.jsonl
+python bench/corpus/scan.py --workers 4                # gridmap over every file -> results/scan.jsonl
+python bench/corpus/keyword_pool.py --split test       # recall pool -> results/pool_test.jsonl
+python bench/corpus/evaluate.py results/scan.jsonl     # precision and recall on the test split
 ```
+
+`scan.py` also takes `--split`, `--files` and `--out` to rescan a subset.
+Use 4 workers or fewer on a laptop; a full scan with every core runs hot.
 
 ## Split
 
 Each file is assigned by `int(md5[:8], 16) % 5`: bucket 0 is the **held-out
 test split** (about 20%), buckets 1 to 4 are **dev**. Heuristic tuning may only
-look at dev. Reported numbers come from the test split.
+look at dev. The test split was labelled before any code change and is now
+frozen: later fixes were partly designed from its errors, so post-fix test
+numbers are in-sample and out-of-sample precision is measured on dev.
 
 ## Method
 
@@ -65,5 +71,40 @@ It is a **false positive** when the value is any of:
 
 **Unsure** is allowed and is reported separately, never folded into TP or FP.
 
-Labels never record plaintext. `labels.jsonl` rows hold `md5`, `sheet`,
-`row`, `col`, `value_sha256`, `label` (`tp`/`fp`/`unsure`) and `note`.
+Labels never record plaintext. `labels_test.jsonl` and `labels_dev.jsonl`
+rows hold `md5`, `sheet`, `header`, `cell`, `value_sha256`, `label`
+(`tp`/`fp`) and `note`. `creds_test.json` lists the credential cells (no
+values) that form the recall denominator.
+
+## Results
+
+Scan of all 15,929 files (2026-10-06): 99.5% processed, 15.5 minutes on an
+Apple Silicon laptop. Failures: 64 openpyxl `KeyError`s on broken external
+links, 5 timeouts, 4 other parse errors. On the largest workbooks, openpyxl
+extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
+170k cells).
+
+| Split | Engine | Findings | Precision | Recall | Notes |
+|---|---|---|---|---|---|
+| test | v0.1.0 | 334 | **16.5%** (55) | **32.5%** (55/169) | Clean: labelled before any code change |
+| test | after fixes | 83 | 65.1% (54) | 32.0% (54/169) | In-sample: fixes were designed from these errors |
+| dev | after fixes | 181 | **55.8%** (101) | not measured | Out of sample for the fixes |
+
+Read these with the concentration in mind. 31 of the 54 post-fix test true
+positives come from one directory file. 100 of the 169 test credentials sit
+in three files (two are copies of the same workbook). Collapsing duplicate
+(key, value) pairs gives 72% precision on test and 31% on dev, because the
+same service-account templates recur across many dev files. The split is by
+file hash, so near-identical templates appear on both sides.
+
+Recall by credential kind (test, after fixes): adjacent to a header 19/20,
+inline 35/49, password-table column 0/100. The fixes dropped 14 inline
+credentials on purpose: phone dial-in PINs (`(800) ... PIN nnnnnn`) and
+`password for X = y` notes no longer match, because the looser patterns
+were mostly false positives on dev.
+
+Remaining false positives on dev are pairings with formulas, labels such as
+`Included Deals`, database names next to an empty password cell, and a
+help-desk log whose category column is literally "Password". The largest
+recall gap is password tables (a `Password` column with one credential per
+row), which no detector handles yet.

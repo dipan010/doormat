@@ -6,6 +6,7 @@ only internal per-sheet cell indices, which are ambiguous across sheets.
 
 Usage:
     python bench/corpus/scan.py [--workers N] [--timeout SECONDS] [--limit N]
+                                [--split test|dev] [--out NAME] [--files LIST]
 """
 
 from __future__ import annotations
@@ -55,9 +56,9 @@ def _coords_by_id(cells: list[tuple]) -> list[tuple[int, int]]:
     return coords
 
 
-def scan_file(args: tuple[str, int]) -> dict:
+def scan_file(args: tuple[str, int, str]) -> dict:
     """Extract and score one file. Never raises; failures become a status."""
-    path_str, timeout = args
+    path_str, timeout, only_split = args
     path = Path(path_str)
     raw = path.read_bytes()
     md5 = hashlib.md5(raw).hexdigest()
@@ -72,6 +73,9 @@ def scan_file(args: tuple[str, int]) -> dict:
         "elapsed_ms": 0.0,
         "findings": [],
     }
+    if only_split and row["split"] != only_split:
+        row["status"] = "other_split"
+        return row
     registry = _get_format_registry()
     ext = path.suffix.lower()
     if ext not in registry:
@@ -125,19 +129,26 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=mp.cpu_count())
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--split", choices=("test", "dev"), default="")
+    parser.add_argument("--out", default="scan.jsonl")
+    parser.add_argument("--files", type=Path, help="newline-separated file names to scan")
     opts = parser.parse_args()
 
     files = sorted(p for p in DATA_DIR.rglob("*") if p.is_file())
+    if opts.files:
+        wanted = set(opts.files.read_text().split("\n")) - {""}
+        files = [p for p in files if p.name in wanted]
     if opts.limit:
         files = files[: opts.limit]
     RESULTS_DIR.mkdir(exist_ok=True)
-    out_path = RESULTS_DIR / "scan.jsonl"
+    out_path = RESULTS_DIR / opts.out
 
     start = time.perf_counter()
     with mp.Pool(opts.workers, maxtasksperchild=200) as pool, out_path.open("w") as out:
-        jobs = ((str(p), opts.timeout) for p in files)
+        jobs = ((str(p), opts.timeout, opts.split) for p in files)
         for done, row in enumerate(pool.imap_unordered(scan_file, jobs, chunksize=8), 1):
-            out.write(json.dumps(row) + "\n")
+            if row["status"] != "other_split":
+                out.write(json.dumps(row) + "\n")
             if done % 1000 == 0:
                 print(f"{done}/{len(files)} files", flush=True)
     print(f"{len(files)} files in {time.perf_counter() - start:.1f}s -> {out_path}")
