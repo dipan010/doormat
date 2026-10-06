@@ -28,11 +28,17 @@ fn strip_quotes(s: &str) -> String {
 
 /// Detect credentials embedded directly in cell values using the inline
 /// credential regex. Returns relationships with confidence 250.0.
+///
+/// Formula cells are skipped: their value is the formula text, and
+/// `analyze_formulas` already extracts credentials from formula strings.
 pub fn detect_inline_credentials(store: &CellStore, candidate_ids: &[u32]) -> Vec<Relationship> {
     candidate_ids
         .iter()
         .filter_map(|&cell_id| {
             let id = cell_id as usize;
+            if !store.get_formula(id).is_empty() {
+                return None;
+            }
             let value = store.get_value(id);
 
             let caps = INLINE_CREDENTIAL_REGEX.captures(value)?;
@@ -222,6 +228,15 @@ mod tests {
         assert_eq!(rels[0].value, "s3cret!");
         assert_eq!(rels[0].confidence, 250.0);
         assert_eq!(rels[0].reason, "inline_same_cell");
+    }
+
+    #[test]
+    fn inline_skips_formula_cells() {
+        let formula = r#"=CONCAT("password: ","S3cure#1")"#;
+        let store = build_store(vec![raw(0, 0, formula, formula, "")]);
+        let candidates = reduce_candidate_space(&store);
+        let rels = detect_inline_credentials(&store, &candidates);
+        assert!(rels.is_empty());
     }
 
     #[test]
