@@ -78,12 +78,23 @@ Measured on Apple Silicon (aarch64) using criterion.rs on synthetic fixtures. Re
 - **JS/Java/Swift bindings** — Python is the only language binding. Others are planned but not yet built.
 - **CLI tool** — gridmap is API-only. There is no command-line interface.
 
+## Real-world accuracy
+
+The 100% precision and recall below are on 14 synthetic fixtures. On real spreadsheets (the public Enron corpus, 15,929 files, see [`bench/corpus/`](bench/corpus/README.md)):
+
+| Engine | Precision | Recall |
+|---|---|---|
+| v0.1.0 | 16.5% | 32.5% |
+| current `main` | 55.8% (dev split, out of sample) | 32.0% (test split) |
+
+Credentials written next to their label (`Password:` | `value`) or inline (`Password: value`) are found reliably. Password *tables*, where a `Password` column holds one credential per row, are not detected yet and account for most missed credentials. Numbers are concentrated in a few files and recurring templates; the corpus README has the breakdown.
+
 ## Project status and roadmap
 
 **v0.1.0** (current) — core engine complete with all detection pathways, 121 Rust unit tests, 54 Python integration tests, 100% precision and 100% recall on 14 synthetic fixtures. Three optimization rounds delivered -24% end-to-end improvement on workbook processing.
 
 **Next:**
-- Real-world benchmark corpus (anonymized enterprise xlsx files)
+- Password-table detection (one credential per row under a `Password` column)
 - CI/CD pipeline (GitHub Actions, wheel building, PyPI publishing)
 - JS bindings via napi-rs
 - Plugin system for additional detection types

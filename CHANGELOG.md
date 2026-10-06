@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `python/gridmap/extract.py` split into the `gridmap.extract` package with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
 - `gridmap.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
+- Inline detection no longer matches whitespace-separated forms such as `(800) 555-0100 PIN 1234` or `password for Sheet = x`. On the Enron corpus these patterns were mostly false positives (offshore block names, pipeline interconnect IDs, prose)
+
+### Fixed
+
+- `load()` raised `AttributeError` on any workbook containing a chartsheet
+- Inline credential pattern matched keywords inside words (`spin`, `compass`, `by-pass`) and treated plain whitespace as a key/value separator. Keywords must now be whole words, and the separator must be `:`, `=` or a spaced dash; password-family keywords also accept a single digit-bearing token after whitespace
+- Split-password detection concatenated form labels (`Post ID:`, `Database:`) and table columns of separate passwords. Fragments must now stand alone in their column and not end in `:`
+- Spatial pairing preferred a nearby label or sentence over the real value next to the header. Candidates ending in `:` get a -80 penalty and candidates containing whitespace get -40
+
+### Validation
+
+- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 32.5% recall on the held-out test split; after the fixes above, precision is 55.8% on the dev split (out of sample) and 65.1% on test (in sample). See `bench/corpus/README.md`
 
 ## [0.1.0] - 2026-06-29
 

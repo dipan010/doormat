@@ -1,6 +1,6 @@
 # gridmap — Status
 
-Last reviewed: 2026-10-06
+Last reviewed: 2026-10-07
 
 | Built | Documented | Hosted | Posted |
 |---|---|---|---|
@@ -29,10 +29,22 @@ Last reviewed: 2026-10-06
 - **Exit:** a new session following CLAUDE.md reads files that exist and describe the code.
 
 ### Phase 2 — Real-world validation
-- [ ] Build a small anonymised or realistic corpus beyond the 14 synthetic fixtures (the README's own "Next" item).
-- [ ] Report P/R on it honestly; 100% on synthetic data is not a claim about real workbooks.
+- [x] Build a small anonymised or realistic corpus beyond the 14 synthetic fixtures (the README's own "Next" item).
+  - Enron corpus (15,929 files) via `bench/corpus/`, CC BY 4.0. Method, rubric and results in `bench/corpus/README.md`.
+- [x] Report P/R on it honestly; 100% on synthetic data is not a claim about real workbooks.
+  - v0.1.0, test split (clean): P 16.5%, R 32.5% (169 credentials in 29 files).
+  - After three fixes (inline regex, split-password guards, label/whitespace penalties): dev P 55.8% (out of sample), test P 65.1% / R 32.0% (in sample). Test split is now frozen.
+  - Numbers are concentrated: one directory file and a few recurring service-account templates dominate. Distinct (key, value) precision: test 72%, dev 31%.
 - [ ] Decide the relationship with path-finder's credential-pipeline.
-- **Exit:** P/R numbers on non-synthetic data in README.
+- **Exit:** P/R numbers on non-synthetic data in README. (Met 2026-10-07; credential-pipeline decision still open.)
+
+Follow-ups found in Phase 2 (not blocking):
+- Password tables: 100 of 169 test credentials sit in `Password` columns with one credential per row; no detector handles them.
+- Remaining dev FPs: formula cells, labels like `Included Deals`, database names beside an empty password cell, help-desk logs with a "Password" category column.
+- `Relationship` exposes only internal per-sheet cell ids; add sheet, row and col so callers can locate a finding.
+- 64 Enron files fail in openpyxl on broken external-link parts; try `load_workbook(..., keep_links=False)`.
+- openpyxl extraction is >99% of wall time on large workbooks (27.5 s vs 0.1 s in the core for 170k cells).
+- `FORMULA_KEYWORD_REGEX` has the same missing word boundary as the old inline regex (no corpus hits, but `spin`/`monkey` would match).
 
 ### Phase 3 — Release engineering
 - [ ] Choose and reserve a free PyPI name (check `pypi.org/pypi/<name>/json` returns 404); update `pyproject.toml`, README install line, and the version const in `crates/gridmap-core/src/lib.rs`.
