@@ -49,9 +49,7 @@ impl DistanceTable {
             // Same row, farther than adjacent: gradual decay
             (0, dc) => f32::max(0.0, 90.0 - (dc.abs() - 1) as f32 * 15.0),
             // General case: Euclidean decay
-            (dr, dc) => {
-                f32::max(0.0, 60.0 - ((dr * dr + dc * dc) as f32).sqrt() * 10.0)
-            }
+            (dr, dc) => f32::max(0.0, 60.0 - ((dr * dr + dc * dc) as f32).sqrt() * 10.0),
         }
     }
 

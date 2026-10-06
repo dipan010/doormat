@@ -40,14 +40,25 @@ impl Rng {
 }
 
 const PASSWORD_KEYWORDS: &[&str] = &[
-    "Password", "Pwd", "Passcode", "Secret", "Token",
-    "Passwort", "Contraseña", "パスワード",
+    "Password",
+    "Pwd",
+    "Passcode",
+    "Secret",
+    "Token",
+    "Passwort",
+    "Contraseña",
+    "パスワード",
 ];
 
 const HIGH_ENTROPY_VALUES: &[&str] = &[
-    "xK9$mQ2!wP4z", "aB3$xY9!pL2#", "Qw3rTy!@#456",
-    "M7nB5vC3xZ1!", "P@ssw0rd!2024", "hG6$jK8&mN0!",
-    "tR5%yU7*iO9(", "eW2!qA4@sD6#",
+    "xK9$mQ2!wP4z",
+    "aB3$xY9!pL2#",
+    "Qw3rTy!@#456",
+    "M7nB5vC3xZ1!",
+    "P@ssw0rd!2024",
+    "hG6$jK8&mN0!",
+    "tR5%yU7*iO9(",
+    "eW2!qA4@sD6#",
 ];
 
 const FORMULA_TEMPLATES: &[&str] = &[

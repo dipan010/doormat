@@ -267,20 +267,14 @@ mod tests {
 
     #[test]
     fn duplicate_coord_empty_comment_no_merge() {
-        let cells = vec![
-            make_raw(0, 0, "val", "original"),
-            make_raw(0, 0, "val", ""),
-        ];
+        let cells = vec![make_raw(0, 0, "val", "original"), make_raw(0, 0, "val", "")];
         let store = CellStore::from_raw(cells);
         assert_eq!(store.get_comment(0), "original");
     }
 
     #[test]
     fn coord_to_id_lookup() {
-        let cells = vec![
-            make_raw(3, 7, "target", ""),
-            make_raw(0, 0, "origin", ""),
-        ];
+        let cells = vec![make_raw(3, 7, "target", ""), make_raw(0, 0, "origin", "")];
         let store = CellStore::from_raw(cells);
         let id = store.coord_to_id[&(3, 7)];
         assert_eq!(id, 0);

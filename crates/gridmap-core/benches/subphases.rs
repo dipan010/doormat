@@ -42,8 +42,7 @@ fn bench_raw_collect_and_dedup(c: &mut Criterion) {
                     let mut t_comments: Vec<String> = Vec::with_capacity(cap);
                     let mut t_sheet_names: Vec<String> = Vec::with_capacity(cap);
                     let mut t_merged: Vec<bool> = Vec::with_capacity(cap);
-                    let mut coord_to_id: AHashMap<(u32, u32), u32> =
-                        AHashMap::with_capacity(cap);
+                    let mut coord_to_id: AHashMap<(u32, u32), u32> = AHashMap::with_capacity(cap);
 
                     for cell in cells {
                         let key = (cell.row, cell.col);
@@ -70,7 +69,16 @@ fn bench_raw_collect_and_dedup(c: &mut Criterion) {
                         t_sheet_names.push(cell.sheet_name);
                         t_merged.push(cell.is_merged_origin);
                     }
-                    (t_rows, t_cols, t_values, t_formulas, t_comments, t_sheet_names, t_merged, coord_to_id)
+                    (
+                        t_rows,
+                        t_cols,
+                        t_values,
+                        t_formulas,
+                        t_comments,
+                        t_sheet_names,
+                        t_merged,
+                        coord_to_id,
+                    )
                 },
                 BatchSize::SmallInput,
             )
@@ -100,7 +108,16 @@ fn bench_raw_to_arrow_arrays(c: &mut Criterion) {
         let t_sheet_names: Vec<String> = cells.iter().map(|c| c.sheet_name.clone()).collect();
         let t_merged: Vec<bool> = cells.iter().map(|c| c.is_merged_origin).collect();
 
-        let input = (t_rows, t_cols, t_values, t_formulas, t_comments, t_sheet_names, t_merged, n);
+        let input = (
+            t_rows,
+            t_cols,
+            t_values,
+            t_formulas,
+            t_comments,
+            t_sheet_names,
+            t_merged,
+            n,
+        );
 
         group.bench_with_input(BenchmarkId::new("cells", name), &input, |b, input| {
             let (rows, cols, vals, forms, comms, sheets, merged, _n) = input;
@@ -133,8 +150,7 @@ fn bench_coord_index_build(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::new("cells", name), &coords, |b, coords| {
             b.iter(|| {
-                let mut map: AHashMap<(u32, u32), u32> =
-                    AHashMap::with_capacity(coords.len());
+                let mut map: AHashMap<(u32, u32), u32> = AHashMap::with_capacity(coords.len());
                 for (i, &key) in coords.iter().enumerate() {
                     map.insert(key, i as u32);
                 }
@@ -187,11 +203,7 @@ fn bench_comment_merge_path(c: &mut Criterion) {
         }
 
         group.bench_with_input(BenchmarkId::new("cells", name), &cells, |b, cells| {
-            b.iter_batched(
-                || cells.clone(),
-                CellStore::from_raw,
-                BatchSize::SmallInput,
-            )
+            b.iter_batched(|| cells.clone(), CellStore::from_raw, BatchSize::SmallInput)
         });
     }
 
@@ -232,15 +244,11 @@ fn bench_bfs_setup(c: &mut Criterion) {
         let store = fixtures::build_store(gen());
         let candidates = reduce_candidate_space(&store);
 
-        group.bench_with_input(
-            BenchmarkId::new("cells", name),
-            &candidates,
-            |b, cands| {
-                b.iter(|| {
-                    let _set: AHashSet<u32> = cands.iter().copied().collect();
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("cells", name), &candidates, |b, cands| {
+            b.iter(|| {
+                let _set: AHashSet<u32> = cands.iter().copied().collect();
+            })
+        });
     }
 
     group.finish();

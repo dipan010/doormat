@@ -32,9 +32,7 @@ fn bench_from_raw(c: &mut Criterion) {
     group.bench_with_input(
         BenchmarkId::new("cells", "typical"),
         &typical,
-        |b, cells| {
-            b.iter_batched(|| cells.clone(), CellStore::from_raw, BatchSize::SmallInput)
-        },
+        |b, cells| b.iter_batched(|| cells.clone(), CellStore::from_raw, BatchSize::SmallInput),
     );
 
     let large = fixtures::large_cells();

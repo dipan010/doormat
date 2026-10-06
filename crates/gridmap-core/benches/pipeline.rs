@@ -75,5 +75,10 @@ fn bench_process_workbook(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_from_raw, bench_process_sheet, bench_process_workbook);
+criterion_group!(
+    benches,
+    bench_from_raw,
+    bench_process_sheet,
+    bench_process_workbook
+);
 criterion_main!(benches);

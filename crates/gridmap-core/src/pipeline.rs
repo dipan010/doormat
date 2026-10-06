@@ -58,10 +58,7 @@ pub fn process_sheet(cells: Vec<RawCell>) -> Vec<Relationship> {
 /// across all sheets. Each sheet runs independently (GAP 1 fix: no
 /// shared writes, no mutex).
 pub fn process_workbook(sheets: Vec<Vec<RawCell>>) -> Vec<Relationship> {
-    let per_sheet: Vec<Vec<Relationship>> = sheets
-        .into_par_iter()
-        .map(process_sheet)
-        .collect();
+    let per_sheet: Vec<Vec<Relationship>> = sheets.into_par_iter().map(process_sheet).collect();
 
     let all_rels: Vec<Relationship> = per_sheet.into_iter().flatten().collect();
     deduplicate(all_rels)
@@ -139,10 +136,7 @@ mod tests {
 
     #[test]
     fn process_sheet_finds_password() {
-        let cells = vec![
-            raw(1, 1, "Password"),
-            raw(1, 2, "s3cret!!"),
-        ];
+        let cells = vec![raw(1, 1, "Password"), raw(1, 2, "s3cret!!")];
         let rels = process_sheet(cells);
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].key, "Password");
@@ -171,14 +165,8 @@ mod tests {
 
     #[test]
     fn process_workbook_two_sheets() {
-        let sheet1 = vec![
-            raw(0, 0, "Password"),
-            raw(0, 1, "s3cret!!"),
-        ];
-        let sheet2 = vec![
-            raw(0, 0, "Password"),
-            raw(0, 1, "hunter2!"),
-        ];
+        let sheet1 = vec![raw(0, 0, "Password"), raw(0, 1, "s3cret!!")];
+        let sheet2 = vec![raw(0, 0, "Password"), raw(0, 1, "hunter2!")];
         let rels = process_workbook(vec![sheet1, sheet2]);
         // Two different values → both kept
         assert_eq!(rels.len(), 2);
@@ -196,14 +184,8 @@ mod tests {
     #[test]
     fn process_workbook_deduplicates_across_sheets() {
         // Same credential on two sheets → deduplicated to one
-        let sheet1 = vec![
-            raw(0, 0, "Password"),
-            raw(0, 1, "s3cret!!"),
-        ];
-        let sheet2 = vec![
-            raw(0, 0, "Password"),
-            raw(0, 1, "s3cret!!"),
-        ];
+        let sheet1 = vec![raw(0, 0, "Password"), raw(0, 1, "s3cret!!")];
+        let sheet2 = vec![raw(0, 0, "Password"), raw(0, 1, "s3cret!!")];
         let rels = process_workbook(vec![sheet1, sheet2]);
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].value, "s3cret!!");

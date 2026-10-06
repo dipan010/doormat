@@ -53,8 +53,8 @@ static USERNAME_PATTERNS: &[&str] = &[
 ];
 
 static URL_PATTERNS: &[&str] = &[
-    "url", "uri", "link", "website", "endpoint", "server", "host", "site", "homepage",
-    "webpage", "href", "baseurl",
+    "url", "uri", "link", "website", "endpoint", "server", "host", "site", "homepage", "webpage",
+    "href", "baseurl",
 ];
 
 fn build_ac(patterns: &[&str]) -> AhoCorasick {
@@ -64,14 +64,11 @@ fn build_ac(patterns: &[&str]) -> AhoCorasick {
         .expect("valid patterns")
 }
 
-static PASSWORD_AC: LazyLock<AhoCorasick> =
-    LazyLock::new(|| build_ac(PASSWORD_PATTERNS));
+static PASSWORD_AC: LazyLock<AhoCorasick> = LazyLock::new(|| build_ac(PASSWORD_PATTERNS));
 
-static USERNAME_AC: LazyLock<AhoCorasick> =
-    LazyLock::new(|| build_ac(USERNAME_PATTERNS));
+static USERNAME_AC: LazyLock<AhoCorasick> = LazyLock::new(|| build_ac(USERNAME_PATTERNS));
 
-static URL_AC: LazyLock<AhoCorasick> =
-    LazyLock::new(|| build_ac(URL_PATTERNS));
+static URL_AC: LazyLock<AhoCorasick> = LazyLock::new(|| build_ac(URL_PATTERNS));
 
 /// Check if `text` exactly matches any pattern in the automaton.
 /// Aho-Corasick finds substrings; we need full-string match.
