@@ -23,8 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `doormat.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
 - Inline detection no longer matches whitespace-separated forms such as `(800) 555-0100 PIN 1234` or `password for Sheet = x`. On the Enron corpus these patterns were mostly false positives (offshore block names, pipeline interconnect IDs, prose)
 
+### Security
+
+- Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)
+- Updated `crossbeam-epoch` to 0.9.21, resolving RUSTSEC-2026-0204
+- Removed the unmaintained `arrow2` crate (RUSTSEC-2025-0038, no fixed release). `CellStore` now uses plain `Vec` columns; the affected API was never called. `cargo audit` and `cargo deny` report no advisories
+
+### Performance
+
+- Dropping `arrow2` moves cell strings instead of copying them into Arrow buffers: `from_raw` is 24% faster, `process_sheet` 12% and `process_workbook` 6% on the criterion benchmarks
+
 ### Fixed
 
+- Inline detection ran on formula cells, whose value is the formula text, producing a garbled duplicate of the formula finding
 - `load()` raised `AttributeError` on any workbook containing a chartsheet
 - Inline credential pattern matched keywords inside words (`spin`, `compass`, `by-pass`) and treated plain whitespace as a key/value separator. Keywords must now be whole words, and the separator must be `:`, `=` or a spaced dash; password-family keywords also accept a single digit-bearing token after whitespace
 - Split-password detection concatenated form labels (`Post ID:`, `Database:`) and table columns of separate passwords. Fragments must now stand alone in their column and not end in `:`

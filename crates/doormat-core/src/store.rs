@@ -1,5 +1,4 @@
 use ahash::AHashMap;
-use arrow2::array::{Array, BooleanArray, MutableUtf8Array, UInt32Array, Utf8Array};
 
 use crate::types::CellType;
 
@@ -24,28 +23,27 @@ pub struct RawCell {
     pub is_merged_origin: bool,
 }
 
-// ---------- Hybrid Arrow / Vec cell store ----------
+// ---------- Columnar cell store ----------
 
-/// Columnar cell store with Arrow-backed immutable columns and Vec workspace
-/// for mutable pipeline data.
+/// Columnar cell store: one `Vec` per attribute, indexed by cell id.
 ///
-/// Immutable columns (set once in `from_raw`, never mutated):
+/// Input columns (set once in `from_raw`, never mutated afterwards):
 ///   rows, cols, values, formulas, comments, sheet_names, merged_flags
 ///
-/// Mutable workspace (written by pipeline phases):
+/// Workspace columns (written by pipeline phases):
 ///   normalized_values, feature_flags, entropy, cell_types, region_ids
 #[derive(Debug, Clone)]
 pub struct CellStore {
-    // -- Arrow-backed immutable columns --
-    pub(crate) rows: UInt32Array,
-    pub(crate) cols: UInt32Array,
-    pub(crate) values: Utf8Array<i32>,
-    pub(crate) formulas: Utf8Array<i32>,
-    pub(crate) comments: Utf8Array<i32>,
-    pub(crate) sheet_names: Utf8Array<i32>,
-    pub(crate) merged_flags: BooleanArray,
+    // -- Input columns --
+    pub(crate) rows: Vec<u32>,
+    pub(crate) cols: Vec<u32>,
+    pub(crate) values: Vec<String>,
+    pub(crate) formulas: Vec<String>,
+    pub(crate) comments: Vec<String>,
+    pub(crate) sheet_names: Vec<String>,
+    pub(crate) merged_flags: Vec<bool>,
 
-    // -- Mutable workspace (Vec-backed) --
+    // -- Workspace --
     /// Cell classification (CellType as u8). Written by `classify_cells`.
     pub cell_types: Vec<u8>,
     /// Normalized cell values (lowercased, separators stripped). Written by `precompute_features`.
@@ -65,23 +63,19 @@ pub struct CellStore {
 impl CellStore {
     /// Build a `CellStore` from raw cell input.
     ///
-    /// Uses `MutableUtf8Array` for write-once string columns (values,
-    /// formulas, sheet_names) to build Arrow arrays incrementally during
-    /// collection, avoiding the separate Vec→Arrow copy pass.
-    /// Comments use `Vec<String>` because FIX 3 comment merge requires
-    /// random-access mutation of existing entries.
+    /// Strings are moved out of each `RawCell`, so no cell text is copied.
+    /// A repeated (row, col) keeps its first value and appends its comment
+    /// to the existing cell (FIX 3).
     pub fn from_raw(cells: Vec<RawCell>) -> Self {
         let cap = cells.len();
 
-        let mut t_rows: Vec<u32> = Vec::with_capacity(cap);
-        let mut t_cols: Vec<u32> = Vec::with_capacity(cap);
-        // Write-once string columns: build Arrow arrays incrementally
-        let mut m_values: MutableUtf8Array<i32> = MutableUtf8Array::with_capacity(cap);
-        let mut m_formulas: MutableUtf8Array<i32> = MutableUtf8Array::with_capacity(cap);
-        let mut m_sheet_names: MutableUtf8Array<i32> = MutableUtf8Array::with_capacity(cap);
-        // Comments need Vec<String> for FIX 3 random-access mutation
-        let mut t_comments: Vec<String> = Vec::with_capacity(cap);
-        let mut t_merged: Vec<bool> = Vec::with_capacity(cap);
+        let mut rows: Vec<u32> = Vec::with_capacity(cap);
+        let mut cols: Vec<u32> = Vec::with_capacity(cap);
+        let mut values: Vec<String> = Vec::with_capacity(cap);
+        let mut formulas: Vec<String> = Vec::with_capacity(cap);
+        let mut comments: Vec<String> = Vec::with_capacity(cap);
+        let mut sheet_names: Vec<String> = Vec::with_capacity(cap);
+        let mut merged_flags: Vec<bool> = Vec::with_capacity(cap);
 
         let mut coord_to_id: AHashMap<(u32, u32), u32> = AHashMap::with_capacity(cap);
 
@@ -89,9 +83,8 @@ impl CellStore {
             let key = (cell.row, cell.col);
             if let Some(&existing_id) = coord_to_id.get(&key) {
                 // FIX 3: merge comment into existing slot
-                let id = existing_id as usize;
                 if !cell.comment.is_empty() {
-                    let existing = &mut t_comments[id];
+                    let existing = &mut comments[existing_id as usize];
                     if existing.is_empty() {
                         *existing = cell.comment;
                     } else {
@@ -102,38 +95,19 @@ impl CellStore {
                 continue;
             }
 
-            let id = t_rows.len() as u32;
+            let id = u32::try_from(rows.len()).expect("a sheet holds fewer than 2^32 cells");
             coord_to_id.insert(key, id);
 
-            t_rows.push(cell.row);
-            t_cols.push(cell.col);
-            // Push into MutableUtf8Array (copies bytes into contiguous
-            // buffer incrementally, no second-pass copy needed)
-            m_values.push(Some(cell.value.as_str()));
-            m_formulas.push(Some(cell.formula.as_str()));
-            m_sheet_names.push(Some(cell.sheet_name.as_str()));
-            t_comments.push(cell.comment);
-            t_merged.push(cell.is_merged_origin);
+            rows.push(cell.row);
+            cols.push(cell.col);
+            values.push(cell.value);
+            formulas.push(cell.formula);
+            comments.push(cell.comment);
+            sheet_names.push(cell.sheet_name);
+            merged_flags.push(cell.is_merged_origin);
         }
 
-        let n = t_rows.len();
-
-        // Convert to immutable Arrow arrays
-        let rows = UInt32Array::from_vec(t_rows);
-        let cols = UInt32Array::from_vec(t_cols);
-        let values: Utf8Array<i32> = m_values.into();
-        let formulas: Utf8Array<i32> = m_formulas.into();
-        let sheet_names: Utf8Array<i32> = m_sheet_names.into();
-        // Comments still need the iter copy (Vec<String> for FIX 3)
-        let comments = Utf8Array::<i32>::from_iter_values(t_comments.iter().map(|s| s.as_str()));
-        let merged_flags = BooleanArray::from_slice(t_merged);
-
-        // Initialize mutable workspace
-        let cell_types = vec![CellType::Value as u8; n];
-        let normalized_values = vec![String::new(); n];
-        let feature_flags = vec![0u16; n];
-        let entropy = vec![0.0f32; n];
-        let region_ids = vec![-1i32; n];
+        let n = rows.len();
 
         CellStore {
             rows,
@@ -143,11 +117,11 @@ impl CellStore {
             comments,
             sheet_names,
             merged_flags,
-            cell_types,
-            normalized_values,
-            feature_flags,
-            entropy,
-            region_ids,
+            cell_types: vec![CellType::Value as u8; n],
+            normalized_values: vec![String::new(); n],
+            feature_flags: vec![0u16; n],
+            entropy: vec![0.0f32; n],
+            region_ids: vec![-1i32; n],
             coord_to_id,
         }
     }
@@ -164,48 +138,48 @@ impl CellStore {
         self.rows.is_empty()
     }
 
-    // -- Accessors for Arrow-backed immutable columns --
+    // -- Accessors for input columns --
 
     /// Row coordinate for cell `i`.
     #[inline]
     pub fn get_row(&self, i: usize) -> u32 {
-        self.rows.value(i)
+        self.rows[i]
     }
 
     /// Column coordinate for cell `i`.
     #[inline]
     pub fn get_col(&self, i: usize) -> u32 {
-        self.cols.value(i)
+        self.cols[i]
     }
 
     /// Cell value string for cell `i`.
     #[inline]
     pub fn get_value(&self, i: usize) -> &str {
-        self.values.value(i)
+        &self.values[i]
     }
 
     /// Formula string for cell `i`.
     #[inline]
     pub fn get_formula(&self, i: usize) -> &str {
-        self.formulas.value(i)
+        &self.formulas[i]
     }
 
     /// Comment string for cell `i`.
     #[inline]
     pub fn get_comment(&self, i: usize) -> &str {
-        self.comments.value(i)
+        &self.comments[i]
     }
 
     /// Sheet name for cell `i`.
     #[inline]
     pub fn get_sheet_name(&self, i: usize) -> &str {
-        self.sheet_names.value(i)
+        &self.sheet_names[i]
     }
 
     /// Merged-origin flag for cell `i`.
     #[inline]
     pub fn get_merged_flag(&self, i: usize) -> bool {
-        self.merged_flags.value(i)
+        self.merged_flags[i]
     }
 
     /// Cell type for cell `i` (converted from u8 storage).

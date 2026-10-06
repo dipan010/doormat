@@ -20,7 +20,7 @@ pub mod regions;
 pub mod scoring;
 /// Spatial distance table and neighbor queries.
 pub mod spatial;
-/// Columnar cell store with Arrow-backed immutable columns.
+/// Columnar cell store: one `Vec` per cell attribute.
 pub mod store;
 /// Core types: enums, structs, constants, and feature-flag bitmasks.
 pub mod types;

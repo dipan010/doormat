@@ -13,7 +13,6 @@ readme = "../../README.md"
 [dependencies]
 ahash = "0.8"
 aho-corasick = "1.1"
-arrow2 = { version = "0.18", default-features = false }
 rayon = "1.10"
 regex = "1"
 

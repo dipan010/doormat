@@ -6,7 +6,6 @@
 mod fixtures;
 
 use ahash::{AHashMap, AHashSet};
-use arrow2::array::{BooleanArray, UInt32Array, Utf8Array};
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 
 use doormat_core::candidates::{classify_cells, reduce_candidate_space};
@@ -82,54 +81,6 @@ fn bench_raw_collect_and_dedup(c: &mut Criterion) {
                 },
                 BatchSize::SmallInput,
             )
-        });
-    }
-
-    group.finish();
-}
-
-/// Benchmark Arrow array construction from pre-built Vecs.
-fn bench_raw_to_arrow_arrays(c: &mut Criterion) {
-    let mut group = c.benchmark_group("from_raw/arrow_convert");
-
-    for (name, gen) in [
-        ("tiny", fixtures::tiny_cells as fn() -> _),
-        ("typical", fixtures::typical_cells),
-        ("large", fixtures::large_cells),
-    ] {
-        // Pre-build the Vecs (the collect phase output)
-        let cells = gen();
-        let n = cells.len();
-        let t_rows: Vec<u32> = cells.iter().map(|c| c.row).collect();
-        let t_cols: Vec<u32> = cells.iter().map(|c| c.col).collect();
-        let t_values: Vec<String> = cells.iter().map(|c| c.value.clone()).collect();
-        let t_formulas: Vec<String> = cells.iter().map(|c| c.formula.clone()).collect();
-        let t_comments: Vec<String> = cells.iter().map(|c| c.comment.clone()).collect();
-        let t_sheet_names: Vec<String> = cells.iter().map(|c| c.sheet_name.clone()).collect();
-        let t_merged: Vec<bool> = cells.iter().map(|c| c.is_merged_origin).collect();
-
-        let input = (
-            t_rows,
-            t_cols,
-            t_values,
-            t_formulas,
-            t_comments,
-            t_sheet_names,
-            t_merged,
-            n,
-        );
-
-        group.bench_with_input(BenchmarkId::new("cells", name), &input, |b, input| {
-            let (rows, cols, vals, forms, comms, sheets, merged, _n) = input;
-            b.iter(|| {
-                let _r = UInt32Array::from_vec(rows.clone());
-                let _c = UInt32Array::from_vec(cols.clone());
-                let _v = Utf8Array::<i32>::from_iter_values(vals.iter().map(|s| s.as_str()));
-                let _f = Utf8Array::<i32>::from_iter_values(forms.iter().map(|s| s.as_str()));
-                let _cm = Utf8Array::<i32>::from_iter_values(comms.iter().map(|s| s.as_str()));
-                let _sn = Utf8Array::<i32>::from_iter_values(sheets.iter().map(|s| s.as_str()));
-                let _m = BooleanArray::from_slice(merged.clone());
-            })
         });
     }
 
@@ -428,7 +379,6 @@ criterion_group!(
     benches,
     // from_raw sub-phases
     bench_raw_collect_and_dedup,
-    bench_raw_to_arrow_arrays,
     bench_coord_index_build,
     bench_workspace_alloc,
     bench_comment_merge_path,

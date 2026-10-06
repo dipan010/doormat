@@ -48,6 +48,9 @@ Follow-ups found in Phase 2 (not blocking):
 
 ### Phase 3: Release engineering
 - [x] Choose a free PyPI name: **`doormat`** (2026-10-07; free on PyPI and crates.io at the time of checking, reserved only on first upload). Package, import, crates and docs renamed; GitHub repo rename to `dipan010/doormat` pending.
+- [x] Security and quality scan (2026-10-07), Snyk/Sonar equivalent: pip-audit, cargo-audit, cargo-deny, bandit, semgrep (security-audit, python, rust, secrets), ruff, radon, clippy pedantic, and a secret scan of all git history.
+  - Fixed: 4 RustSec advisories (pyo3 0.22 -> 0.29, crossbeam-epoch update, arrow2 removed), cargo-deny wildcard path dependency, bench-script findings, test dead code, formula cells double-reported by inline detection. Now 0 advisories; bandit and semgrep clean.
+  - Open: `extract_ods` cyclomatic complexity 36 (radon E); formula cells can still be paired as spatial values (dev FP class, needs a scoring change measured on dev); run these scanners in CI; optional Snyk/SonarCloud need the repo connected and tokens as GitHub secrets.
 - [ ] Add GitHub Actions: `cargo test`, `cargo clippy -D warnings`, `cargo fmt --check`, `pytest`, harness. (CLAUDE.md defers CI to after v0.1.0; building wheels for five targets makes it worth doing now. Update CLAUDE.md's "What NOT to build" if so.)
 - [ ] maturin wheel matrix (linux x86_64/aarch64, macOS x86_64/arm64, windows x86_64) with PyPI trusted publishing on tag.
 - **Exit:** CI green on every push; a tag produces wheels.

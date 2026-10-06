@@ -17,7 +17,7 @@ People hide the spare key under the doormat. They hide passwords the same way: i
 
 - **Spatial, not just regex.** Scores every candidate value by its distance and direction from a credential label, its character mix and entropy, and nearby username or URL labels.
 - **Finds what grep misses.** Credentials split across cells, built with `CONCAT` in formulas, or tucked into cell comments.
-- **Fast.** Rust core with sheet-level parallelism: about 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
+- **Fast.** Rust core with sheet-level parallelism: under 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
 - **Measured on real data.** Precision and recall are reported on the public Enron spreadsheet corpus, not just synthetic fixtures. See [Accuracy](#accuracy).
 - **Offline and dependency-light.** One runtime dependency (`openpyxl`). No network calls, no model downloads.
 
@@ -105,9 +105,9 @@ Rust core only, Apple Silicon, criterion.rs on synthetic workbooks:
 
 | Workbook | Time |
 |---|---|
-| 1 sheet, 1,000 cells | 180 µs |
-| 1 sheet, 5,000 cells | 927 µs |
-| 10 sheets, 5,000 cells each | 3.3 ms |
+| 1 sheet, 1,000 cells | 128 µs |
+| 1 sheet, 5,000 cells | 668 µs |
+| 10 sheets, 5,000 cells each | 2.5 ms |
 
 On very large real workbooks, reading the file with openpyxl dominates: 27.5 s to read a 170,000-cell workbook against 0.1 s of detection.
 
