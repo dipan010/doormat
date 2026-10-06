@@ -18,7 +18,6 @@ Last reviewed: 2026-10-07
 
 
 - **The PyPI name `gridmap` is taken** (v0.15.0, a DRMAA grid-engine mapper). `pip install gridmap` in the README installs someone else's package. A new distribution name is needed before any release. The import name can stay `gridmap` if desired, but a distinct one avoids confusion.
-- Overlaps with `path-finder/credential-pipeline` (same problem: credentials in spreadsheets, rule-based). Decide whether they stay separate or one feeds the other.
 
 ## Phases to completion
 
@@ -28,15 +27,16 @@ Last reviewed: 2026-10-07
 - [x] Add a CHANGELOG `[Unreleased]` entry for the multi-format work.
 - **Exit:** a new session following CLAUDE.md reads files that exist and describe the code.
 
-### Phase 2 — Real-world validation
+### Phase 2 — Real-world validation ✅ (2026-10-07)
 - [x] Build a small anonymised or realistic corpus beyond the 14 synthetic fixtures (the README's own "Next" item).
   - Enron corpus (15,929 files) via `bench/corpus/`, CC BY 4.0. Method, rubric and results in `bench/corpus/README.md`.
 - [x] Report P/R on it honestly; 100% on synthetic data is not a claim about real workbooks.
   - v0.1.0, test split (clean): P 16.5%, R 32.5% (169 credentials in 29 files).
   - After three fixes (inline regex, split-password guards, label/whitespace penalties): dev P 55.8% (out of sample), test P 65.1% / R 32.0% (in sample). Test split is now frozen.
   - Numbers are concentrated: one directory file and a few recurring service-account templates dominate. Distinct (key, value) precision: test 72%, dev 31%.
-- [ ] Decide the relationship with path-finder's credential-pipeline.
-- **Exit:** P/R numbers on non-synthetic data in README. (Met 2026-10-07; credential-pipeline decision still open.)
+- [x] Decide the relationship with path-finder's credential-pipeline.
+  - 2026-10-07: **shelved until gridmap is published.** Compared on the same Enron test split (169 credentials): credential-pipeline's accepted findings reached 9.5% recall (16/169, 0/100 table credentials) against gridmap's 32.0%, and 18.3% even counting its 1,467 flagged-for-review claims; median 150 ms/file vs 28 ms. Its masking/export/quarantine layer is the reusable part if it is revived as an app on top of gridmap.
+- **Exit:** P/R numbers on non-synthetic data in README. (Met 2026-10-07.)
 
 Follow-ups found in Phase 2 (not blocking):
 - Password tables: 100 of 169 test credentials sit in `Password` columns with one credential per row; no detector handles them.
