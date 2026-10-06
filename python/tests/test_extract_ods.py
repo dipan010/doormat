@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -28,7 +27,7 @@ def test_missing_odfpy_raises_import_error(tmp_path):
 @pytest.fixture
 def sample_ods(tmp_path):
     """Create a real .ods file if odfpy is available, skip otherwise."""
-    odf = pytest.importorskip("odf")
+    pytest.importorskip("odf")
     from odf.opendocument import OpenDocumentSpreadsheet
     from odf import table as odf_table
     from odf import text as odf_text

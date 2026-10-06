@@ -26,7 +26,7 @@ __all__ = [
     "extract_csv",
     "extract_ods",
     "extract_single_sheet",
+    "extract_workbook",
     "extract_xls",
     "extract_xlsx",
-    "extract_workbook",
 ]

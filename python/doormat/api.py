@@ -156,7 +156,7 @@ def load(filepath: str | Path) -> GridDoc:
     magic_bytes, extractor = registry[ext]
 
     if magic_bytes is not None:
-        with open(filepath, "rb") as f:
+        with filepath.open("rb") as f:
             magic = f.read(len(magic_bytes))
         if magic != magic_bytes:
             raise ValueError(

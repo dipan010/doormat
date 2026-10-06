@@ -40,7 +40,7 @@ def extract_csv(filepath: str | Path) -> list[list[tuple]]:
     delimiter = "\t" if filepath.suffix.lower() == ".tsv" else ","
 
     try:
-        with open(filepath, newline="", encoding="utf-8") as f:
+        with filepath.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f, delimiter=delimiter)
             cells: list[tuple] = []
             for row_idx, row in enumerate(reader, start=1):

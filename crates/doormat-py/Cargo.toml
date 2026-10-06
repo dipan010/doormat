@@ -15,5 +15,5 @@ name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-doormat-core = { path = "../doormat-core" }
+doormat-core = { path = "../doormat-core", version = "0.1.0" }
 pyo3 = { version = "0.22", features = ["extension-module"] }

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import urllib.request
 from pathlib import Path
 
@@ -36,17 +36,24 @@ def main() -> None:
     """Fetch the archive if missing, verify its hash, and extract it."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if not ARCHIVE.exists():
+        if not URL.startswith("https://"):
+            raise SystemExit(f"refusing non-https download URL: {URL}")
         print(f"Downloading {URL} (~1 GB)")
-        urllib.request.urlretrieve(URL, ARCHIVE)
+        urllib.request.urlretrieve(URL, ARCHIVE)  # nosec B310  # nosemgrep: dynamic-urllib-use-detected
     actual = sha256_of(ARCHIVE)
     if actual != SHA256:
         raise SystemExit(f"sha256 mismatch: expected {SHA256}, got {actual}")
 
     OUT_DIR.mkdir(exist_ok=True)
-    if shutil.which("7z"):
-        subprocess.run(["7z", "x", "-y", f"-o{OUT_DIR}", str(ARCHIVE)], check=True)
+    # Resolve the extractor to an absolute path; arguments are fixed, not user input.
+    seven_zip = shutil.which("7z")
+    tar = shutil.which("tar")
+    if seven_zip:
+        subprocess.run([seven_zip, "x", "-y", f"-o{OUT_DIR}", str(ARCHIVE)], check=True)
+    elif tar:
+        subprocess.run([tar, "-xf", str(ARCHIVE), "-C", str(OUT_DIR)], check=True)
     else:
-        subprocess.run(["tar", "-xf", str(ARCHIVE), "-C", str(OUT_DIR)], check=True)
+        raise SystemExit("neither 7z nor tar found on PATH")
     count = sum(1 for p in OUT_DIR.iterdir() if p.is_file())
     print(f"Extracted {count} files to {OUT_DIR}")
 

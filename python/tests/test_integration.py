@@ -14,7 +14,7 @@ GROUND_TRUTH_PATH = FIXTURES_DIR / "ground_truth.json"
 
 
 def load_ground_truth() -> dict:
-    with open(GROUND_TRUTH_PATH) as f:
+    with GROUND_TRUTH_PATH.open() as f:
         return json.load(f)
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -22,7 +21,7 @@ def test_missing_xlrd_raises_import_error(tmp_path):
 @pytest.fixture
 def sample_xls(tmp_path):
     """Create a real .xls file if xlrd is available, skip otherwise."""
-    xlrd = pytest.importorskip("xlrd")
+    pytest.importorskip("xlrd")
     # xlrd v2 can only read, not write .xls files.
     # We need xlwt or a fixture file. Use a minimal BIFF fixture.
     try:

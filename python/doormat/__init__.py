@@ -16,4 +16,4 @@ Quick start::
 from doormat._core import version
 from doormat.api import GridDoc, Relationship, load
 
-__all__ = ["load", "GridDoc", "Relationship", "version"]
+__all__ = ["GridDoc", "Relationship", "load", "version"]

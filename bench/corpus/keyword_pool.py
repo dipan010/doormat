@@ -44,7 +44,8 @@ def pool_file(args: tuple[str, int, str]) -> dict:
     path_str, timeout, only_split = args
     path = Path(path_str)
     raw = path.read_bytes()
-    md5 = hashlib.md5(raw).hexdigest()
+    # MD5 is a file fingerprint for the split and label keys, not a security control.
+    md5 = hashlib.md5(raw, usedforsecurity=False).hexdigest()  # nosemgrep: insecure-hash-algorithm-md5
     row: dict = {"file": path.name, "md5": md5, "split": split_of(md5), "status": "ok", "hits": []}
     if only_split and row["split"] != only_split:
         row["status"] = "other_split"
