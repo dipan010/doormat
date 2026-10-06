@@ -15,8 +15,18 @@ use doormat_core::inference::infer_relationships;
 use doormat_core::pipeline::deduplicate;
 use doormat_core::regions::detect_regions;
 use doormat_core::spatial::DISTANCE_TABLE;
-use doormat_core::store::CellStore;
+use doormat_core::store::{CellStore, RawCell};
 use doormat_core::types::Relationship;
+
+/// Build a CellStore with features, candidates, classification and regions done.
+fn build_full_pipeline_store(cells: Vec<RawCell>) -> (CellStore, Vec<u32>) {
+    let mut store = CellStore::from_raw(cells);
+    precompute_features(&mut store);
+    let candidates = reduce_candidate_space(&store);
+    classify_cells(&mut store, &candidates);
+    detect_regions(&mut store, &candidates);
+    (store, candidates)
+}
 
 // ---------- Phase benchmarks ----------
 
@@ -151,7 +161,7 @@ fn bench_detect_inline(c: &mut Criterion) {
         ("typical", fixtures::typical_cells),
         ("large", fixtures::large_cells),
     ] {
-        let (store, candidates) = fixtures::build_full_pipeline_store(gen());
+        let (store, candidates) = build_full_pipeline_store(gen());
         group.bench_with_input(
             BenchmarkId::new("cells", name),
             &(store, candidates),
@@ -170,7 +180,7 @@ fn bench_analyze_formulas(c: &mut Criterion) {
         ("typical", fixtures::typical_cells),
         ("large", fixtures::large_cells),
     ] {
-        let (store, candidates) = fixtures::build_full_pipeline_store(gen());
+        let (store, candidates) = build_full_pipeline_store(gen());
         group.bench_with_input(
             BenchmarkId::new("cells", name),
             &(store, candidates),
@@ -189,7 +199,7 @@ fn bench_analyze_comments(c: &mut Criterion) {
         ("typical", fixtures::typical_cells),
         ("large", fixtures::large_cells),
     ] {
-        let (store, candidates) = fixtures::build_full_pipeline_store(gen());
+        let (store, candidates) = build_full_pipeline_store(gen());
         group.bench_with_input(
             BenchmarkId::new("cells", name),
             &(store, candidates),
@@ -208,7 +218,7 @@ fn bench_infer_relationships(c: &mut Criterion) {
         ("typical", fixtures::typical_cells),
         ("large", fixtures::large_cells),
     ] {
-        let (store, _candidates) = fixtures::build_full_pipeline_store(gen());
+        let (store, _candidates) = build_full_pipeline_store(gen());
         group.bench_with_input(BenchmarkId::new("cells", name), &store, |b, store| {
             b.iter(|| infer_relationships(store, &DISTANCE_TABLE))
         });

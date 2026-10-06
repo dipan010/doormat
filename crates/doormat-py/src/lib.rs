@@ -4,9 +4,6 @@
 //! pipeline. It handles type conversion between Python tuples/dicts and Rust
 //! types; no detection logic lives here.
 
-// PyO3 0.22 proc macros generate code that triggers this clippy lint
-#![allow(clippy::useless_conversion)]
-
 use std::panic::{self, AssertUnwindSafe};
 
 use pyo3::exceptions::PyRuntimeError;
@@ -32,19 +29,19 @@ fn tuple_to_raw_cell(tuple: &Bound<'_, pyo3::types::PyTuple>) -> PyResult<RawCel
 }
 
 /// Convert a Rust Relationship into a Python dict.
-fn relationship_to_dict(py: Python<'_>, rel: &Relationship) -> PyResult<PyObject> {
-    let dict = PyDict::new_bound(py);
+fn relationship_to_dict(py: Python<'_>, rel: &Relationship) -> PyResult<Py<PyAny>> {
+    let dict = PyDict::new(py);
     dict.set_item("header_cell_id", rel.header_cell_id)?;
     dict.set_item("value_cell_id", rel.value_cell_id)?;
     dict.set_item("key", &rel.key)?;
     dict.set_item("value", &rel.value)?;
     dict.set_item("confidence", rel.confidence)?;
     dict.set_item("reason", &rel.reason)?;
-    Ok(dict.into())
+    Ok(dict.into_any().unbind())
 }
 
 /// Convert Vec<Relationship> to a Python list of dicts.
-fn relationships_to_py(py: Python<'_>, rels: Vec<Relationship>) -> PyResult<Vec<PyObject>> {
+fn relationships_to_py(py: Python<'_>, rels: Vec<Relationship>) -> PyResult<Vec<Py<PyAny>>> {
     rels.iter()
         .map(|rel| relationship_to_dict(py, rel))
         .collect()
@@ -64,7 +61,10 @@ fn version() -> &'static str {
 /// Returns:
 ///     list of dicts with keys: header_cell_id, value_cell_id, key, value, confidence, reason
 #[pyfunction]
-fn process_sheet(py: Python<'_>, cells: Vec<Bound<'_, pyo3::types::PyTuple>>) -> PyResult<Vec<PyObject>> {
+fn process_sheet(
+    py: Python<'_>,
+    cells: Vec<Bound<'_, pyo3::types::PyTuple>>,
+) -> PyResult<Vec<Py<PyAny>>> {
     let raw_cells: Vec<RawCell> = cells
         .iter()
         .map(tuple_to_raw_cell)
@@ -84,7 +84,10 @@ fn process_sheet(py: Python<'_>, cells: Vec<Bound<'_, pyo3::types::PyTuple>>) ->
 /// Returns:
 ///     list of dicts with keys: header_cell_id, value_cell_id, key, value, confidence, reason
 #[pyfunction]
-fn process_workbook(py: Python<'_>, sheets: Vec<Vec<Bound<'_, pyo3::types::PyTuple>>>) -> PyResult<Vec<PyObject>> {
+fn process_workbook(
+    py: Python<'_>,
+    sheets: Vec<Vec<Bound<'_, pyo3::types::PyTuple>>>,
+) -> PyResult<Vec<Py<PyAny>>> {
     let raw_sheets: Vec<Vec<RawCell>> = sheets
         .iter()
         .map(|sheet| {

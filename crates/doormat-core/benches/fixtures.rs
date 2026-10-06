@@ -143,13 +143,3 @@ pub fn build_store(cells: Vec<RawCell>) -> CellStore {
     doormat_core::features::precompute_features(&mut store);
     store
 }
-
-/// Build a CellStore with features + candidates + classification + regions done.
-pub fn build_full_pipeline_store(cells: Vec<RawCell>) -> (CellStore, Vec<u32>) {
-    let mut store = CellStore::from_raw(cells);
-    doormat_core::features::precompute_features(&mut store);
-    let candidates = doormat_core::candidates::reduce_candidate_space(&store);
-    doormat_core::candidates::classify_cells(&mut store, &candidates);
-    doormat_core::regions::detect_regions(&mut store, &candidates);
-    (store, candidates)
-}
