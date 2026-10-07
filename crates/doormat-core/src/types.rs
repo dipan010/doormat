@@ -48,6 +48,36 @@ pub struct Relationship {
     pub reason: String,
 }
 
+// ---------- Finding ----------
+
+/// A detected credential with its location, as returned by the pipeline.
+///
+/// Rows and columns are the coordinates the caller supplied in `RawCell`
+/// (1-based in the Python package). The value cell is where the secret
+/// lives; the header cell is the label it was paired with, and equals the
+/// value cell for inline, formula and comment detections.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Finding {
+    /// Name of the sheet holding the value cell, as supplied by the caller.
+    pub sheet: String,
+    /// Row of the header/label cell.
+    pub header_row: u32,
+    /// Column of the header/label cell.
+    pub header_col: u32,
+    /// Row of the value cell.
+    pub value_row: u32,
+    /// Column of the value cell.
+    pub value_col: u32,
+    /// The header text (e.g., "Password").
+    pub key: String,
+    /// The detected credential value.
+    pub value: String,
+    /// Heuristic confidence score.
+    pub confidence: f32,
+    /// Semicolon-separated breakdown of scoring factors.
+    pub reason: String,
+}
+
 // ---------- Region ----------
 
 /// A cluster of spatially adjacent candidate cells.
@@ -113,6 +143,24 @@ pub const FLAG_HAS_COMMENT: u16 = 0b10_0000_0000_0000;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finding_field_access() {
+        let f = Finding {
+            sheet: "Servers".into(),
+            header_row: 3,
+            header_col: 1,
+            value_row: 3,
+            value_col: 2,
+            key: "Password".into(),
+            value: "s3cret!!".into(),
+            confidence: 160.0,
+            reason: "distance=100".into(),
+        };
+        assert_eq!(f.sheet, "Servers");
+        assert_eq!((f.value_row, f.value_col), (3, 2));
+        assert_eq!((f.header_row, f.header_col), (3, 1));
+    }
 
     #[test]
     fn relationship_field_access() {

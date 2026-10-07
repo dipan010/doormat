@@ -7,9 +7,9 @@ use crate::types::CellType;
 /// A single cell extracted from a spreadsheet, before columnar storage.
 #[derive(Debug, Clone)]
 pub struct RawCell {
-    /// Zero-based row coordinate.
+    /// Row coordinate as supplied by the caller (1-based in the Python package).
     pub row: u32,
-    /// Zero-based column coordinate.
+    /// Column coordinate as supplied by the caller (1-based in the Python package).
     pub col: u32,
     /// Cell display value as a string.
     pub value: String,

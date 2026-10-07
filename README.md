@@ -47,13 +47,20 @@ doc = doormat.load("it_handover.xlsx")
 print(f"Scanned {doc.sheet_count} sheets, {doc.cell_count} cells")
 
 for cred in doc.credentials(min_confidence=120):
-    print(f"{cred.key!r} -> {cred.value!r}  score={cred.confidence:.0f}  ({cred.reason})")
+    print(f"{cred.sheet}!{cred.coordinate}  {cred.key!r} -> {cred.value!r}  score={cred.confidence:.0f}")
 ```
 
 ```text
 Scanned 2 sheets, 7 cells
-'Password' -> 's3cRet!99'  score=210  (distance=100;length>=8;upper;lower;digit;special;username_nearby;url_nearby)
-'VPN password' -> 'hunter2!'  score=250  (inline_same_cell)
+Servers!B3  'Password' -> 's3cRet!99'  score=210
+Notes!A1  'VPN password' -> 'hunter2!'  score=250
+```
+
+Findings come back in reading order: sheet by sheet, then row and column. A finding's `repr` never includes the secret, so logging one is safe:
+
+```python
+>>> doc.credentials(120)[0]
+Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 ```
 
 ## API
@@ -64,7 +71,8 @@ Scanned 2 sheets, 7 cells
 | `GridDoc.credentials(min_confidence=0.0)` | Relationships at or above a confidence score. `120` is a sensible default; scores above `200` are high-confidence inline or formula detections. |
 | `GridDoc.relationships()` | Every inferred key/value relationship, regardless of score. |
 | `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook. |
-| `Relationship` | Frozen dataclass with `key`, `value`, `confidence` and `reason` (a `;`-separated breakdown of the score). |
+| `Relationship` | Frozen dataclass: `key`, `value`, `confidence`, `reason` (a `;`-separated breakdown of the score), and where it was found: `sheet`, `row`, `col` (1-based), `header_row`, `header_col` and `hidden` (the sheet is hidden). |
+| `Relationship.coordinate`, `.header_coordinate` | Spreadsheet references of the value and label cells, e.g. `"B3"` and `"A3"`. |
 
 ## What it detects
 
@@ -94,8 +102,8 @@ On 14 synthetic fixtures, one per detection pathway, doormat scores 100% precisi
 
 | Version | Precision | Recall |
 |---|---|---|
-| 0.1.0 | 16.5% | 32.5% |
-| current `main` | 55.8% | 32.0% |
+| 0.1.0 | 16.5% | 32.4% |
+| current `main` | 56.5% | 32.4% |
 
 Precision for `main` is measured on files that played no part in tuning; recall is measured on files that did, so treat it as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but about half of those findings are still wrong pairings (a formula or label instead of the value). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
@@ -124,13 +132,11 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 ## Limitations
 
 - **Password tables are not detected.** A `Password` column with one credential per row is the most common pattern doormat misses today.
-- **No cell locations yet.** A `Relationship` carries the label and value but not the sheet, row and column. This is planned before the first PyPI release.
 - **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
 - **Python only.** Bindings for other languages are planned, as is a command-line tool.
 
 ## Roadmap
 
-- Cell locations on every finding
 - Password-table detection
 - CI, prebuilt wheels for Linux, macOS and Windows, and the first PyPI release
 

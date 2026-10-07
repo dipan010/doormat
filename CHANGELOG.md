@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `doormat.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
 - Inline detection no longer matches whitespace-separated forms such as `(800) 555-0100 PIN 1234` or `password for Sheet = x`. On the Enron corpus these patterns were mostly false positives (offshore block names, pipeline interconnect IDs, prose)
 
+### Added
+
+- Every finding now says where it is: `Relationship.sheet`, `row`, `col` (1-based), `header_row`, `header_col`, `hidden`, and the A1-style `coordinate` and `header_coordinate` properties
+
+### Changed
+
+- **Breaking:** `Relationship.header_cell_id` and `value_cell_id` (internal, per-sheet indices) are removed in favour of the location fields above
+- **Breaking:** deduplication is per cell instead of per value. The same credential in two cells, or on two sheets, is now two findings; previously all but one were silently dropped
+- Findings are returned in a stable reading order (sheet, then row and column) instead of an arbitrary order
+- `repr(Relationship)` no longer includes the credential value, so findings can be logged safely
+- `doormat._core.process_sheet` is removed; `process_workbook` is the single FFI entry point
+
 ### Security
 
 - Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)
@@ -43,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 32.5% recall on the held-out test split; after the fixes above, precision is 55.8% on the dev split (out of sample) and 65.1% on test (in sample). See `bench/corpus/README.md`
+- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 32.4% recall on the held-out test split; the current code measures 56.5% precision on the dev split (out of sample), and 63.2% precision / 32.4% recall on test (in sample). See `bench/corpus/README.md`
 
 ## [0.1.0] - 2026-06-29
 

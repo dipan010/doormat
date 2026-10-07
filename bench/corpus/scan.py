@@ -1,8 +1,8 @@
 """Run doormat over every spreadsheet in the corpus and record one JSONL row per file.
 
-Each sheet is sent through ``doormat._core.process_sheet`` separately so that
-findings can be mapped back to (sheet, row, col). ``doormat.load()`` returns
-only internal per-sheet cell indices, which are ambiguous across sheets.
+Each workbook goes through ``doormat._core.process_workbook`` in one call. Sheet
+names are recorded raw, including the extractor's ``[HIDDEN]`` suffix, because
+the committed labels are keyed on them.
 
 Usage:
     python bench/corpus/scan.py [--workers N] [--timeout SECONDS] [--limit N]
@@ -44,18 +44,6 @@ def split_of(md5: str) -> str:
     return "test" if int(md5[:8], 16) % 5 == 0 else "dev"
 
 
-def _coords_by_id(cells: list[tuple]) -> list[tuple[int, int]]:
-    """Mirror CellStore::from_raw id assignment: first occurrence of (row, col)."""
-    seen: set[tuple[int, int]] = set()
-    coords: list[tuple[int, int]] = []
-    for cell in cells:
-        rc = (cell[0], cell[1])
-        if rc not in seen:
-            seen.add(rc)
-            coords.append(rc)
-    return coords
-
-
 def scan_file(args: tuple[str, int, str]) -> dict:
     """Extract and score one file. Never raises; failures become a status."""
     path_str, timeout, only_split = args
@@ -94,25 +82,18 @@ def scan_file(args: tuple[str, int, str]) -> dict:
         sheets = extractor(path)
         row["sheets"] = len(sheets)
         row["cells"] = sum(len(s) for s in sheets)
-        for cells in sheets:
-            if not cells:
-                continue
-            coords = _coords_by_id(cells)
-            sheet_name = cells[0][5]
-            for rel in _core.process_sheet(cells):
-                hr, hc = coords[rel["header_cell_id"]]
-                vr, vc = coords[rel["value_cell_id"]]
-                row["findings"].append(
-                    {
-                        "sheet": sheet_name,
-                        "header": [hr, hc],
-                        "cell": [vr, vc],
-                        "key": rel["key"],
-                        "value": rel["value"],
-                        "confidence": rel["confidence"],
-                        "reason": rel["reason"],
-                    }
-                )
+        row["findings"] = [
+            {
+                "sheet": f["sheet"],
+                "header": [f["header_row"], f["header_col"]],
+                "cell": [f["row"], f["col"]],
+                "key": f["key"],
+                "value": f["value"],
+                "confidence": f["confidence"],
+                "reason": f["reason"],
+            }
+            for f in _core.process_workbook(sheets)
+        ]
     except FileTimeout:
         row["status"] = "timeout"
     except Exception as exc:  # noqa: BLE001 - every failure is a reportable result

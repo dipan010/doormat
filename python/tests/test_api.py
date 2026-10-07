@@ -186,8 +186,49 @@ def test_relationship_fields(credential_xlsx):
     assert isinstance(rel.value, str)
     assert isinstance(rel.confidence, float)
     assert isinstance(rel.reason, str)
-    assert isinstance(rel.header_cell_id, int)
-    assert isinstance(rel.value_cell_id, int)
+
+
+def test_relationship_location(credential_xlsx):
+    rel = load(credential_xlsx).relationships()[0]
+    assert rel.sheet == "Sheet"
+    assert (rel.row, rel.col) == (1, 2)
+    assert (rel.header_row, rel.header_col) == (1, 1)
+    assert rel.coordinate == "B1"
+    assert rel.header_coordinate == "A1"
+    assert rel.hidden is False
+
+
+def test_relationship_hidden_sheet(tmp_xlsx):
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "visible"
+    ws = wb.create_sheet("Secrets")
+    ws["C5"] = "Password"
+    ws["D5"] = "s3cret!!"
+    ws.sheet_state = "hidden"
+    p = tmp_xlsx(wb)
+    wb.close()
+    rel = load(p).relationships()[0]
+    assert rel.sheet == "Secrets"
+    assert rel.hidden is True
+    assert rel.coordinate == "D5"
+
+
+def test_same_credential_on_two_sheets_reported_twice(tmp_xlsx):
+    wb = openpyxl.Workbook()
+    for name in ("Prod", "Staging"):
+        ws = wb.create_sheet(name)
+        ws["A1"] = "Password"
+        ws["B1"] = "s3cret!!"
+    p = tmp_xlsx(wb)
+    wb.close()
+    sheets = [r.sheet for r in load(p).relationships()]
+    assert sheets == ["Prod", "Staging"]
+
+
+@pytest.mark.parametrize(("col", "letters"), [(1, "A"), (26, "Z"), (27, "AA"), (28, "AB"), (702, "ZZ"), (703, "AAA")])
+def test_coordinate_column_letters(col, letters):
+    rel = Relationship("k", "v", 0.0, "r", "S", row=7, col=col, header_row=7, header_col=col)
+    assert rel.coordinate == f"{letters}7"
 
 
 def test_relationship_is_frozen(credential_xlsx):
@@ -202,8 +243,8 @@ def test_relationship_repr(credential_xlsx):
     rel = doc.relationships()[0]
     r = repr(rel)
     assert "Password" in r
-    assert "s3cret!!" in r
-    assert str(rel.confidence) in r
+    assert "B1" in r
+    assert "s3cret!!" not in r  # the secret never appears in repr
 
 
 # ---------- doormat.__init__ exports ----------

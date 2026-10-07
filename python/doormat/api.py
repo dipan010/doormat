@@ -42,9 +42,21 @@ def _get_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list[l
     return _FORMAT_REGISTRY
 
 
+_HIDDEN_SUFFIX = "[HIDDEN]"
+
+
+def _column_letter(col: int) -> str:
+    """Convert a 1-based column number to its spreadsheet letters (1 -> A, 28 -> AB)."""
+    letters = ""
+    while col > 0:
+        col, rem = divmod(col - 1, 26)
+        letters = chr(ord("A") + rem) + letters
+    return letters
+
+
 @dataclass(frozen=True)
 class Relationship:
-    """A detected key-value relationship between two cells.
+    """A credential found in a spreadsheet, with where it was found.
 
     Attributes:
         key: The header or label text (e.g., "Password").
@@ -54,19 +66,43 @@ class Relationship:
             inline or formula-embedded detections.
         reason: Semicolon-separated breakdown of scoring factors
             (e.g., "distance=100;upper;lower;digit;special;length>=8").
-        header_cell_id: Internal cell index of the header/label cell.
-        value_cell_id: Internal cell index of the value cell.
+        sheet: Name of the sheet holding the value. For CSV and TSV files
+            this is the file name without its extension.
+        row: 1-based row of the cell holding the value.
+        col: 1-based column of the cell holding the value.
+        header_row: 1-based row of the label the value was paired with.
+            Equal to ``row`` for inline, formula and comment detections.
+        header_col: 1-based column of the label the value was paired with.
+        hidden: True if the sheet is hidden in the workbook.
     """
 
     key: str
     value: str
     confidence: float
     reason: str
-    header_cell_id: int
-    value_cell_id: int
+    sheet: str
+    row: int
+    col: int
+    header_row: int
+    header_col: int
+    hidden: bool = False
+
+    @property
+    def coordinate(self) -> str:
+        """Spreadsheet reference of the value cell, e.g. ``"B3"``."""
+        return f"{_column_letter(self.col)}{self.row}"
+
+    @property
+    def header_coordinate(self) -> str:
+        """Spreadsheet reference of the label cell, e.g. ``"A3"``."""
+        return f"{_column_letter(self.header_col)}{self.header_row}"
 
     def __repr__(self) -> str:
-        return f"Relationship({self.key}={self.value} ({self.confidence}))"
+        # The value is a secret; keep it out of logs and tracebacks.
+        return (
+            f"Relationship(key={self.key!r}, sheet={self.sheet!r}, "
+            f"cell={self.coordinate!r}, confidence={self.confidence:.0f})"
+        )
 
 
 @dataclass(frozen=True)
@@ -177,8 +213,12 @@ def load(filepath: str | Path) -> GridDoc:
             value=r["value"],
             confidence=r["confidence"],
             reason=r["reason"],
-            header_cell_id=r["header_cell_id"],
-            value_cell_id=r["value_cell_id"],
+            sheet=r["sheet"].removesuffix(_HIDDEN_SUFFIX),
+            row=r["row"],
+            col=r["col"],
+            header_row=r["header_row"],
+            header_col=r["header_col"],
+            hidden=r["sheet"].endswith(_HIDDEN_SUFFIX),
         )
         for r in raw_results
     ]
