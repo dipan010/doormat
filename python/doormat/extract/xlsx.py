@@ -143,7 +143,9 @@ def extract_xlsx(filepath: str | Path) -> list[list[tuple]]:
         sheet_name, is_merged_origin).
     """
     filepath = Path(filepath)
-    wb = openpyxl.load_workbook(filepath, data_only=False)
+    # keep_links=False skips cached external-link parts: doormat never reads
+    # them, and openpyxl raises KeyError when a workbook's link parts are broken.
+    wb = openpyxl.load_workbook(filepath, data_only=False, keep_links=False)
 
     try:
         sheets: list[list[tuple]] = []

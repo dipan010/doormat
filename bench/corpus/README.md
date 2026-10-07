@@ -88,21 +88,31 @@ values) that form the recall denominator.
 
 Scan of all 15,929 files (2026-10-06): 99.5% processed, 15.5 minutes on an
 Apple Silicon laptop. Failures: 64 openpyxl `KeyError`s on broken external
-links, 5 timeouts, 4 other parse errors. On the largest workbooks, openpyxl
+links, 5 timeouts, 4 other parse errors. Since 2026-10-07 the extractor
+skips external-link parts (`keep_links=False`), and 5 files still fail
+(2 `ValueError`, 2 `TypeError`, 1 timeout at 120 s). On the largest workbooks, openpyxl
 extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 170k cells).
 
 | Split | Engine | Findings | Precision | Recall | Notes |
 |---|---|---|---|---|---|
-| test | v0.1.0 | 334 | **16.5%** (55) | **32.4%** (55/170) | Clean: labelled before any code change |
-| test | current | 87 | 63.2% (55) | 32.4% (55/170) | In-sample: fixes were designed from these errors |
-| dev | current | 239 | **56.5%** (135) | not measured | Out of sample for the split-password and scoring fixes; the inline digit-token rule was chosen on dev (2 findings) |
+| test | v0.1.0 | 334 | **16.5%** (55) | **31.2%** (55/176) | Clean: labelled before any code change |
+| test | current | 90 | 67.8% (61) | 34.7% (61/176) | In-sample: fixes were designed from these errors |
+| dev | current | 241 | **59.8%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
 
 On 2026-10-07 deduplication changed from "one finding per value" to "one
 finding per cell", so the same credential in two cells is reported twice.
 That added 4 test and 58 dev findings, all labelled. It also exposed one
 credential the pool review had missed (a second, identical Login/Password
 block in the same sheet), so the test denominator went from 169 to 170.
+
+Also on 2026-10-07, fixing the external-link crash let 14 test files be read
+for the first time. Two of them hold 6 credentials on a hidden sheet, so the
+test denominator is now 176. v0.1.0 could not read those files, which is why
+its recall is lower against the complete denominator (31.2%) than first
+reported. Formula cells are no longer paired as values: on dev that removed
+19 false positives and added 12 (the header then pairs with a nearby label),
+with no true positive lost.
 
 Read these with the concentration in mind. 31 of the 55 current test true
 positives come from one directory file. 100 of the 169 test credentials sit
@@ -117,8 +127,9 @@ credentials on purpose: phone dial-in PINs (`(800) ... PIN nnnnnn`) and
 `password for X = y` notes no longer match, because the looser patterns
 were mostly false positives on dev.
 
-Remaining false positives on dev are pairings with formulas, labels such as
-`Included Deals`, database names next to an empty password cell, and a
-help-desk log whose category column is literally "Password". The largest
+Remaining false positives on dev are a form label such as `Password:` with
+an empty value cell pairing with the next label (`Included Deals`, `Date`,
+`Region`) or a database name, and a help-desk log whose category column is
+literally "Password". The largest
 recall gap is password tables (a `Password` column with one credential per
 row), which no detector handles yet.

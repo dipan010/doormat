@@ -102,10 +102,10 @@ On 14 synthetic fixtures, one per detection pathway, doormat scores 100% precisi
 
 | Version | Precision | Recall |
 |---|---|---|
-| 0.1.0 | 16.5% | 32.4% |
-| current `main` | 56.5% | 32.4% |
+| 0.1.0 | 16.5% | 31.2% |
+| current `main` | 59.8% | 34.7% |
 
-Precision for `main` is measured on files that played no part in tuning; recall is measured on files that did, so treat it as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but about half of those findings are still wrong pairings (a formula or label instead of the value). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
+Precision for `main` is measured on files that played no part in tuning; recall is measured on files that did, so treat it as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but a large share of those findings are still wrong pairings (usually a nearby label when the password cell is empty). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
 ## Performance
 

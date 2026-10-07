@@ -8,8 +8,8 @@ Last reviewed: 2026-10-07
 
 ## Where it stands
 
-- Rust core + PyO3 bindings + Python package, renamed from `gridmap` to `doormat` on 2026-10-07. 134 Rust tests, 79 Python tests, 100% P/R on 14 synthetic fixtures.
-- Real-world accuracy (Enron corpus): precision 56.5% (dev, out of sample), recall 32.4% (test). See `bench/corpus/README.md`.
+- Rust core + PyO3 bindings + Python package, renamed from `gridmap` to `doormat` on 2026-10-07. 136 Rust tests, 80 Python tests, 100% P/R on 14 synthetic fixtures.
+- Real-world accuracy (Enron corpus): precision 59.8% (dev, out of sample), recall 34.7% (test). See `bench/corpus/README.md`.
 - Security: 0 RustSec advisories, 0 pip-audit findings, bandit and semgrep clean (2026-10-07). `doormat-core` has 4 dependencies (`arrow2` removed).
 - Git remote is named `main` (not `origin`) and points at `https://github.com/dipan010/doormat.git`. GitHub About section and topics are set.
 - `CLAUDE.md` and `RELEASE_CHECKLIST.md` are gitignored, so edits to them are local only.
@@ -43,9 +43,7 @@ Follow-ups found in Phase 2 (not blocking):
 - Password tables: 100 of 169 test credentials sit in `Password` columns with one credential per row; no detector handles them.
 - Remaining dev FPs: formula cells, labels like `Included Deals`, database names beside an empty password cell, help-desk logs with a "Password" category column.
 - `Relationship` exposes only internal per-sheet cell ids; add sheet, row and col so callers can locate a finding.
-- 64 Enron files fail in openpyxl on broken external-link parts; try `load_workbook(..., keep_links=False)`.
 - openpyxl extraction is >99% of wall time on large workbooks (27.5 s vs 0.1 s in the core for 170k cells).
-- `FORMULA_KEYWORD_REGEX` has the same missing word boundary as the old inline regex (no corpus hits, but `spin`/`monkey` would match).
 
 ### Phase 3: Release engineering
 Done:
@@ -54,7 +52,8 @@ Done:
 
 Next actions, in order:
 1. [x] **Cell locations on findings** (2026-10-07). `Relationship` gains `sheet`, `row`, `col`, `header_row`, `header_col`, `hidden`, `coordinate`; internal cell ids removed; dedup is per cell, not per value; stable reading order; `repr` hides the secret; `_core.process_sheet` removed. Enron: test P 63.2% / R 32.4% (denominator corrected to 170), dev P 56.5%.
-2. [ ] **Small correctness fixes.** `load_workbook(..., keep_links=False)` for the 64 Enron files that crash on broken external links; word boundary in `FORMULA_KEYWORD_REGEX`; stop formula cells being paired as spatial values (measure on the dev split only; the test split stays frozen).
+2. [x] **Small correctness fixes** (2026-10-07). `keep_links=False` (failing Enron files 73 -> 5); keyword boundary that accepts `_` and `.` prefixes in both regexes (also fixed a `DB_PASSWORD=x` regression from the earlier `\b` change); formula cells excluded from spatial pairing (dev: -19 FP, +12 FP, 0 TP lost). The newly readable files added 6 test credentials (denominator 176). Dev P 59.8%, test P 67.8% / R 34.7%.
+   - New follow-up: when a form label like `Password:` has an empty value cell, it pairs with the next label below (`Date`, `Price`, `Region`); 19 dev and test FPs share this shape.
 3. [ ] **Version 0.2.0.** Move CHANGELOG `[Unreleased]` to `[0.2.0]`, bump the crate versions (pyproject reads the version from Cargo), and record the release date.
 4. [ ] **CI workflow (`.github/workflows/ci.yml`)** on every push and PR: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`, `cargo test`, then `maturin develop`, `pytest` and the fixture harness on Linux, macOS and Windows for Python 3.9 and 3.13. Update the "No CI/CD pipelines" line in CLAUDE.md.
 5. [ ] **Security workflow (`security.yml`)** on push and weekly: cargo-audit, cargo-deny (commit `deny.toml`), pip-audit, bandit, semgrep. Add Dependabot for cargo, pip and GitHub Actions.

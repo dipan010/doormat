@@ -83,7 +83,9 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 /// For each cell with `FLAG_IS_PASSWORD_HEADER`:
 /// 1. Try `detect_split_password`; if found, emit with confidence 200.0
 /// 2. Otherwise, query all neighbors within `NEIGHBOR_RADIUS`
-/// 3. Filter to `CellType::Value` only, skip already-used values
+/// 3. Filter to `CellType::Value` only, skip already-used values and
+///    formula cells (a formula's text is never the stored secret; string
+///    literals inside formulas are handled by `analyze_formulas`)
 /// 4. Score each via `score_candidate`, pick best above `RELATIONSHIP_THRESHOLD`
 /// 5. Mark claimed values in `used_value_ids` to prevent double-assignment
 pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec<Relationship> {
@@ -127,6 +129,9 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
                 continue;
             }
             if used_value_ids.contains(&nid) {
+                continue;
+            }
+            if !store.get_formula(n).is_empty() {
                 continue;
             }
 
@@ -196,6 +201,15 @@ mod tests {
         assert_eq!(rels[0].key, "Password");
         assert_eq!(rels[0].value, "s3cret!!");
         assert!(rels[0].confidence >= RELATIONSHIP_THRESHOLD);
+    }
+
+    #[test]
+    fn formula_cell_never_paired_as_value() {
+        let mut formula_cell = raw(0, 1, "=SUM(N5:N65536)");
+        formula_cell.formula = "=SUM(N5:N65536)".into();
+        let store = pipeline_store(vec![raw(0, 0, "Password:"), formula_cell]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.is_empty());
     }
 
     #[test]

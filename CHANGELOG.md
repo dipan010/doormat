@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Inline detection ran on formula cells, whose value is the formula text, producing a garbled duplicate of the formula finding
+- Inline and formula keyword patterns missed keywords after `_` or `.` (`DB_PASSWORD=x`, `app.pwd: x`, `"API_KEY"`) because `\b` treats `_` as a word character; the formula keyword pattern also matched inside words (`spin`, `monkey`)
+- Workbooks with broken external-link parts raised `KeyError` in openpyxl; external links are now skipped (`keep_links=False`). This recovered 64 of 73 failing files in the Enron corpus
+- A formula cell next to a password label was paired as its value (`Password:` → `=SUM(...)`). Formula cells are no longer spatial value candidates; literal strings in formulas are still detected
 - `load()` raised `AttributeError` on any workbook containing a chartsheet
 - Inline credential pattern matched keywords inside words (`spin`, `compass`, `by-pass`) and treated plain whitespace as a key/value separator. Keywords must now be whole words, and the separator must be `:`, `=` or a spaced dash; password-family keywords also accept a single digit-bearing token after whitespace
 - Split-password detection concatenated form labels (`Post ID:`, `Database:`) and table columns of separate passwords. Fragments must now stand alone in their column and not end in `:`
@@ -55,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 32.4% recall on the held-out test split; the current code measures 56.5% precision on the dev split (out of sample), and 63.2% precision / 32.4% recall on test (in sample). See `bench/corpus/README.md`
+- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 31.2% recall on the held-out test split; the current code measures 59.8% precision on the dev split (out of sample), and 67.8% precision / 34.7% recall on test (in sample). See `bench/corpus/README.md`
 
 ## [0.1.0] - 2026-06-29
 

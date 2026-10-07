@@ -236,3 +236,21 @@ def test_extract_workbook_skips_chartsheet(tmp_xlsx):
     sheets = extract_workbook(p)
     assert len(sheets) == 1
     assert [c[2] for c in sheets[0]] == ["Password", "s3cRet!99"]
+
+
+def test_extract_workbook_skips_external_links(tmp_xlsx, monkeypatch):
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "x"
+    p = tmp_xlsx(wb)
+    wb.close()
+
+    calls = []
+    real_load = openpyxl.load_workbook
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs)
+        return real_load(*args, **kwargs)
+
+    monkeypatch.setattr(openpyxl, "load_workbook", spy)
+    extract_workbook(p)
+    assert calls == [{"data_only": False, "keep_links": False}]

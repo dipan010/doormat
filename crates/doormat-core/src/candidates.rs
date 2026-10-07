@@ -10,8 +10,9 @@ use crate::types::*;
 
 /// Inline `key: value` credential pattern.
 ///
-/// The keyword must be a whole word, so `spin`, `compass` and `by-pass` do not
-/// match. The separator must be `:`, `=` or a dash with whitespace on at least
+/// The keyword must not be preceded by a letter or digit, so `spin` and
+/// `compass` do not match while `DB_PASSWORD=x` and `user.pwd: x` do.
+/// (`\b` is not used because it treats `_` as part of a word.) The separator must be `:`, `=` or a dash with whitespace on at least
 /// one side (`Password - X`), so prose like `pass through` does not match.
 /// Password-family keywords also accept a bare whitespace separator when the
 /// value is a single token containing a digit (`Password X333#`).
@@ -19,9 +20,9 @@ use crate::types::*;
 /// The value is in capture group 1 or 2; read it with [`inline_value`].
 pub(crate) static INLINE_CREDENTIAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        r"(?i)\b(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)\b",
+        r"(?i)(?:^|[^\p{L}\p{N}])(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)\b",
         r"(?:\s*[:=]\s*|\s+[-–]\s*|\s*[-–]\s+)(.+)",
-        r"|\b(?:password|passwd|pwd|passwort|contraseña|motdepasse|senha|пароль)\s+(\S*\d\S*)\s*$",
+        r"|(?:^|[^\p{L}\p{N}])(?:password|passwd|pwd|passwort|contraseña|motdepasse|senha|пароль)\s+(\S*\d\S*)\s*$",
     ))
     .expect("inline credential regex is valid")
 });
@@ -31,11 +32,20 @@ pub(crate) fn inline_value<'h>(caps: &regex::Captures<'h>) -> Option<regex::Matc
     caps.get(1).or_else(|| caps.get(2))
 }
 
+/// A double-quoted string literal inside a formula.
 pub(crate) static FORMULA_STRING_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#""([^"]+)""#).unwrap());
+    LazyLock::new(|| Regex::new(r#""([^"]+)""#).expect("formula string regex is valid"));
 
+/// A formula string that ends in a credential keyword (`"db password:"`,
+/// `"API_KEY"`). As with the inline pattern, the keyword must not be preceded
+/// by a letter or digit, so `"spin"` and `"monkey"` do not match.
 pub(crate) static FORMULA_KEYWORD_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|token|key|pin)[\s:=]*$").unwrap()
+    Regex::new(concat!(
+        r"(?i)(?:^|[^\p{L}\p{N}])",
+        r"(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|token|key|pin)",
+        r"[\s:=]*$",
+    ))
+    .expect("formula keyword regex is valid")
 });
 
 // ---------- Section-title special chars ----------
@@ -291,6 +301,16 @@ mod tests {
     }
 
     #[test]
+    fn inline_regex_accepts_underscore_and_dot_prefixes() {
+        let value = |s: &str| {
+            let caps = INLINE_CREDENTIAL_REGEX.captures(s).unwrap();
+            inline_value(&caps).unwrap().as_str().to_string()
+        };
+        assert_eq!(value("DB_PASSWORD=hunter22"), "hunter22");
+        assert_eq!(value("app.pwd: s3cret!"), "s3cret!");
+    }
+
+    #[test]
     fn inline_regex_requires_whole_word_keyword() {
         assert!(!INLINE_CREDENTIAL_REGEX.is_match("Spin Reserves 7%"));
         assert!(!INLINE_CREDENTIAL_REGEX.is_match("Compass Bank: Inc"));
@@ -331,6 +351,8 @@ mod tests {
         assert!(FORMULA_KEYWORD_REGEX.is_match("database password"));
         assert!(FORMULA_KEYWORD_REGEX.is_match("API_KEY"));
         assert!(!FORMULA_KEYWORD_REGEX.is_match("hello world"));
+        assert!(!FORMULA_KEYWORD_REGEX.is_match("spin"));
+        assert!(!FORMULA_KEYWORD_REGEX.is_match("monkey"));
     }
 
     #[test]
