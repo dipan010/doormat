@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/dipan010/doormat/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dipan010/doormat/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/dipan010/doormat/actions/workflows/security.yml"><img alt="Security" src="https://github.com/dipan010/doormat/actions/workflows/security.yml/badge.svg"></a>
   <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
   <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg">
   <img alt="Rust core" src="https://img.shields.io/badge/core-Rust-orange.svg">

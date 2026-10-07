@@ -49,9 +49,9 @@ def main() -> None:
     seven_zip = shutil.which("7z")
     tar = shutil.which("tar")
     if seven_zip:
-        subprocess.run([seven_zip, "x", "-y", f"-o{OUT_DIR}", str(ARCHIVE)], check=True)
+        subprocess.run([seven_zip, "x", "-y", f"-o{OUT_DIR}", str(ARCHIVE)], check=True)  # nosec B603
     elif tar:
-        subprocess.run([tar, "-xf", str(ARCHIVE), "-C", str(OUT_DIR)], check=True)
+        subprocess.run([tar, "-xf", str(ARCHIVE), "-C", str(OUT_DIR)], check=True)  # nosec B603
     else:
         raise SystemExit("neither 7z nor tar found on PATH")
     count = sum(1 for p in OUT_DIR.iterdir() if p.is_file())

@@ -1,0 +1,34 @@
+# cargo-deny configuration: run with `cargo deny check`.
+# Used by .github/workflows/security.yml on every push, pull request and weekly.
+
+[graph]
+all-features = false
+
+[advisories]
+# Fail on any RustSec vulnerability, unmaintained, unsound or yanked crate.
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+# Permissive licences only. Crates offering several licences (e.g. "MIT OR
+# Unlicense") pass if any one of them is allowed.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "MIT",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# Path dependencies inside this workspace carry a version, so they are not wildcards.
+allow-wildcard-paths = false
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

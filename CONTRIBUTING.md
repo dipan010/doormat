@@ -48,7 +48,15 @@ Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.g
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` and the core tests on Linux
 - a source build with all extras, the Python tests and the precision/recall harness on Linux, macOS and Windows with Python 3.9 and 3.13
 
-A pull request should pass all of these before review.
+[`.github/workflows/security.yml`](.github/workflows/security.yml) runs on every push, every pull request and weekly:
+
+- `cargo deny check` (RustSec advisories, licences, banned crates and sources; configured in [`deny.toml`](deny.toml))
+- `pip-audit` on the runtime and optional dependencies declared in `pyproject.toml`
+- `bandit` and `semgrep` (security-audit, python, rust and secrets rule packs)
+
+Dependabot opens weekly update pull requests for Rust, Python and GitHub Actions dependencies.
+
+A pull request should pass all of these before review. To run the dependency checks locally: `cargo install cargo-deny && cargo deny check`.
 
 ## Running benchmarks
 
