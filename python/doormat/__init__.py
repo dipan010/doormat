@@ -1,8 +1,8 @@
-"""doormat --- spatial document graph engine for credential detection.
+"""doormat: find passwords and secrets hidden in spreadsheets.
 
-Detects credentials (passwords, tokens, secrets) stored in xlsx
-spreadsheet files by analyzing spatial proximity, content features,
-and scoring heuristics. Powered by a Rust core via PyO3.
+Reads .xlsx, .xlsm, .xls, .ods, .csv and .tsv files, models each sheet as a
+2D grid, and pairs credential labels with the values around them. Detection
+runs in a Rust core via PyO3.
 
 Quick start::
 
@@ -10,10 +10,12 @@ Quick start::
 
     doc = doormat.load("workbook.xlsx")
     for cred in doc.credentials(min_confidence=120):
-        print(f"{cred.key} = {cred.value}")
+        print(f"{cred.sheet}!{cred.coordinate}: {cred.key} = {cred.value}")
 """
 
 from doormat._core import version
 from doormat.api import GridDoc, Relationship, load
 
-__all__ = ["GridDoc", "Relationship", "load", "version"]
+__version__ = version()
+
+__all__ = ["GridDoc", "Relationship", "__version__", "load", "version"]

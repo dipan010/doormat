@@ -288,3 +288,7 @@ def test_no_credentials(tmp_xlsx):
     doc = load(p)
     assert doc.relationships() == []
     assert doc.credentials() == []
+
+
+def test_dunder_version_matches_core():
+    assert doormat.__version__ == doormat.version() == "0.2.0"
