@@ -13,7 +13,7 @@ Last reviewed: 2026-10-07
 - Security: 0 RustSec advisories, 0 pip-audit findings, bandit and semgrep clean (2026-10-07). `doormat-core` has 4 dependencies (`arrow2` removed).
 - Git remote is named `main` (not `origin`) and points at `https://github.com/dipan010/doormat.git`. GitHub About section and topics are set.
 - `CLAUDE.md` and `RELEASE_CHECKLIST.md` are gitignored, so edits to them are local only.
-- No CI yet (`.github/` absent).
+- CI: `.github/workflows/ci.yml` on every push and PR (fmt, clippy, core tests; Python tests and harness on Linux, macOS, Windows x Python 3.9, 3.13).
 
 ## Blockers
 
@@ -55,7 +55,7 @@ Next actions, in order:
 2. [x] **Small correctness fixes** (2026-10-07). `keep_links=False` (failing Enron files 73 -> 5); keyword boundary that accepts `_` and `.` prefixes in both regexes (also fixed a `DB_PASSWORD=x` regression from the earlier `\b` change); formula cells excluded from spatial pairing (dev: -19 FP, +12 FP, 0 TP lost). The newly readable files added 6 test credentials (denominator 176). Dev P 59.8%, test P 67.8% / R 34.7%.
    - New follow-up: when a form label like `Password:` has an empty value cell, it pairs with the next label below (`Date`, `Price`, `Region`); 19 dev and test FPs share this shape.
 3. [x] **Version 0.2.0** (2026-10-07). Crates bumped (pyproject reads the version from Cargo), `doormat.__version__` added, CHANGELOG section is `[0.2.0] - Unreleased`; replace "Unreleased" with the date when the `v0.2.0` tag is pushed.
-4. [ ] **CI workflow (`.github/workflows/ci.yml`)** on every push and PR: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`, `cargo test`, then `maturin develop`, `pytest` and the fixture harness on Linux, macOS and Windows for Python 3.9 and 3.13. Update the "No CI/CD pipelines" line in CLAUDE.md.
+4. [x] **CI workflow (`.github/workflows/ci.yml`)** (2026-10-07; rehearsed locally on Python 3.9 from a source-built wheel) on every push and PR: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`, `cargo test`, then `maturin develop`, `pytest` and the fixture harness on Linux, macOS and Windows for Python 3.9 and 3.13. Update the "No CI/CD pipelines" line in CLAUDE.md.
 5. [ ] **Security workflow (`security.yml`)** on push and weekly: cargo-audit, cargo-deny (commit `deny.toml`), pip-audit, bandit, semgrep. Add Dependabot for cargo, pip and GitHub Actions.
 6. [ ] **Release workflow (`release.yml`)** on `v*` tags: maturin-action wheels for linux x86_64/aarch64 (manylinux), macOS x86_64/arm64 and windows x86_64, plus an sdist; smoke-install each wheel; publish with PyPI trusted publishing (no API tokens in the repo).
 7. [ ] **Repo hygiene.** `SECURITY.md` with a private vulnerability-reporting route (expected of a security tool); issue and PR templates.

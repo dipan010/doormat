@@ -26,19 +26,29 @@ maturin develop --release
 ### Rust unit tests
 
 ```bash
-cargo test --workspace
+cargo test -p doormat-core
 ```
 
-Runs 121 unit tests across all Rust modules. Each module tests its own functions using synthetic `CellStore` instances.
+Each Rust module tests its own functions using synthetic `CellStore` instances. `doormat-py` is a Python extension module with no Rust tests of its own; it is exercised by the Python suite.
 
 ### Python tests
 
 ```bash
 # Requires maturin develop --release first
+python bench/fixtures/generate_fixtures.py   # the fixture .xlsx files are not committed
 python -m pytest python/tests/ -v
 ```
 
-Runs 54 tests including extraction tests, integration tests against all 14 fixture workbooks, and a smoke test for the version function.
+Covers the public API, every extractor, and integration tests against all 14 fixture workbooks.
+
+### Continuous integration
+
+Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+- `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` and the core tests on Linux
+- a source build with all extras, the Python tests and the precision/recall harness on Linux, macOS and Windows with Python 3.9 and 3.13
+
+A pull request should pass all of these before review.
 
 ## Running benchmarks
 
