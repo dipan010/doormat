@@ -21,7 +21,7 @@ jobs:
     name: Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # RustSec advisories (what cargo-audit checks), licences, bans and sources,
       # configured in deny.toml.
       - uses: EmbarkStudios/cargo-deny-action@v2
@@ -32,8 +32,8 @@ jobs:
     name: Python dependencies (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Audit runtime and optional dependencies declared in pyproject.toml
@@ -53,8 +53,8 @@ jobs:
     name: Static analysis (bandit, semgrep)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - name: Install scanners
