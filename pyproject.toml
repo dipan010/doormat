@@ -9,6 +9,7 @@ requires-python = ">=3.9"
 dependencies = ["openpyxl"]
 dynamic = ["version"]
 license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
 readme = "README.md"
 authors = [
     {name = "Dipan Ghosh"},

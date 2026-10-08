@@ -37,6 +37,11 @@ First release under the name `doormat` (previously `gridmap`, never published). 
 - `repr(Relationship)` no longer includes the credential value, so findings can be logged safely
 - `doormat._core.process_sheet` is removed; `process_workbook` is the single FFI entry point
 
+### Packaging
+
+- Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.9 and every newer version. Prebuilt for Linux x86_64/aarch64 (manylinux), macOS arm64/x86_64 and Windows x64; other platforms build from the source distribution
+- The source distribution and wheels now include both licence files
+
 ### Security
 
 - Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)

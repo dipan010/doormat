@@ -1,0 +1,153 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # Manual runs build and smoke-test every artifact but never publish.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheels:
+    name: Wheel ${{ matrix.platform.os }} ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # One abi3 wheel per platform covers CPython 3.9 and newer.
+        # smoke: the runner can execute the wheel natively, so install and test it.
+        platform:
+          - { os: linux, runner: ubuntu-latest, target: x86_64, smoke: true }
+          - { os: linux, runner: ubuntu-latest, target: aarch64, smoke: false }
+          - { os: macos, runner: macos-latest, target: aarch64, smoke: true }
+          - { os: macos, runner: macos-latest, target: x86_64, smoke: false }
+          - { os: windows, runner: windows-latest, target: x64, smoke: true }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: auto
+          args: --release --out dist
+      - name: Smoke-test the wheel
+        if: matrix.platform.smoke
+        shell: bash
+        run: |
+          python -m pip install dist/*.whl
+          python - <<'PY'
+          import pathlib, tempfile
+          import openpyxl
+          import doormat
+
+          wb = openpyxl.Workbook()
+          wb.active["A1"] = "Password"
+          wb.active["B1"] = "s3cret!!"
+          path = pathlib.Path(tempfile.mkdtemp()) / "smoke.xlsx"
+          wb.save(path)
+
+          found = doormat.load(path).credentials(min_confidence=120)
+          assert [(c.sheet, c.coordinate, c.value) for c in found] == [("Sheet", "B1", "s3cret!!")], found
+          print("doormat", doormat.__version__, "wheel OK")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.os }}-${{ matrix.platform.target }}
+          path: dist
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+  check:
+    name: Check artifacts
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Expect five wheels and one sdist with one version, matching the tag on tag pushes
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python -m pip install --upgrade packaging twine
+          python - <<'PY'
+          import os, pathlib
+          from packaging.utils import parse_sdist_filename, parse_wheel_filename
+
+          files = sorted(pathlib.Path("dist").iterdir())
+          wheels = [f for f in files if f.suffix == ".whl"]
+          sdists = [f for f in files if f.name.endswith(".tar.gz")]
+          assert len(wheels) == 5 and len(sdists) == 1, [f.name for f in files]
+          versions = {parse_wheel_filename(f.name)[1] for f in wheels}
+          versions |= {parse_sdist_filename(f.name)[1] for f in sdists}
+          assert len(versions) == 1, versions
+          version = versions.pop()
+          if os.environ["REF_TYPE"] == "tag":
+              tag = os.environ["REF_NAME"].removeprefix("v")
+              assert str(version) == tag, f"tag v{tag} does not match package version {version}"
+          print("version", version, "-", len(files), "files")
+          PY
+          twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: github.ref_type == 'tag' && contains(github.ref_name, 'rc')
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/doormat
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: github.ref_type == 'tag' && !contains(github.ref_name, 'rc')
+    needs: check
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/doormat
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

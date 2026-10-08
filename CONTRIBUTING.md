@@ -56,7 +56,19 @@ Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.g
 
 Dependabot opens weekly update pull requests for Rust, Python and GitHub Actions dependencies.
 
-A pull request should pass all of these before review. To run the dependency checks locally: `cargo install cargo-deny && cargo deny check`.
+A pull request should pass all of these before review.
+
+## Releasing
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds one abi3 wheel per platform (Linux x86_64/aarch64, macOS arm64/x86_64, Windows x64) and a source distribution, smoke-tests every wheel the runner can execute, and checks that all files carry the same version as the tag.
+
+1. Set the version in `crates/doormat-core/Cargo.toml` and `crates/doormat-py/Cargo.toml` (a release candidate uses Cargo's form, e.g. `0.2.0-rc.1`, which becomes `0.2.0rc1` on PyPI).
+2. Move the CHANGELOG entries under that version with today's date.
+3. Push a tag: `git tag v0.2.0rc1 && git push main v0.2.0rc1`. Tags containing `rc` publish to TestPyPI; any other `v*` tag publishes to PyPI.
+
+Publishing uses [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/): no API tokens are stored in the repository. It needs a one-time setup on [PyPI](https://pypi.org/manage/account/publishing/) and [TestPyPI](https://test.pypi.org/manage/account/publishing/): add a pending publisher for project `doormat`, owner `dipan010`, repository `doormat`, workflow `release.yml`, and environment `pypi` (TestPyPI: `testpypi`).
+
+Running the workflow manually (Actions > Release > Run workflow) builds and checks everything without publishing. To run the dependency checks locally: `cargo install cargo-deny && cargo deny check`.
 
 ## Running benchmarks
 
