@@ -58,7 +58,7 @@ Next actions, in order:
 4. [x] **CI workflow (`.github/workflows/ci.yml`)** (2026-10-07; rehearsed locally on Python 3.9 from a source-built wheel) on every push and PR: `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings`, `cargo test`, then `maturin develop`, `pytest` and the fixture harness on Linux, macOS and Windows for Python 3.9 and 3.13. Update the "No CI/CD pipelines" line in CLAUDE.md.
 5. [x] **Security workflow (`security.yml`)** (2026-10-07; cargo-deny covers the RustSec advisories that cargo-audit checks, so it runs alone) on push and weekly: cargo-audit, cargo-deny (commit `deny.toml`), pip-audit, bandit, semgrep. Add Dependabot for cargo, pip and GitHub Actions.
 6. [x] **Release workflow (`release.yml`)** (2026-10-09; abi3 wheels so one wheel per platform covers CPython 3.9+; licence files added to sdist and wheels; sdist verified to build from source; publishing still needs the trusted-publisher setup in Phase 4) on `v*` tags: maturin-action wheels for linux x86_64/aarch64 (manylinux), macOS x86_64/arm64 and windows x86_64, plus an sdist; smoke-install each wheel; publish with PyPI trusted publishing (no API tokens in the repo).
-7. [ ] **Repo hygiene.** `SECURITY.md` with a private vulnerability-reporting route (expected of a security tool); issue and PR templates.
+7. [x] **Repo hygiene** (2026-10-09). `SECURITY.md` with private reporting (GitHub private vulnerability reporting enabled), issue forms (bug, detection issue, feature request; blank issues off), PR checklist, `detection` label. `SECURITY.md` with a private vulnerability-reporting route (expected of a security tool); issue and PR templates.
 8. [ ] Optional: refactor `extract_ods` (cyclomatic complexity 36).
 
 Needs the user:

@@ -1,0 +1,43 @@
+name: Detection issue
+description: doormat missed a credential, or flagged something that is not one.
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste or attach real credentials.** Describe the layout with made-up values: doormat's behaviour depends on where cells sit and what they look like, not on whether the secret is real.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - Missed a credential (false negative)
+        - Flagged something that is not a credential (false positive)
+        - Found the credential but reported the wrong cell or key
+    validations:
+      required: true
+  - type: textarea
+    id: layout
+    attributes:
+      label: Spreadsheet layout
+      description: The relevant cells with made-up values, as a small table or an openpyxl snippet.
+      placeholder: |
+        |   | A          | B          |
+        | 1 | Username:  | svc_backup |
+        | 2 | Password:  | Xy7!fake   |
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What doormat reported
+      description: The output of `doc.credentials(min_confidence=0)` for this layout (`repr()` does not include the secret).
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: doormat 0.2.0, Python 3.12
+    validations:
+      required: true

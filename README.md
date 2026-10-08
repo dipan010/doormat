@@ -148,6 +148,10 @@ Progress is tracked in [STATUS.md](STATUS.md) and changes in [CHANGELOG.md](CHAN
 
 Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source, running the tests and the benchmark harness, and adding a detection pathway.
 
+## Security
+
+Please report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md). Never attach spreadsheets containing real credentials to issues; rebuild the layout with made-up values.
+
 ## Acknowledgements
 
 Real-world evaluation uses the Enron spreadsheet corpus by Felienne Hermans and Emerson Murphy-Hill ("Enron's Spreadsheets and Related Emails: A Dataset and Analysis", ICSE 2015), licensed CC BY 4.0. The corpus is not redistributed in this repository.

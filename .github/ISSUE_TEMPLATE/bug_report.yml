@@ -1,0 +1,38 @@
+name: Bug report
+description: doormat crashes, raises an unexpected error, or behaves differently from its documentation.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach a spreadsheet, log or screenshot that contains real credentials.** Rebuild the problem with made-up values.
+        Missed credentials or false alarms? Use the *Detection issue* form instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the full traceback if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: A short script, ideally one that builds the spreadsheet with openpyxl using made-up values.
+      render: python
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: doormat (`doormat.__version__`), Python and operating system.
+      placeholder: doormat 0.2.0, Python 3.12, macOS 15
+    validations:
+      required: true

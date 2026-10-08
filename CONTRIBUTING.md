@@ -58,6 +58,10 @@ Dependabot opens weekly update pull requests for Rust, Python and GitHub Actions
 
 A pull request should pass all of these before review.
 
+## Reporting issues
+
+Use the issue forms: bug report, detection issue (missed credential or false alarm) or feature request. Report security vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Never attach real credentials anywhere; describe the layout with made-up values.
+
 ## Releasing
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) builds one abi3 wheel per platform (Linux x86_64/aarch64, macOS arm64/x86_64, Windows x64) and a source distribution, smoke-tests every wheel the runner can execute, and checks that all files carry the same version as the tag.
