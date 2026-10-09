@@ -146,7 +146,7 @@ Progress is tracked in [STATUS.md](STATUS.md) and changes in [CHANGELOG.md](CHAN
 
 ## Contributing
 
-Bug reports and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source, running the tests and the benchmark harness, and adding a detection pathway.
+Bug reports and pull requests are welcome. Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). See [CONTRIBUTING.md](CONTRIBUTING.md) for building from source, running the tests and the benchmark harness, and adding a detection pathway.
 
 ## Security
 

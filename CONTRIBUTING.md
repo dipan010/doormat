@@ -1,5 +1,7 @@
 # Contributing to doormat
 
+Everyone taking part in this project is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Building from source
 
 ### Prerequisites
