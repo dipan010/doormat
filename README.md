@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://github.com/dipan010/doormat/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dipan010/doormat/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/dipan010/doormat/actions/workflows/security.yml"><img alt="Security" src="https://github.com/dipan010/doormat/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://pypi.org/project/doormat/"><img alt="PyPI" src="https://img.shields.io/pypi/v/doormat.svg"></a>
   <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
   <img alt="Python 3.9+" src="https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg">
   <img alt="Rust core" src="https://img.shields.io/badge/core-Rust-orange.svg">
@@ -37,8 +38,7 @@ pip install "doormat[ods]"   # OpenDocument via odfpy
 pip install "doormat[all]"   # both
 ```
 
-> [!NOTE]
-> doormat is not on PyPI yet; the first release is in preparation. Until then, install from source as described in [CONTRIBUTING.md](CONTRIBUTING.md). Building requires a Rust toolchain and [maturin](https://www.maturin.rs).
+Prebuilt wheels cover CPython 3.9 and newer on Linux (x86_64, aarch64), macOS (Intel, Apple Silicon) and Windows (x64). On other platforms pip builds from the source distribution, which needs a [Rust toolchain](https://rustup.rs). To work on doormat itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Quickstart
 

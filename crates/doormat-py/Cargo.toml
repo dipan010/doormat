@@ -1,6 +1,6 @@
 [package]
 name = "doormat-py"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "PyO3 bindings for the doormat spreadsheet credential detection engine"
@@ -15,5 +15,5 @@ name = "_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-doormat-core = { path = "../doormat-core", version = "0.2.0-rc.1" }
+doormat-core = { path = "../doormat-core", version = "0.2.0" }
 pyo3 = { version = "0.29", features = ["extension-module", "abi3-py39"] }
