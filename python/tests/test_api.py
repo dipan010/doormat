@@ -290,5 +290,13 @@ def test_no_credentials(tmp_xlsx):
     assert doc.credentials() == []
 
 
-def test_dunder_version_matches_core():
-    assert doormat.__version__ == doormat.version() == "0.2.0"
+def test_dunder_version_is_installed_distribution_version():
+    from importlib.metadata import version as dist_version
+
+    assert doormat.__version__ == dist_version("doormat")
+
+
+def test_core_version_is_same_release():
+    # Cargo writes pre-releases as 0.2.0-rc.1; PEP 440 writes them as 0.2.0rc1.
+    core = doormat.version()
+    assert core.replace("-rc.", "rc").replace("-", "") == doormat.__version__

@@ -23,6 +23,8 @@ pip install maturin openpyxl pytest
 maturin develop --release
 ```
 
+`maturin develop` writes the compiled extension into `python/doormat/`. If an older build with a different file name is left there (for example `_core.cpython-312-darwin.so` next to `_core.abi3.so`), Python loads the version-specific one. Delete stale `python/doormat/_core.*` files when switching Python versions or build settings; `python -c "import doormat._core as c; print(c.__file__)"` shows which one is in use.
+
 ## Running tests
 
 ### Rust unit tests

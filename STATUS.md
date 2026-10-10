@@ -68,6 +68,8 @@ Needs the user:
 - **Exit:** CI green on all three OSes on every push; a `v*` tag produces wheels and an sdist.
 
 ### Phase 4: Publish
+Publisher setup on PyPI and TestPyPI done by the user (2026-10-10). Version set to `0.2.0-rc.1` for the release candidate.
+
 Next actions, in order:
 1. [ ] **Accounts (user).** PyPI and TestPyPI accounts with 2FA; register `dipan010/doormat` + `release.yml` as a pending trusted publisher on both.
 2. [ ] **Pre-flight.** Work through `RELEASE_CHECKLIST.md` (update it for doormat first: names, version location, trusted publishing).
