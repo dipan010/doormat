@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "doormat"
 description = "Find passwords and secrets hidden in spreadsheets (xlsx, xls, ods, csv) with spatial analysis and a fast Rust core"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = ["openpyxl"]
 dynamic = ["version"]
 license = "MIT OR Apache-2.0"
@@ -30,13 +30,14 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Rust",
+    "Typing :: Typed",
 ]
 
 [project.optional-dependencies]

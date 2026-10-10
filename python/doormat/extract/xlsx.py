@@ -9,6 +9,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import openpyxl
+from openpyxl.worksheet.worksheet import Worksheet
+
+from doormat._types import Sheet
 
 
 def clean_comment(raw_text: str) -> str:
@@ -26,7 +29,7 @@ def clean_comment(raw_text: str) -> str:
     return text.strip()
 
 
-def collect_merge_origins(worksheet: openpyxl.worksheet.worksheet.Worksheet) -> set[tuple[int, int]]:
+def collect_merge_origins(worksheet: Worksheet) -> set[tuple[int, int]]:
     """Return the set of (min_row, min_col) for every merged cell range.
 
     Args:
@@ -43,10 +46,10 @@ def collect_merge_origins(worksheet: openpyxl.worksheet.worksheet.Worksheet) -> 
 
 
 def extract_single_sheet(
-    worksheet: openpyxl.worksheet.worksheet.Worksheet,
+    worksheet: Worksheet,
     sheet_name: str,
     sheet_state: str,
-) -> list[tuple]:
+) -> Sheet:
     """Extract one worksheet into a list of raw cell tuples.
 
     Each tuple contains:
@@ -71,7 +74,7 @@ def extract_single_sheet(
 
     # Track seen coordinates for comment merging
     seen: dict[tuple[int, int], int] = {}
-    cells: list[tuple] = []
+    cells: Sheet = []
 
     for row in worksheet.iter_rows():
         for cell in row:
@@ -128,7 +131,7 @@ def extract_single_sheet(
     return cells
 
 
-def extract_xlsx(filepath: str | Path) -> list[list[tuple]]:
+def extract_xlsx(filepath: str | Path) -> list[Sheet]:
     """Open an xlsx/xlsm workbook and extract all sheets as raw cell tuples.
 
     The workbook is opened exactly once with data_only=False to
@@ -148,7 +151,7 @@ def extract_xlsx(filepath: str | Path) -> list[list[tuple]]:
     wb = openpyxl.load_workbook(filepath, data_only=False, keep_links=False)
 
     try:
-        sheets: list[list[tuple]] = []
+        sheets: list[Sheet] = []
         # wb.worksheets excludes chartsheets, which hold no cells
         for ws in wb.worksheets:
             cells = extract_single_sheet(ws, ws.title, ws.sheet_state)

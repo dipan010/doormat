@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # One abi3 wheel per platform covers CPython 3.9 and newer.
+        # One abi3 wheel per platform covers CPython 3.10 and newer.
         # smoke: the runner can execute the wheel natively, so install and test it.
         platform:
           - { os: linux, runner: ubuntu-latest, target: x86_64, smoke: true }

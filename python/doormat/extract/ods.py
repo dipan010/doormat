@@ -7,9 +7,12 @@ ImportError is raised when this extractor is called.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+
+from doormat._types import Sheet
 
 
-def extract_ods(filepath: str | Path) -> list[list[tuple]]:
+def extract_ods(filepath: str | Path) -> list[Sheet]:
     """Extract cells from an .ods file as raw cell tuples.
 
     Requires ``odfpy >= 1.4``. Installs via ``pip install doormat[ods]``.
@@ -26,10 +29,10 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
         ImportError: If odfpy is not installed.
     """
     try:
-        from odf.opendocument import load as odf_load
+        from odf import office as odf_office  # type: ignore[import-untyped]
         from odf import table as odf_table
         from odf import text as odf_text
-        from odf import office as odf_office
+        from odf.opendocument import load as odf_load  # type: ignore[import-untyped]
     except ImportError:
         raise ImportError(
             "odfpy is required for .ods support. "
@@ -39,7 +42,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
     filepath = Path(filepath)
     doc = odf_load(str(filepath))
 
-    sheets: list[list[tuple]] = []
+    sheets: list[Sheet] = []
 
     for tbl in doc.spreadsheet.getElementsByType(odf_table.Table):
         sheet_name = tbl.getAttribute("name") or "Sheet"
@@ -61,7 +64,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
         if is_hidden:
             sheet_name = f"{sheet_name}[HIDDEN]"
 
-        cells: list[tuple] = []
+        cells: Sheet = []
         row_idx = 0
 
         for row in tbl.getElementsByType(odf_table.TableRow):
@@ -70,7 +73,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
             row_repeat_count = int(row_repeat) if row_repeat else 1
 
             # Collect cells in this row
-            row_cells: list[tuple[str, str, bool, int]] = []
+            row_cells: list[tuple[str, str, bool, str]] = []
             for cell in row.childNodes:
                 if cell.qname[1] not in ("table-cell", "covered-table-cell"):
                     continue
@@ -105,13 +108,13 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
                         if t:
                             comment = f"{comment}\n{t}" if comment else t
 
-                for _ in range(col_repeat_count):
+                for _col in range(col_repeat_count):
                     row_cells.append((text_content, formula, is_merged, comment))
                     # Only the first cell in a repeated run is the merge origin
                     is_merged = False
 
             # Emit cells for each repeated row
-            for _ in range(min(row_repeat_count, 1000)):  # cap to avoid ODS empty-row explosion
+            for _row in range(min(row_repeat_count, 1000)):  # cap to avoid ODS empty-row explosion
                 row_idx += 1
                 col_idx = 0
                 for value, formula, is_merged_origin, comment in row_cells:
@@ -122,7 +125,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
                         (row_idx, col_idx, value, formula, comment, sheet_name, is_merged_origin)
                     )
                 # Stop emitting repeated rows if the row was empty
-                if not any(v or f or c for v, f, _, c in row_cells):
+                if not any(v or f or c for v, f, _merged, c in row_cells):
                     row_idx += row_repeat_count - 1
                     break
 
@@ -131,7 +134,7 @@ def extract_ods(filepath: str | Path) -> list[list[tuple]]:
     return sheets
 
 
-def _get_text(element) -> str:
+def _get_text(element: Any) -> str:
     """Recursively extract text from an ODF element and its children."""
     parts: list[str] = []
     if hasattr(element, "data"):

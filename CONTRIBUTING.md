@@ -7,7 +7,7 @@ Everyone taking part in this project is expected to follow the [Code of Conduct]
 ### Prerequisites
 
 - Rust (stable, edition 2021)
-- Python >= 3.9
+- Python >= 3.10
 - [maturin](https://www.maturin.rs/) >= 1.0
 
 ### Setup
@@ -50,7 +50,8 @@ Covers the public API, every extractor, and integration tests against all 14 fix
 Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` and the core tests on Linux
-- a source build with all extras, the Python tests and the precision/recall harness on Linux, macOS and Windows with Python 3.9 and 3.13
+- `mypy --strict` on the Python package (`pip install mypy types-openpyxl`)
+- a source build with all extras, the Python tests and the precision/recall harness on Linux, macOS and Windows with Python 3.10 and 3.14
 
 [`.github/workflows/security.yml`](.github/workflows/security.yml) runs on every push, every pull request and weekly:
 
@@ -174,7 +175,7 @@ Runs all 14 fixture workbooks through `doormat.load()` and compares detected cre
 
 **Python**
 
-- Python 3.9 compatible, with `from __future__ import annotations`.
+- Python 3.10 compatible, with `from __future__ import annotations`.
 - Type hints and docstrings on every public function and class; `pathlib.Path` in the public API; frozen dataclasses for returned values; no `print()` in library code.
 - Tests use pytest.
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from doormat.extract.ods import extract_ods
 
 
@@ -28,9 +27,9 @@ def test_missing_odfpy_raises_import_error(tmp_path):
 def sample_ods(tmp_path):
     """Create a real .ods file if odfpy is available, skip otherwise."""
     pytest.importorskip("odf")
-    from odf.opendocument import OpenDocumentSpreadsheet
     from odf import table as odf_table
     from odf import text as odf_text
+    from odf.opendocument import OpenDocumentSpreadsheet
 
     doc = OpenDocumentSpreadsheet()
     tbl = odf_table.Table(name="Sheet1")

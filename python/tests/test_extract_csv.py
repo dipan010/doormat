@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-
 import pytest
-
 from doormat.extract.csv_tsv import extract_csv
 
 

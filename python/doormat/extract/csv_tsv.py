@@ -10,8 +10,10 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from doormat._types import Sheet
 
-def extract_csv(filepath: str | Path) -> list[list[tuple]]:
+
+def extract_csv(filepath: str | Path) -> list[Sheet]:
     """Extract cells from a CSV or TSV file as raw cell tuples.
 
     The delimiter is inferred from the file extension: ``.csv`` uses
@@ -42,7 +44,7 @@ def extract_csv(filepath: str | Path) -> list[list[tuple]]:
     try:
         with filepath.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f, delimiter=delimiter)
-            cells: list[tuple] = []
+            cells: Sheet = []
             for row_idx, row in enumerate(reader, start=1):
                 for col_idx, value in enumerate(row, start=1):
                     if not value:

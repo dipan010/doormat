@@ -8,8 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from doormat._types import Sheet
 
-def extract_xls(filepath: str | Path) -> list[list[tuple]]:
+
+def extract_xls(filepath: str | Path) -> list[Sheet]:
     """Extract cells from a legacy .xls file as raw cell tuples.
 
     Requires ``xlrd >= 2.0``. Installs via ``pip install doormat[xls]``.
@@ -28,7 +30,7 @@ def extract_xls(filepath: str | Path) -> list[list[tuple]]:
         ImportError: If xlrd is not installed.
     """
     try:
-        import xlrd
+        import xlrd  # type: ignore[import-untyped]
     except ImportError:
         raise ImportError(
             "xlrd is required for .xls support. "
@@ -39,7 +41,7 @@ def extract_xls(filepath: str | Path) -> list[list[tuple]]:
     book = xlrd.open_workbook(filepath, formatting_info=False)
 
     try:
-        sheets: list[list[tuple]] = []
+        sheets: list[Sheet] = []
         for sheet_idx in range(book.nsheets):
             sheet = book.sheet_by_index(sheet_idx)
             sheet_name = sheet.name
@@ -54,7 +56,7 @@ def extract_xls(filepath: str | Path) -> list[list[tuple]]:
                 # xlrd uses 0-based, convert to 1-based
                 merge_origins.add((rlo + 1, clo + 1))
 
-            cells: list[tuple] = []
+            cells: Sheet = []
             for row_idx in range(sheet.nrows):
                 for col_idx in range(sheet.ncols):
                     cell = sheet.cell(row_idx, col_idx)

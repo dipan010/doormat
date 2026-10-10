@@ -20,6 +20,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Changed
 
+- **Breaking:** Python 3.10 or newer is required (3.9 reached end of life in October 2025). Tested on 3.10 and 3.14
 - Renamed the project from `gridmap` to `doormat`, because the PyPI name `gridmap` belongs to another project. The Python import is now `doormat`, the crates are `doormat-core` and `doormat-py`, and the extension module is `doormat._core`. The public API (`load()`, `GridDoc`, `Relationship`) is unchanged
 - `python/gridmap/extract.py` split into the `gridmap.extract` package (now `doormat.extract`) with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
 - `doormat.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
@@ -39,7 +40,8 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Packaging
 
-- Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.9 and every newer version. Prebuilt for Linux x86_64/aarch64 (manylinux), macOS arm64/x86_64 and Windows x64; other platforms build from the source distribution
+- Ships type information (`py.typed`, plus a stub for the compiled extension); `mypy --strict` passes on the package and checks user code against it
+- Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.10 and every newer version. Prebuilt for Linux x86_64/aarch64 (manylinux), macOS arm64/x86_64 and Windows x64; other platforms build from the source distribution
 - The source distribution and wheels now include both licence files
 
 ### Security

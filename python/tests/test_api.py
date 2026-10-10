@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import doormat
 import openpyxl
 import pytest
-
-import doormat
 from doormat.api import GridDoc, Relationship, load
 
 

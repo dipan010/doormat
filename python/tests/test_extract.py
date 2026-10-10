@@ -6,14 +6,13 @@ from pathlib import Path
 
 import openpyxl
 import pytest
-from openpyxl.chart import BarChart, Reference
-
 from doormat.extract import (
     clean_comment,
     collect_merge_origins,
     extract_single_sheet,
     extract_workbook,
 )
+from openpyxl.chart import BarChart, Reference
 
 
 @pytest.fixture

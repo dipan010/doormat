@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 from doormat import _core
+from doormat._types import Sheet
 from doormat.extract import extract_xlsx
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
 # Lazy imports for optional deps are handled inside the extractor functions.
-_FORMAT_REGISTRY: dict[str, tuple[bytes | None, Callable[..., list[list[tuple]]]]] = {}
+_FORMAT_REGISTRY: dict[str, tuple[bytes | None, Callable[..., list[Sheet]]]] = {}
 
 
-def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list[list[tuple]]]]]:
+def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list[Sheet]]]]:
     """Build the format dispatch table.
 
     Extractor functions for optional dependencies (xlrd, odfpy) use lazy
@@ -34,7 +35,7 @@ def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list
     }
 
 
-def _get_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list[list[tuple]]]]]:
+def _get_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list[Sheet]]]]:
     """Return the format registry, building it on first access."""
     global _FORMAT_REGISTRY  # noqa: PLW0603
     if not _FORMAT_REGISTRY:
