@@ -142,7 +142,7 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 - Password-table detection
 - CI, prebuilt wheels for Linux, macOS and Windows, and the first PyPI release
 
-Progress is tracked in [STATUS.md](STATUS.md) and changes in [CHANGELOG.md](CHANGELOG.md).
+Changes are listed in [CHANGELOG.md](CHANGELOG.md); planned work and known issues are tracked in [GitHub issues](https://github.com/dipan010/doormat/issues).
 
 ## Contributing
 

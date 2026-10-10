@@ -147,7 +147,7 @@ Runs all 14 fixture workbooks through `doormat.load()` and compares detected cre
 2. All existing tests must pass (`cargo test --workspace` + `pytest`).
 3. New public functions require tests and doc comments (`///` in Rust, docstrings in Python).
 4. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`.
-5. No `TODO` comments in committed code. Track deferred work in issues or `STATUS.md`.
+5. No `TODO` comments in committed code. Track deferred work in GitHub issues.
 6. Rust: `cargo clippy --workspace -- -D warnings` and `cargo fmt` must pass.
 7. Python: type hints on all public function signatures, frozen dataclasses for return types.
 8. Benchmark regression check: run `cargo bench --bench pipeline` and verify no phase regresses more than 5% vs the current baseline.

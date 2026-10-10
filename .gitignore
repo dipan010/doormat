@@ -33,3 +33,6 @@ RELEASE_CHECKLIST.md
 .venv/
 bench/corpus/data/
 bench/corpus/results/
+
+# Internal project tracker (local only)
+STATUS.md
