@@ -57,3 +57,13 @@ manifest-path = "crates/doormat-py/Cargo.toml"
 python-source = "python"
 module-name = "doormat._core"
 features = ["pyo3/extension-module"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["python/doormat"]
+
+[[tool.mypy.overrides]]
+# Optional readers without type information.
+module = ["odf", "odf.*", "xlrd"]
+ignore_missing_imports = true

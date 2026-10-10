@@ -50,7 +50,7 @@ Covers the public API, every extractor, and integration tests against all 14 fix
 Every push to `main` and every pull request runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 
 - `cargo fmt --check`, `cargo clippy --workspace --all-targets -D warnings` and the core tests on Linux
-- `mypy --strict` on the Python package (`pip install mypy types-openpyxl`)
+- `mypy` in strict mode on the Python package (`pip install mypy types-openpyxl`, then `mypy`; settings are in `pyproject.toml`)
 - a source build with all extras, the Python tests and the precision/recall harness on Linux, macOS and Windows with Python 3.10 and 3.14
 
 [`.github/workflows/security.yml`](.github/workflows/security.yml) runs on every push, every pull request and weekly:

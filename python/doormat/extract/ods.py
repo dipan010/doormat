@@ -29,10 +29,10 @@ def extract_ods(filepath: str | Path) -> list[Sheet]:
         ImportError: If odfpy is not installed.
     """
     try:
-        from odf import office as odf_office  # type: ignore[import-untyped]
+        from odf import office as odf_office
         from odf import table as odf_table
         from odf import text as odf_text
-        from odf.opendocument import load as odf_load  # type: ignore[import-untyped]
+        from odf.opendocument import load as odf_load
     except ImportError:
         raise ImportError(
             "odfpy is required for .ods support. "

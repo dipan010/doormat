@@ -30,7 +30,7 @@ def extract_xls(filepath: str | Path) -> list[Sheet]:
         ImportError: If xlrd is not installed.
     """
     try:
-        import xlrd  # type: ignore[import-untyped]
+        import xlrd
     except ImportError:
         raise ImportError(
             "xlrd is required for .xls support. "
