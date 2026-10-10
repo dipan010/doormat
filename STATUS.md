@@ -70,10 +70,12 @@ Needs the user:
 ### Phase 4: Publish
 Publisher setup on PyPI and TestPyPI done by the user (2026-10-10). Version set to `0.2.0-rc.1` for the release candidate.
 
+**2026-10-10: `0.2.0rc1` published to TestPyPI** (https://test.pypi.org/project/doormat/0.2.0rc1/) from tag `v0.2.0rc1` by `release.yml`: 5 abi3 wheels and the sdist, trusted publishing confirmed working, name `doormat` accepted by TestPyPI. Installed from TestPyPI into clean venvs on macOS with Python 3.9 and 3.12 (`doormat[all]`): README quickstart output matches exactly, CSV and extras work. Linux and Windows wheels were smoke-tested by the release workflow before upload.
+
 Next actions, in order:
-1. [ ] **Accounts (user).** PyPI and TestPyPI accounts with 2FA; register `dipan010/doormat` + `release.yml` as a pending trusted publisher on both.
+1. [x] **Accounts (user).** PyPI and TestPyPI accounts with 2FA; register `dipan010/doormat` + `release.yml` as a pending trusted publisher on both.
 2. [ ] **Pre-flight.** Work through `RELEASE_CHECKLIST.md` (update it for doormat first: names, version location, trusted publishing).
-3. [ ] **Release candidate.** Tag `v0.2.0rc1` and publish to TestPyPI; install it in clean venvs on Linux, macOS and Windows and run the README quickstart. This is also where PyPI confirms the name is accepted.
+3. [x] **Release candidate.** Tag `v0.2.0rc1` and publish to TestPyPI; install it in clean venvs on Linux, macOS and Windows and run the README quickstart. This is also where PyPI confirms the name is accepted.
 4. [ ] **Release (user go-ahead required).** Tag `v0.2.0` and publish to PyPI; verify `pip install doormat` from a clean venv.
 5. [ ] **Afterwards.** GitHub release with the CHANGELOG body; set the repo website to the PyPI page; add PyPI version and CI badges to the README.
 6. [ ] **Write-up / LinkedIn post.** The doormat idea, the Enron evaluation with honest numbers, the Rust core / thin wrapper design, and the arrow2 removal.
