@@ -76,8 +76,8 @@ First release under the name `doormat` (previously `gridmap`, never published). 
 - Multilingual password header detection (15+ languages) via Aho-Corasick multi-pattern matching
 - Hybrid Arrow/Vec columnar storage backend (`CellStore` with arrow2 immutable columns and Vec workspace)
 - Sheet-level parallelism via Rayon (`process_workbook`)
-- Shannon entropy computation with bitmask pre-filter (GAP 3)
-- BFS region detection with VecDeque (FIX 1 / WIN 1)
+- Shannon entropy computation, skipped by a bitmask pre-filter for most cells
+- BFS region detection with a `VecDeque` queue
 - Spatial distance table with pre-computed 7x7 score grid
 - Scoring engine with distance, character-class, entropy, region, and context bonuses
 - Split-password detection (2-5 cells below header)
@@ -90,16 +90,16 @@ First release under the name `doormat` (previously `gridmap`, never published). 
 
 ### Changed
 
-- Comment merge on duplicate coordinates (FIX 3): merges into existing cell instead of creating duplicates
-- Workbook opened once with `data_only=False` (FIX 4): avoids reopening for formula extraction
-- Spatial index contains all cells, not just candidates (FIX 2)
-- Regex patterns compiled once via `LazyLock` (WIN 3)
+- Comment merge on duplicate coordinates: merges into the existing cell instead of creating duplicates
+- Workbook opened once with `data_only=False`: avoids reopening for formula extraction
+- Spatial index contains all cells, not just candidates
+- Regex patterns compiled once via `LazyLock`
 
 ### Performance
 
-- Fused `normalize_and_flags()` with ASCII fast path: `precompute_features` -32% (Prompt 18)
-- Buffer swap pattern for zero-allocation normalization across cells (Prompt 18)
-- `MutableUtf8Array` for incremental Arrow buffer construction in `from_raw`: -3% (Prompt 19)
+- Fused `normalize_and_flags()` with ASCII fast path: `precompute_features` -32%
+- Buffer swap pattern for zero-allocation normalization across cells
+- `MutableUtf8Array` for incremental Arrow buffer construction in `from_raw`: -3%
 - End-to-end pipeline improvement: `process_sheet` (5k cells) 1,102 µs -> 927 µs (-16%)
 - End-to-end workbook improvement: `process_workbook` (10x5k) 4,402 µs -> 3,330 µs (-24%)
 

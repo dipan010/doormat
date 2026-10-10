@@ -86,7 +86,7 @@ pub fn process_sheet(cells: Vec<RawCell>) -> Vec<Finding> {
 }
 
 /// Process multiple sheets in parallel using Rayon. Each sheet runs
-/// independently (GAP 1 fix: no shared writes, no mutex) and results are
+/// independently (no shared writes, no mutex) and results are
 /// concatenated in sheet order.
 pub fn process_workbook(sheets: Vec<Vec<RawCell>>) -> Vec<Finding> {
     let per_sheet: Vec<Vec<Finding>> = sheets.into_par_iter().map(process_sheet).collect();

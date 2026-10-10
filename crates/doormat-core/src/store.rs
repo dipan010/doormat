@@ -65,7 +65,7 @@ impl CellStore {
     ///
     /// Strings are moved out of each `RawCell`, so no cell text is copied.
     /// A repeated (row, col) keeps its first value and appends its comment
-    /// to the existing cell (FIX 3).
+    /// to the existing cell.
     pub fn from_raw(cells: Vec<RawCell>) -> Self {
         let cap = cells.len();
 
@@ -82,7 +82,7 @@ impl CellStore {
         for cell in cells {
             let key = (cell.row, cell.col);
             if let Some(&existing_id) = coord_to_id.get(&key) {
-                // FIX 3: merge comment into existing slot
+                // Merge the comment into the existing cell
                 if !cell.comment.is_empty() {
                     let existing = &mut comments[existing_id as usize];
                     if existing.is_empty() {

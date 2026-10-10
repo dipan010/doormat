@@ -304,7 +304,7 @@ pub fn precompute_features(store: &mut CellStore) {
             flags |= FLAG_IS_URL_HEADER;
         }
 
-        // GAP 3 FIX: entropy only when len >= ENTROPY_MIN_LENGTH
+        // Entropy only when len >= ENTROPY_MIN_LENGTH; skips float math for most cells
         // AND has upper + lower + digit
         let ent = if value.len() >= ENTROPY_MIN_LENGTH
             && (flags & entropy_prefilter) == entropy_prefilter

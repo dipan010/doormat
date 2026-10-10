@@ -154,7 +154,34 @@ Runs all 14 fixture workbooks through `doormat.load()` and compares detected cre
 
 ## Code style
 
-See [CLAUDE.md](CLAUDE.md) for the full set of project-specific coding standards, architecture rules, module ownership, and dependency constraints.
+**Architecture**
+
+- All detection logic lives in `doormat-core`, which is pure Rust with no FFI dependencies.
+- `doormat-py` only converts types between Python and Rust. If it needs an `if` on data, that logic belongs in the core.
+- The Python package reads files and exposes the public API. It calls the core exactly once per workbook.
+- Each core module owns one pipeline stage (see the list under "Adding a new detection pathway"); functions do not cross modules.
+
+**Dependencies**
+
+- `doormat-core` depends on `ahash`, `aho-corasick`, `rayon` and `regex`; `doormat-py` on `pyo3` and the core. The only runtime Python dependency is `openpyxl`.
+- A new dependency needs a justification in the pull request.
+
+**Rust**
+
+- Every public function has a doc comment and a test in the same file.
+- No `unsafe` in `doormat-py`; no `unwrap()` in library code (use `expect` with a reason, or return a `Result`); no `println!` in library code.
+- Prefer iterators over index loops; use `AHashMap`/`AHashSet` on hot paths.
+
+**Python**
+
+- Python 3.9 compatible, with `from __future__ import annotations`.
+- Type hints and docstrings on every public function and class; `pathlib.Path` in the public API; frozen dataclasses for returned values; no `print()` in library code.
+- Tests use pytest.
+
+**Everywhere**
+
+- No dead code, commented-out blocks or `TODO` comments.
+- No real credentials in tests, fixtures, docs or screenshots. Use made-up values.
 
 ## License
 

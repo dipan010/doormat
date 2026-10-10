@@ -10,8 +10,8 @@ use crate::types::*;
 ///
 /// Each unvisited candidate seeds a new region. Neighbor expansion uses
 /// `query_radius` with `NEIGHBOR_RADIUS`. Only candidate cells join the
-/// BFS queue, but `query_radius` reads from the full `coord_to_id` (FIX 2).
-/// Uses `VecDeque` for O(1) pop_front (FIX 1 / WIN 1).
+/// BFS queue, but `query_radius` reads from the full `coord_to_id`.
+/// Uses `VecDeque` for O(1) `pop_front`.
 pub fn detect_regions(store: &mut CellStore, candidate_ids: &[u32]) -> Vec<Region> {
     let candidate_set: AHashSet<u32> = candidate_ids.iter().copied().collect();
     let mut visited: AHashSet<u32> = AHashSet::with_capacity(candidate_ids.len());
@@ -27,7 +27,7 @@ pub fn detect_regions(store: &mut CellStore, candidate_ids: &[u32]) -> Vec<Regio
         let mut header_ids: Vec<usize> = Vec::new();
         let mut value_ids: Vec<usize> = Vec::new();
 
-        // FIX 1 / WIN 1: VecDeque for O(1) pop_front
+        // VecDeque for O(1) pop_front
         let mut queue: VecDeque<u32> = VecDeque::new();
         queue.push_back(seed);
         visited.insert(seed);

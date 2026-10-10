@@ -6,7 +6,7 @@ use regex::Regex;
 use crate::store::CellStore;
 use crate::types::*;
 
-// ---------- WIN 3: compile regex patterns ONCE ----------
+// ---------- Regex patterns, compiled once on first use ----------
 
 /// Inline `key: value` credential pattern.
 ///
@@ -80,7 +80,7 @@ pub fn reduce_candidate_space(store: &CellStore) -> Vec<u32> {
             continue;
         }
 
-        // High entropy (already pre-filtered by GAP 3 in features phase)
+        // High entropy (only computed for cells long enough to matter)
         if store.entropy[i] >= ENTROPY_THRESHOLD {
             candidates.push(i as u32);
             continue;

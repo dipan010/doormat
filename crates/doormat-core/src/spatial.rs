@@ -76,7 +76,7 @@ pub static DISTANCE_TABLE: LazyLock<DistanceTable> = LazyLock::new(DistanceTable
 
 /// Returns cell_ids of all cells within `radius` of (row, col),
 /// excluding the center cell itself. Queries coord_to_id which
-/// contains ALL cells (FIX 2).
+/// contains every cell, not only candidates.
 pub fn query_radius(store: &CellStore, row: u32, col: u32, radius: i32) -> Vec<u32> {
     let mut result = Vec::new();
     for_each_neighbor(store, row, col, radius, |cell_id| {

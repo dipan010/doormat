@@ -1,7 +1,7 @@
 """Extract raw cell tuples from xlsx/xlsm files via openpyxl.
 
-FIX 4: workbook is opened exactly once with data_only=False.
-FIX 3: duplicate (row, col) entries merge comments into the existing cell.
+The workbook is opened exactly once, with data_only=False so formulas are kept.
+Duplicate (row, col) entries merge their comments into the existing cell.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def extract_single_sheet(
 
     merge_origins = collect_merge_origins(worksheet)
 
-    # FIX 3: track seen coordinates for comment merging
+    # Track seen coordinates for comment merging
     seen: dict[tuple[int, int], int] = {}
     cells: list[tuple] = []
 
@@ -104,7 +104,7 @@ def extract_single_sheet(
             coord = (r, c)
             is_merged_origin = coord in merge_origins
 
-            # FIX 3: duplicate (row, col): merge comment into existing
+            # Duplicate (row, col): merge comment into the existing cell
             if coord in seen:
                 idx = seen[coord]
                 if comment:
@@ -131,7 +131,7 @@ def extract_single_sheet(
 def extract_xlsx(filepath: str | Path) -> list[list[tuple]]:
     """Open an xlsx/xlsm workbook and extract all sheets as raw cell tuples.
 
-    FIX 4: workbook is opened exactly once with data_only=False to
+    The workbook is opened exactly once with data_only=False to
     preserve formula strings.
 
     Args:
