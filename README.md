@@ -139,10 +139,10 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 
 ## Roadmap
 
-- Password-table detection
-- CI, prebuilt wheels for Linux, macOS and Windows, and the first PyPI release
+- **[0.2.0](https://github.com/dipan010/doormat/milestone/1)**: first PyPI release
+- **[0.3.0](https://github.com/dipan010/doormat/milestone/2)**: password-table detection, fewer false positives on empty form fields, faster extraction of large workbooks
 
-Changes are listed in [CHANGELOG.md](CHANGELOG.md); planned work and known issues are tracked in [GitHub issues](https://github.com/dipan010/doormat/issues).
+All planned work is tracked in [milestones](https://github.com/dipan010/doormat/milestones); changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
