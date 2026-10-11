@@ -164,7 +164,7 @@ Runs all 14 fixture workbooks through `doormat.load()` and compares detected cre
 
 **Dependencies**
 
-- `doormat-core` depends on `ahash`, `aho-corasick`, `rayon` and `regex`; `doormat-py` on `pyo3` and the core. The only runtime Python dependency is `openpyxl`.
+- `doormat-core` depends on `ahash`, `aho-corasick`, `rayon` and `regex`; `doormat-py` on `pyo3` and the core. The runtime Python dependencies are `openpyxl` and `defusedxml` (which openpyxl uses automatically to reject XML entity attacks).
 - A new dependency needs a justification in the pull request.
 
 **Rust**

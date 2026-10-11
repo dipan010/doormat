@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import zipfile
 from pathlib import Path
 
 import openpyxl
@@ -253,3 +254,26 @@ def test_extract_workbook_skips_external_links(tmp_xlsx, monkeypatch):
     monkeypatch.setattr(openpyxl, "load_workbook", spy)
     extract_workbook(p)
     assert calls == [{"data_only": False, "keep_links": False}]
+
+
+def test_xml_entity_declarations_are_rejected(tmp_xlsx):
+    """A worksheet that declares XML entities must be refused, not expanded."""
+    import doormat
+
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "Password"
+    wb.active["B1"] = "&e;"
+    clean = tmp_xlsx(wb)
+    wb.close()
+
+    evil = clean.with_name("entities.xlsx")
+    with zipfile.ZipFile(clean) as src, zipfile.ZipFile(evil, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename == "xl/worksheets/sheet1.xml":
+                data = data.replace(b"<worksheet", b'<!DOCTYPE worksheet [<!ENTITY e "x">]><worksheet', 1)
+                assert b"<!DOCTYPE" in data
+            dst.writestr(item, data)
+
+    with pytest.raises(ValueError):
+        doormat.load(evil)

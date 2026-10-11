@@ -22,7 +22,7 @@ People hide the spare key under the doormat. They hide passwords the same way: i
 - **Finds what grep misses.** Credentials split across cells, built with `CONCAT` in formulas, or tucked into cell comments.
 - **Fast.** Rust core with sheet-level parallelism: under 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
 - **Measured on real data.** Precision and recall are reported on the public Enron spreadsheet corpus, not just synthetic fixtures. See [Accuracy](#accuracy).
-- **Offline and dependency-light.** One runtime dependency (`openpyxl`). No network calls, no model downloads.
+- **Offline and dependency-light.** Two small runtime dependencies (`openpyxl`, and `defusedxml` to refuse malicious XML inside spreadsheet files). No network calls, no model downloads.
 
 ## Installation
 

@@ -46,6 +46,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Security
 
+- Spreadsheets containing XML entity declarations are rejected with `ValueError` instead of being parsed. `defusedxml` is now a dependency; openpyxl uses it automatically, which blocks entity-expansion attacks ("billion laughs") and external entities in `.xlsx` files
 - Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)
 - Updated `crossbeam-epoch` to 0.9.21, resolving RUSTSEC-2026-0204
 - Removed the unmaintained `arrow2` crate (RUSTSEC-2025-0038, no fixed release). `CellStore` now uses plain `Vec` columns; the affected API was never called. `cargo audit` and `cargo deny` report no advisories
