@@ -17,13 +17,15 @@ test split was labelled before any detection change and is now frozen; later
 fixes were partly designed from its errors, so out-of-sample precision is
 measured on dev.
 
-## Results (0.2.0)
+## Results
 
 | Split | Engine | Findings | Precision | Recall |
 |---|---|---|---|---|
 | test | 0.1.0 | 334 | 16.5% | 31.2% (55 of 176) |
 | test | 0.2.0 | 90 | 67.8% (in sample) | 34.7% (61 of 176) |
+| test | main | 134 | 80.6% | 61.4% (108 of 176) |
 | dev | 0.2.0 | 243 | **59.3%** | not measured |
+| dev | main | 285 | 66.0% | credential tables 44 of 46 |
 
 - **Recall is measured against keyword-discoverable credentials.** Credentials
   with no label nearby are invisible to both doormat and the reviewer, so true
@@ -32,6 +34,10 @@ measured on dev.
   true positives, and recurring service-account templates repeat across dev.
   Counting each distinct (key, value) pair once, precision is 76% on test and
   34% on dev.
+- **Credential tables (main) were designed on dev and checked once on test.**
+  They found 47 of 100 test table credentials with no false positives, but
+  39 of those are in copies of a workbook whose dev copy shaped the rule; the
+  one unrelated workbook gives 8 of 31. Details in the corpus README.
 - **Labels were assigned by one reviewer**, who also designed the fixes. No
   second-annotator agreement has been measured.
 

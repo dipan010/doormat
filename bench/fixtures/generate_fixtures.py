@@ -1,7 +1,7 @@
 """Generate xlsx test fixtures for doormat benchmark/integration testing.
 
 Each fixture tests a specific detection pathway. Run this script to
-regenerate all 14 fixtures from scratch (reproducible, no manual editing).
+regenerate all 15 fixtures from scratch (reproducible, no manual editing).
 
 Usage:
     python generate_fixtures.py
@@ -205,11 +205,27 @@ def gen_14():
     save(wb, "14_merged_cells.xlsx")
 
 
+# ---------- 15: Credential table ----------
+
+def gen_15():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    for row in (
+        ("System", "User ID", "Password"),
+        ("Billing", "svc_bill", "Xy7!fake"),
+        ("Reporting", "svc_report", "Qw3#fake"),
+        (None, None, None),
+        ("Backups", "svc_backup", "Zz9$fake"),
+    ):
+        ws.append(row)
+    save(wb, "15_credential_table.xlsx")
+
+
 # ---------- Main ----------
 
 GENERATORS = [
     gen_01, gen_02, gen_03, gen_04, gen_05, gen_06, gen_07,
-    gen_08, gen_09, gen_10, gen_11, gen_12, gen_13, gen_14,
+    gen_08, gen_09, gen_10, gen_11, gen_12, gen_13, gen_14, gen_15,
 ]
 
 

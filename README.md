@@ -104,14 +104,15 @@ The reader is chosen by file extension, and binary formats are checked against t
 
 ## Accuracy
 
-On 14 synthetic fixtures, one per detection pathway, doormat scores 100% precision and recall. Real spreadsheets are harder. On the public [Enron spreadsheet corpus](bench/corpus/README.md) (15,929 files):
+On 15 synthetic fixtures, one per detection pathway, doormat scores 100% precision and recall. Real spreadsheets are harder. On the public [Enron spreadsheet corpus](bench/corpus/README.md) (15,929 files):
 
 | Version | Precision | Recall |
 |---|---|---|
 | 0.1.0 | 16.5% | 31.2% |
-| current `main` | 59.3% | 34.7% |
+| 0.2.0 | 59.3% | 34.7% |
+| current `main` | 66.0% | 61.4% |
 
-Precision for `main` is measured on files that played no part in tuning; recall is measured on files that did, so treat it as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but a large share of those findings are still wrong pairings (usually a nearby label when the password cell is empty). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
+Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but a large share of those findings are still wrong pairings (usually a nearby label when the password cell is empty). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
 ## Performance
 
@@ -138,7 +139,7 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 ## Limitations
 
 - **Hostile files are checked, not sandboxed.** XML entity attacks are refused, and `.xlsx`/`.xlsm`/`.ods` files that would decompress beyond 512 MiB, or with a zip-bomb compression ratio, are rejected before parsing. Those checks trust the sizes declared inside the archive, which a determined attacker can forge; run doormat with a memory limit when scanning files from untrusted sources at scale.
-- **Password tables are not detected.** A `Password` column with one credential per row is the most common pattern doormat misses today.
+- **Some password tables are missed.** A `Password` column is read as a table of accounts only when a username or ID label shares its header row; about half of the table credentials in the evaluation are still missed.
 - **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
 - **Python only.** Bindings for other languages are planned, as is a command-line tool.
 

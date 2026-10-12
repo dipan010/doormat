@@ -54,7 +54,7 @@ A cell becomes a candidate if any of these holds:
 2. it has a formula;
 3. it has a comment;
 4. its entropy is at least **3.5** bits per character (`ENTROPY_THRESHOLD`);
-5. it matches the inline pattern (step 6).
+5. it matches the inline pattern (step 5).
 
 Candidates that are labels are classified as **headers**. A candidate in a
 sparse row (two cells or fewer), at most 60 characters, more than half
@@ -64,7 +64,7 @@ other cell is a potential **value**.
 ## 4. Regions (`regions.rs`)
 
 Candidates are clustered by breadth-first search: two candidates belong to the
-same region if one lies within the other's neighbourhood (step 7). Region
+same region if one lies within the other's neighbourhood (step 8). Region
 membership is a scoring signal: a label and a value in the same cluster are
 more likely to belong together.
 
@@ -84,7 +84,8 @@ Credentials written inside one cell are matched by a regular expression
 - or, for password-family keywords only, whitespace followed by a single token
   containing a digit (`Password X333#`).
 
-Formula cells are skipped here; their text is a formula, handled in step 6.
+Formula cells are skipped here; their text is a formula, handled by the
+formula pathways in the table below.
 
 | Pathway | Reason string | Confidence |
 |---|---|---|
@@ -94,8 +95,31 @@ Formula cells are skipped here; their text is a formula, handled in step 6.
 | comment on a password label | `comment_on_header_cell` | 230 |
 | comment containing `password: x` | `comment_contains_credential` | 220 |
 | value split down a column under a label | `split_password` | 200 |
+| one row of a credential table (step 6) | `table_column` | 190 |
 
-## 6. Split values (`inference.rs`)
+## 6. Credential tables (`inference.rs`)
+
+Some workbooks list many accounts, one per row, under a header row such as
+`System | User ID | Password`. A password label heads a **credential table**
+when:
+
+- a username label (`User ID`, `Username`, `Login`, `Account`, ..., or for
+  tables only a bare `ID`, `UID`, `Login ID`, `Logon ID`;
+  `TABLE_USERNAME_LABELS`) sits in the **same row**, at most **3** columns away;
+- the cells below it, read down to the next label or until more than **1**
+  empty row (`TABLE_MAX_GAP`; accounts are often separated by a blank row),
+  number at least **2** (`TABLE_MIN_ROWS`), and at least **80%** of them are
+  single tokens (`TABLE_TOKEN_SHARE`): no whitespace, no trailing `:`, not a
+  label and not a formula.
+
+The whole column is judged at once, so a help-desk log whose `Password` column
+holds categories, a column of dates or notes, or a login form whose next rows
+are labels does not qualify. Every token of at least **3** characters
+(`TABLE_MIN_VALUE_LEN`) with a letter or digit is then reported, one finding
+per row; placeholders such as `****` are skipped. The header is not paired
+again by the steps below.
+
+## 7. Split values (`inference.rs`)
 
 Before pairing, doormat checks whether a password label sits above a value
 split across 2 to 5 cells in the same column. Each fragment must be a value,
@@ -103,7 +127,7 @@ under 30 characters, not end in `:`, and have **no horizontal neighbour**: a
 cell with something beside it is a form row or a table row, not a fragment.
 The joined value must be at least 6 characters.
 
-## 7. Pairing and scoring (`spatial.rs`, `scoring.rs`, `inference.rs`)
+## 8. Pairing and scoring (`spatial.rs`, `scoring.rs`, `inference.rs`)
 
 For each password label, every value cell within **3** rows and columns
 (`NEIGHBOR_RADIUS`, a 7×7 window) is scored, except formula cells and values
@@ -139,7 +163,7 @@ already claimed by another label. The best score wins if it reaches **120**
 Every finding carries its `reason` string, the `;`-separated list of the terms
 that produced its score, so a result can always be explained.
 
-## 8. Deduplication, location and order (`pipeline.rs`)
+## 9. Deduplication, location and order (`pipeline.rs`)
 
 Two findings are duplicates only if they report the same value in the same
 cell (for example the inline and comment pathways on one cell); the higher
@@ -149,12 +173,14 @@ list is returned in reading order.
 
 ## Known limits of the approach
 
-- **Tables are not modelled.** A `Password` column with one credential per row
-  yields at most one pairing. This is the largest recall gap measured
+- **Credential tables need a username column.** A `Password` column is read as
+  a table only when a username or ID label shares its header row. Tables
+  without one (an export configuration listing `Path | Password`), or laid out
+  in ways the rule above rejects, still yield at most one pairing. On the
+  corpus this rule finds about half of the table credentials
   ([evaluation](evaluation.md)).
 - **An empty value cell does not stop pairing.** A form label whose value is
   blank can pair with the next label below it.
 - **Scores are hand-set, not learned.** The constants above were chosen on
   synthetic fixtures and then corrected against the dev split of the Enron
   corpus; they are not fitted by a model.
-EOF

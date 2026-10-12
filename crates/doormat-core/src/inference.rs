@@ -18,6 +18,81 @@ fn has_horizontal_neighbour(store: &CellStore, row: u32, col: u32) -> bool {
         .any(|&id| !store.get_value(id as usize).trim().is_empty())
 }
 
+/// True when a cell reads as a single credential-like token: no whitespace,
+/// no trailing `:`, and neither a label nor a formula.
+fn is_table_token(store: &CellStore, id: usize) -> bool {
+    let value = store.get_value(id).trim();
+    let flags = store.feature_flags[id];
+    !value.is_empty()
+        && !value.chars().any(char::is_whitespace)
+        && !value.ends_with(':')
+        && flags & (FLAG_IS_PASSWORD_HEADER | FLAG_IS_USERNAME_HEADER | FLAG_HAS_FORMULA) == 0
+}
+
+/// Find a credential table column under `header_id` (`User ID` | `Password`,
+/// one account per row).
+///
+/// The password header must share its row with a username label (or one of
+/// `TABLE_USERNAME_LABELS`, such as `ID`) at most `NEIGHBOR_RADIUS` columns away. The column is the cells directly below it,
+/// ending at a label or after more than `TABLE_MAX_GAP` consecutive empty rows
+/// (accounts are often separated by a blank row). It qualifies with
+/// at least `TABLE_MIN_ROWS` cells, of which at least `TABLE_TOKEN_SHARE` are
+/// single tokens; prose, dates and form labels fail that test. Returns the ids
+/// of the token cells with at least `TABLE_MIN_VALUE_LEN` characters and a
+/// letter or digit, or an empty vector if the column does not qualify.
+fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
+    let h = header_id as usize;
+    let (row, col) = (store.get_row(h), store.get_col(h));
+
+    let has_username_label = (1..=NEIGHBOR_RADIUS as u32)
+        .flat_map(|d| [col.checked_sub(d), col.checked_add(d)])
+        .flatten()
+        .filter_map(|c| store.coord_to_id.get(&(row, c)))
+        .any(|&id| {
+            let id = id as usize;
+            store.feature_flags[id] & FLAG_IS_USERNAME_HEADER != 0
+                || TABLE_USERNAME_LABELS.contains(&store.normalized_values[id].as_str())
+        });
+    if !has_username_label {
+        return Vec::new();
+    }
+
+    let mut gap = 0;
+    let column: Vec<u32> = (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
+        .map(|r| {
+            store
+                .coord_to_id
+                .get(&(r, col))
+                .copied()
+                .filter(|&id| !store.get_value(id as usize).trim().is_empty())
+        })
+        .take_while(|cell| {
+            gap = if cell.is_some() { 0 } else { gap + 1 };
+            gap <= TABLE_MAX_GAP
+        })
+        .flatten()
+        .take_while(|&id| store.get_cell_type(id as usize) != CellType::Header)
+        .collect();
+
+    let tokens = column
+        .iter()
+        .filter(|&&id| is_table_token(store, id as usize))
+        .count();
+    if column.len() < TABLE_MIN_ROWS || (tokens as f32) < TABLE_TOKEN_SHARE * column.len() as f32 {
+        return Vec::new();
+    }
+
+    column
+        .into_iter()
+        .filter(|&id| {
+            let value = store.get_value(id as usize).trim();
+            is_table_token(store, id as usize)
+                && value.chars().count() >= TABLE_MIN_VALUE_LEN
+                && value.chars().any(char::is_alphanumeric)
+        })
+        .collect()
+}
+
 /// Walk up to 5 cells directly below `header_id` in the same column.
 /// Each cell must have `CellType::Value`, be non-empty, not be a password
 /// header, not end in `:`, and have no horizontal neighbour. If >= 2 parts
@@ -81,6 +156,8 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 /// Pair password headers with their best-matching neighbor value cells.
 ///
 /// For each cell with `FLAG_IS_PASSWORD_HEADER`:
+/// 0. Try `detect_table_column`; if it qualifies, emit one relationship per
+///    row with `TABLE_COLUMN_CONFIDENCE` and move to the next header
 /// 1. Try `detect_split_password`; if found, emit with confidence 200.0
 /// 2. Otherwise, query all neighbors within `NEIGHBOR_RADIUS`
 /// 3. Filter to `CellType::Value` only, skip already-used values and
@@ -100,6 +177,23 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
 
     for &header_id in &header_ids {
         let h = header_id as usize;
+
+        // 0. A credential table: one relationship per row of the column
+        let table = detect_table_column(store, header_id);
+        if !table.is_empty() {
+            for value_id in table {
+                used_value_ids.insert(value_id);
+                results.push(Relationship {
+                    header_cell_id: h,
+                    value_cell_id: value_id as usize,
+                    key: store.get_value(h).to_string(),
+                    value: store.get_value(value_id as usize).to_string(),
+                    confidence: TABLE_COLUMN_CONFIDENCE,
+                    reason: "table_column".into(),
+                });
+            }
+            continue;
+        }
 
         // 1. Try split password detection
         if let Some((combined, first_cell_id)) = detect_split_password(store, header_id) {
@@ -191,6 +285,108 @@ mod tests {
         classify_cells(&mut store, &candidates);
         detect_regions(&mut store, &candidates);
         store
+    }
+
+    fn values(rels: &[Relationship]) -> Vec<&str> {
+        rels.iter().map(|r| r.value.as_str()).collect()
+    }
+
+    #[test]
+    fn table_column_reports_every_row() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "System"),
+            raw(1, 2, "User ID"),
+            raw(1, 3, "Password"),
+            raw(2, 1, "Billing"),
+            raw(2, 2, "svc_bill"),
+            raw(2, 3, "Xy7!fake"),
+            raw(3, 1, "Reporting"),
+            raw(3, 2, "svc_report"),
+            raw(3, 3, "Qw3#fake"),
+            raw(4, 1, "Backups"),
+            raw(4, 2, "svc_backup"),
+            raw(4, 3, "Zz9$fake"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Xy7!fake", "Qw3#fake", "Zz9$fake"]);
+        assert!(rels.iter().all(|r| r.reason == "table_column"
+            && r.confidence == TABLE_COLUMN_CONFIDENCE
+            && r.header_cell_id == 2));
+    }
+
+    #[test]
+    fn table_column_needs_a_username_label_in_the_header_row() {
+        // A help-desk log: "Password" is a category, and the column below it is
+        // other rows' categories.
+        let store = pipeline_store(vec![
+            raw(1, 1, "Customer"),
+            raw(1, 2, "Password"),
+            raw(2, 1, "Acme"),
+            raw(2, 2, "Unlock"),
+            raw(3, 1, "Initech"),
+            raw(3, 2, "Reset"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "table_column"));
+    }
+
+    #[test]
+    fn table_column_rejects_prose_and_form_labels() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "User ID"),
+            raw(1, 2, "Password"),
+            raw(2, 2, "Reset his password"),
+            raw(3, 2, "Included Deals:"),
+            raw(4, 2, "Called the customer back"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "table_column"));
+    }
+
+    #[test]
+    fn table_column_ends_after_two_empty_rows_and_skips_placeholders() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "Login"),
+            raw(1, 2, "Password"),
+            raw(2, 1, "alice"),
+            raw(2, 2, "Tr0ub4dor"),
+            raw(3, 1, "bob"),
+            raw(3, 2, "****"),
+            raw(4, 1, "carol"),
+            raw(4, 2, "c0rrectH0rse"),
+            raw(7, 2, "notInTable1"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn table_column_allows_one_blank_row_between_accounts() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "User ID"),
+            raw(1, 2, "Password"),
+            raw(2, 1, "alice"),
+            raw(2, 2, "Tr0ub4dor"),
+            raw(4, 1, "bob"),
+            raw(4, 2, "c0rrectH0rse"),
+            raw(7, 2, "afterTwoBlankRows"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn table_column_accepts_a_bare_id_label() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "ID"),
+            raw(1, 2, "Password"),
+            raw(2, 1, "abc1234"),
+            raw(2, 2, "Tr0ub4dor"),
+            raw(3, 1, "abc5678"),
+            raw(3, 2, "c0rrectH0rse"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse"]);
     }
 
     #[test]

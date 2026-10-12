@@ -1,0 +1,488 @@
+{
+ "method": "keyword-pool columns reviewed at column level; design half = dev buckets 1-2, holdout = 3-4",
+ "unsure": [
+  {
+   "md5": "de577803b1dbba72d27b69344f4f9504",
+   "sheet": "Sheet4",
+   "header": [
+    1,
+    1
+   ],
+   "rows": 7,
+   "half": "design",
+   "note": "'ALSTOM (passwords)' column; values look like login names, not passwords"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    19,
+    6
+   ],
+   "half": "holdout",
+   "note": "9-digit number with a note beside it"
+  }
+ ],
+ "credentials": [
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    2,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    4,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    5,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    6,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    7,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    8,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    9,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    10,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    11,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    12,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    13,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    14,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    15,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    17,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    19,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    21,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    22,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    23,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    24,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    26,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    28,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    30,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    31,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    32,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    33,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    35,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "784a286b8a84b5aa7c9fabc63809b19b",
+   "sheet": "PASSWORDS",
+   "cell": [
+    37,
+    3
+   ],
+   "kind": "table",
+   "half": "design"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    4,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    5,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    6,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    7,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    8,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    9,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    10,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    12,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    15,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    16,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    17,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    18,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    20,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    21,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    22,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    23,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "f4f770aa1dccb6f80305fc5d47b0002e",
+   "sheet": " Bulletin Boards",
+   "cell": [
+    25,
+    6
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "5a940d85b4c0eba7a77916a54c64cdec",
+   "sheet": "Sheet1",
+   "cell": [
+    6,
+    5
+   ],
+   "kind": "table",
+   "half": "holdout"
+  },
+  {
+   "md5": "5a940d85b4c0eba7a77916a54c64cdec",
+   "sheet": "Sheet1",
+   "cell": [
+    7,
+    5
+   ],
+   "kind": "table",
+   "half": "holdout"
+  }
+ ]
+}

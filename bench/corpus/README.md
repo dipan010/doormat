@@ -1,6 +1,6 @@
 # Real-world corpus: Enron spreadsheets
 
-Phase 2 validates doormat beyond the 14 synthetic fixtures using the Enron
+Phase 2 validates doormat beyond the 15 synthetic fixtures using the Enron
 spreadsheet corpus: 15,000+ spreadsheets extracted from the Enron email archive.
 
 > Hermans, F. and Murphy-Hill, E. "Enron's Spreadsheets and Related Emails:
@@ -109,8 +109,10 @@ extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 | Split | Engine | Findings | Precision | Recall | Notes |
 |---|---|---|---|---|---|
 | test | v0.1.0 | 334 | **16.5%** (55) | **31.2%** (55/176) | Clean: labelled before any code change |
-| test | current | 90 | 67.8% (61) | 34.7% (61/176) | In-sample: fixes were designed from these errors |
-| dev | current | 243 | **59.3%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
+| test | 0.2.0 | 90 | 67.8% (61) | 34.7% (61/176) | In-sample: fixes were designed from these errors |
+| test | main | 134 | 80.6% (108) | 61.4% (108/176) | Adds credential tables (47/100), run once; see below for what is independent |
+| dev | 0.2.0 | 243 | **59.3%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
+| dev | main | 285 | 66.0% (188) | tables 44/46 | Credential tables were designed on all of dev, so their dev figures are in sample; 1 table finding labelled unsure |
 
 On 2026-10-07 deduplication changed from "one finding per value" to "one
 finding per cell", so the same credential in two cells is reported twice.
@@ -126,7 +128,7 @@ reported. Formula cells are no longer paired as values: on dev that removed
 19 false positives and added 12 (the header then pairs with a nearby label),
 with no true positive lost.
 
-Read these with the concentration in mind. 31 of the 61 current test true
+Read these with the concentration in mind. For 0.2.0, 31 of the 61 test true
 positives come from one directory file. 102 of the 176 test credentials sit
 in three files (two are copies of the same workbook). Counting each distinct
 (key, value) pair once gives 76% precision on test (42/55) and 34% on dev
@@ -134,8 +136,8 @@ in three files (two are copies of the same workbook). Counting each distinct
 same service-account templates recur across many dev files. The split is by
 file hash, so near-identical templates appear on both sides.
 
-Recall by credential kind (test, current): adjacent to a header 26/27,
-inline 35/49, password-table column 0/100. The fixes dropped 14 inline
+Recall by credential kind (test): adjacent to a header 26/27, inline 35/49,
+password-table column 0/100 in 0.2.0 and 47/100 on main. The fixes dropped 14 inline
 credentials on purpose: phone dial-in PINs (`(800) ... PIN nnnnnn`) and
 `password for X = y` notes no longer match, because the looser patterns
 were mostly false positives on dev.
@@ -143,6 +145,44 @@ were mostly false positives on dev.
 Remaining false positives on dev are a form label such as `Password:` with
 an empty value cell pairing with the next label (`Included Deals`, `Date`,
 `Region`) or a database name, and a help-desk log whose category column is
-literally "Password". The largest
-recall gap is password tables (a `Password` column with one credential per
-row), which no detector handles yet.
+literally "Password".
+
+## Credential tables (2026-10-13)
+
+A credential table is a `Password` column with one account per row (issue #6).
+In 0.2.0 it was the largest recall gap: 0 of 100 test credentials.
+
+**Answer key on dev.** `keyword_pool.py --split dev` found every
+password-family keyword cell; `table_columns.py design|holdout` collected each
+one with at least two cells below it, and every such column was reviewed (credential column or not, then cell exceptions such as
+prose or placeholders). The key is independent of the detector's rule. It
+lists 46 table credentials (`creds_dev_tables.json`, cells only, no values):
+27 in one file in buckets 1-2 and 19 in two files in buckets 3-4, plus 2
+cells labelled unsure. Credential tables are rare: of the 2,045 candidate
+columns (triaged by header text; the 240 under a credential label reviewed one
+by one), the rest were help-desk logs (`Password` as a ticket category),
+login-form templates, trading-book codes (`...-PW`, PW meaning power), parts
+lists (`PIN`) and place names.
+
+**Design and holdout.** Dev was split by hash before any column was viewed:
+buckets 1-2 for design, 3-4 held out. The rule designed on buckets 1-2 (a
+username label in the header row, a column of single tokens, one blank row
+allowed) found 27/27 there and **0/19 on the held-out half**, with no false
+positive on either half: one held-out table labels its account column `ID`,
+which is not a username label, and the other has no account column at all.
+`ID`, `UID`, `Login ID` and `Logon ID` were then accepted for tables only, so
+the held-out half is no longer out of sample for that change. All of dev:
+44/46 found, 0 false positives, 2 earlier false positives removed, no
+labelled true positive lost.
+
+**Test, run once.** The frozen rule found 47/100 test table credentials (25
+of 45 distinct values), all true positives; test precision rose from 67.8% to
+80.6% and recall from 34.7% to 61.4%. Only part of that is independent
+evidence: 39 of the 47 are in two copies of the same contacts workbook whose
+dev copy is the held-out table that motivated `ID`. The one unrelated
+workbook gives 8 of 31. The test split is now spent for this detector; it
+was not inspected to explain the misses.
+
+The remaining recall gaps are tables without an account column and the
+remaining rows of the test tables, which need a fresh set of files to work
+on without overfitting.

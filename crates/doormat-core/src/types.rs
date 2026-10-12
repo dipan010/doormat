@@ -101,6 +101,22 @@ pub const NEIGHBOR_RADIUS: i32 = 3;
 pub const RELATIONSHIP_THRESHOLD: f32 = 120.0;
 /// Minimum value length to be considered a credential candidate.
 pub const MIN_CANDIDATE_LENGTH: usize = 4;
+/// Confidence of a value found in a credential table column.
+pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
+/// A credential table needs at least this many rows below its header.
+pub const TABLE_MIN_ROWS: usize = 2;
+/// Longest run of rows read below a credential table header.
+pub const TABLE_MAX_ROWS: u32 = 1000;
+/// Extra labels (normalized) that name the account column of a credential
+/// table, beside the general username labels. A bare `ID` is too common to
+/// count as a username anywhere else.
+pub const TABLE_USERNAME_LABELS: &[&str] = &["id", "uid", "loginid", "logonid"];
+/// Empty rows allowed between two rows of a credential table column.
+pub const TABLE_MAX_GAP: u32 = 1;
+/// Share of a column's cells that must look like single tokens.
+pub const TABLE_TOKEN_SHARE: f32 = 0.8;
+/// Shortest cell reported from a credential table column.
+pub const TABLE_MIN_VALUE_LEN: usize = 3;
 
 // ---------- Entropy constants ----------
 

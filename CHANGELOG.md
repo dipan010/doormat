@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Credential tables: a `Password` column with one account per row is reported row by row (`reason` `table_column`, confidence 190). The column qualifies only when a username or ID label shares its header row and at least 80% of the cells below are single tokens, so help-desk logs, form templates and notes columns do not. On the Enron corpus it finds 44 of 46 table credentials on dev and 47 of 100 on test, with no false positives; see `bench/corpus/README.md` for which parts of that are independent
+
+### Fixed
+
+- `docs/how-it-works.md` pointed to the wrong steps for the inline pattern and formula handling, and ended with a stray `EOF` line
+
+### Validation
+
+- Credential-table answer key for dev (`bench/corpus/creds_dev_tables.json`), built from the keyword pool independently of the detector; `evaluate.py` reports `table_column` findings as their own pathway
+- New fixture `15_credential_table.xlsx`
+
 ## [0.2.0] - 2026-10-13
 
 First release under the name `doormat` (previously `gridmap`, never published).

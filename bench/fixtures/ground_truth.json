@@ -41,5 +41,10 @@
   "13_no_credentials.xlsx": [],
   "14_merged_cells.xlsx": [
     {"key": "Password", "value": "M3rg3d!x", "min_confidence": 120, "reason_contains": "distance"}
+  ],
+  "15_credential_table.xlsx": [
+    {"key": "Password", "value": "Xy7!fake", "min_confidence": 120, "reason_contains": "table_column"},
+    {"key": "Password", "value": "Qw3#fake", "min_confidence": 120, "reason_contains": "table_column"},
+    {"key": "Password", "value": "Zz9$fake", "min_confidence": 120, "reason_contains": "table_column"}
   ]
 }

@@ -30,7 +30,7 @@ CREDS_PATH = CORPUS_DIR / "creds_test.json"
 
 def _pathway(reason: str) -> str:
     """Collapse a reason string to its detection pathway."""
-    for kind in ("inline_same_cell", "formula", "comment", "split_password"):
+    for kind in ("inline_same_cell", "formula", "comment", "split_password", "table_column"):
         if kind in reason:
             return kind
     return "spatial"
