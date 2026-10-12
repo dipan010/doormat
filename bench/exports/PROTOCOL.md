@@ -127,4 +127,11 @@ Per split, and per family, variant and source grade within it:
 
 ## Amendments
 
-None yet.
+1. **2026-10-13, after the baseline on design and holdout.** For a TOTP
+   credential stored as an `otpauth://` URI (Apple `OTPAuth`), a finding on
+   that cell is also a true positive when its value is exactly the URI's
+   `secret` parameter. Reason: the secret, not the URI, is the credential, and
+   the original definition (value equals the cell) would count a correct
+   finding as a false positive. Prompted by the holdout baseline (75 such
+   findings), so the holdout split is no longer clean for any change to how
+   inline values are delimited; that change will be validated on test only.
