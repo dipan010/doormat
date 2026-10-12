@@ -101,3 +101,39 @@ def test_rows_after_a_long_repeated_row_keep_their_numbers(tmp_path):
 
     found = doormat.load(path).credentials(120)
     assert [(c.row, c.coordinate) for c in found] == [(1501, "B1501")]
+
+
+def test_ods_xml_entity_declarations_are_rejected(tmp_path):
+    """odfpy parses content.xml with defusedxml, so entity declarations are refused."""
+    import zipfile
+
+    pytest.importorskip("odf")
+    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf.table import Table, TableCell, TableRow
+    from odf.text import P
+
+    import doormat
+
+    doc = OpenDocumentSpreadsheet()
+    table = Table(name="S1")
+    row = TableRow()
+    cell = TableCell()
+    cell.addElement(P(text="Password"))
+    row.addElement(cell)
+    table.addElement(row)
+    doc.spreadsheet.addElement(table)
+    clean = tmp_path / "clean.ods"
+    doc.save(str(clean))
+
+    evil = tmp_path / "entities.ods"
+    with zipfile.ZipFile(clean) as src, zipfile.ZipFile(evil, "w") as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            if item.filename == "content.xml":
+                marker = b"<office:document-content"
+                assert marker in data
+                data = data.replace(marker, b'<!DOCTYPE r [<!ENTITY e "x">]>' + marker, 1)
+            dst.writestr(item, data)
+
+    with pytest.raises(ValueError):
+        doormat.load(evil)

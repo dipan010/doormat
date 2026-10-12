@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  # Manual runs build and smoke-test every artifact but never publish.
+  # Manual runs build and test every artifact but never publish.
   workflow_dispatch:
 
 permissions:
@@ -11,53 +11,50 @@ permissions:
 
 jobs:
   wheels:
-    name: Wheel ${{ matrix.platform.os }} ${{ matrix.platform.target }}
+    name: Wheel ${{ matrix.platform.name }}
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
       matrix:
-        # One abi3 wheel per platform covers CPython 3.10 and newer.
-        # smoke: the runner can execute the wheel natively, so install and test it.
+        # One abi3 wheel per platform covers CPython 3.10 and newer. Every wheel is
+        # built on a runner of its own architecture so it can be installed and tested.
         platform:
-          - { os: linux, runner: ubuntu-latest, target: x86_64, smoke: true }
-          - { os: linux, runner: ubuntu-latest, target: aarch64, smoke: false }
-          - { os: macos, runner: macos-latest, target: aarch64, smoke: true }
-          - { os: macos, runner: macos-latest, target: x86_64, smoke: false }
-          - { os: windows, runner: windows-latest, target: x64, smoke: true }
+          - { name: linux-x86_64, runner: ubuntu-latest, target: x86_64, manylinux: auto, arch: x64 }
+          - { name: linux-aarch64, runner: ubuntu-24.04-arm, target: aarch64, manylinux: auto, arch: arm64 }
+          - { name: musllinux-x86_64, runner: ubuntu-latest, target: x86_64, manylinux: musllinux_1_2, arch: x64, alpine: true }
+          - { name: musllinux-aarch64, runner: ubuntu-24.04-arm, target: aarch64, manylinux: musllinux_1_2, arch: arm64, alpine: true }
+          - { name: macos-arm64, runner: macos-latest, target: aarch64, manylinux: auto, arch: arm64 }
+          - { name: macos-x86_64, runner: macos-15-intel, target: x86_64, manylinux: auto, arch: x64 }
+          - { name: windows-x64, runner: windows-latest, target: x64, manylinux: auto, arch: x64 }
+          - { name: windows-arm64, runner: windows-11-arm, target: aarch64, manylinux: auto, arch: arm64 }
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+          architecture: ${{ matrix.platform.arch }}
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          manylinux: auto
+          manylinux: ${{ matrix.platform.manylinux }}
           args: --release --out dist
       - name: Smoke-test the wheel
-        if: matrix.platform.smoke
+        if: ${{ !matrix.platform.alpine }}
         shell: bash
         run: |
           python -m pip install dist/*.whl
-          python - <<'PY'
-          import pathlib, tempfile
-          import openpyxl
-          import doormat
-
-          wb = openpyxl.Workbook()
-          wb.active["A1"] = "Password"
-          wb.active["B1"] = "s3cret!!"
-          path = pathlib.Path(tempfile.mkdtemp()) / "smoke.xlsx"
-          wb.save(path)
-
-          found = doormat.load(path).credentials(min_confidence=120)
-          assert [(c.sheet, c.coordinate, c.value) for c in found] == [("Sheet", "B1", "s3cret!!")], found
-          print("doormat", doormat.__version__, "wheel OK")
-          PY
+          python .github/scripts/smoke_test.py
+      - name: Smoke-test the wheel on Alpine (musl)
+        if: ${{ matrix.platform.alpine }}
+        run: >-
+          docker run --rm -v "$PWD:/w" -w /w python:3.13-alpine
+          sh -c "pip install --root-user-action=ignore dist/*.whl && python .github/scripts/smoke_test.py"
       - uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.platform.os }}-${{ matrix.platform.target }}
+          name: wheels-${{ matrix.platform.name }}
           path: dist
 
   sdist:
@@ -65,6 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -87,30 +86,55 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - name: Expect five wheels and one sdist with one version, matching the tag on tag pushes
+      - name: Install checkers
+        run: python -m pip install --upgrade pip packaging twine abi3audit
+      - name: Exactly one wheel per expected platform, one version, matching the tag
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          python -m pip install --upgrade packaging twine
           python - <<'PY'
-          import os, pathlib
+          import os, pathlib, re
           from packaging.utils import parse_sdist_filename, parse_wheel_filename
 
+          expected = {
+              "linux x86_64 (glibc)": r"manylinux.*_x86_64",
+              "linux aarch64 (glibc)": r"manylinux.*_aarch64",
+              "linux x86_64 (musl)": r"musllinux_1_2_x86_64",
+              "linux aarch64 (musl)": r"musllinux_1_2_aarch64",
+              "macos arm64": r"macosx_.*_arm64",
+              "macos x86_64": r"macosx_.*_x86_64",
+              "windows x64": r"win_amd64",
+              "windows arm64": r"win_arm64",
+          }
           files = sorted(pathlib.Path("dist").iterdir())
           wheels = [f for f in files if f.suffix == ".whl"]
           sdists = [f for f in files if f.name.endswith(".tar.gz")]
-          assert len(wheels) == 5 and len(sdists) == 1, [f.name for f in files]
-          versions = {parse_wheel_filename(f.name)[1] for f in wheels}
-          versions |= {parse_sdist_filename(f.name)[1] for f in sdists}
+          assert len(sdists) == 1, [f.name for f in sdists]
+
+          versions = {parse_sdist_filename(sdists[0].name)[1]}
+          platforms = []
+          for wheel in wheels:
+              _, version, _, tags = parse_wheel_filename(wheel.name)
+              versions.add(version)
+              assert {(t.interpreter, t.abi) for t in tags} == {("cp310", "abi3")}, wheel.name
+              platforms.append(sorted(t.platform for t in tags))
+          for label, pattern in expected.items():
+              hits = [p for p in platforms if any(re.fullmatch(pattern, tag) for tag in p)]
+              assert len(hits) == 1, f"{label}: {len(hits)} wheels match {pattern}: {platforms}"
+          assert len(wheels) == len(expected), [w.name for w in wheels]
+
           assert len(versions) == 1, versions
           version = versions.pop()
           if os.environ["REF_TYPE"] == "tag":
               tag = os.environ["REF_NAME"].removeprefix("v")
               assert str(version) == tag, f"tag v{tag} does not match package version {version}"
-          print("version", version, "-", len(files), "files")
+          print(f"version {version}: {len(wheels)} wheels + sdist")
           PY
-          twine check --strict dist/*
+      - name: Wheels use only the stable ABI (abi3audit)
+        run: abi3audit --strict --report dist/*.whl
+      - name: Metadata and README render (twine check)
+        run: twine check --strict dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: dist
@@ -151,3 +175,38 @@ jobs:
           name: dist
           path: dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  verify:
+    name: Install from index on ${{ matrix.runner }}
+    needs: [publish-testpypi, publish-pypi]
+    if: ${{ !cancelled() && (needs.publish-testpypi.result == 'success' || needs.publish-pypi.result == 'success') }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest, windows-11-arm]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          architecture: ${{ contains(matrix.runner, 'arm') && 'arm64' || (matrix.runner == 'macos-latest' && 'arm64' || 'x64') }}
+      - name: Install the published release (retries while the index propagates)
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          INDEX_URL: ${{ contains(github.ref_name, 'rc') && 'https://test.pypi.org/simple/' || 'https://pypi.org/simple/' }}
+        run: |
+          version="${REF_NAME#v}"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if python -m pip install --no-cache-dir --index-url "$INDEX_URL" \
+                 --extra-index-url https://pypi.org/simple/ "doormat==$version"; then
+              break
+            fi
+            [ "$attempt" = 10 ] && exit 1
+            sleep 30
+          done
+      - name: Smoke-test the installed release
+        run: python .github/scripts/smoke_test.py
