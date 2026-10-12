@@ -7,20 +7,28 @@ ImportError is raised when this extractor is called.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-from doormat._types import Sheet
+from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
 
 
-def extract_xls(filepath: str | Path) -> list[Sheet]:
+def extract_xls(
+    filepath: str | Path,
+    on_sheet_error: SheetErrorHandler | None = None,
+) -> list[Sheet]:
     """Extract cells from a legacy .xls file as raw cell tuples.
 
     Requires ``xlrd >= 2.0``. Installs via ``pip install doormat[xls]``.
 
     Args:
         filepath: Path to the .xls file.
+        on_sheet_error: Called with the sheet name and error when a sheet
+            cannot be read; extraction continues with the next sheet. If
+            None, the error is raised.
 
     Returns:
-        A list of lists, one inner list of 7-element tuples per sheet.
+        A list of lists, one inner list of 7-element tuples per sheet that
+        was read.
         Each tuple is
         ``(row, col, value, formula, comment, sheet_name, is_merged_origin)``.
         Formula and comment are always ``""`` (xlrd v2 does not expose
@@ -38,52 +46,66 @@ def extract_xls(filepath: str | Path) -> list[Sheet]:
         ) from None
 
     filepath = Path(filepath)
-    book = xlrd.open_workbook(filepath, formatting_info=False)
+    # on_demand parses each sheet only when it is requested, so one malformed
+    # sheet does not stop the others from being read.
+    book = xlrd.open_workbook(filepath, formatting_info=False, on_demand=True)
+    sheet_errors = (*SHEET_ERRORS, xlrd.XLRDError)
 
     try:
         sheets: list[Sheet] = []
-        for sheet_idx in range(book.nsheets):
-            sheet = book.sheet_by_index(sheet_idx)
-            sheet_name = sheet.name
-
-            # Hidden sheets: visibility 0=visible, 1=hidden, 2=very hidden
-            if sheet.visibility in (1, 2):
-                sheet_name = f"{sheet_name}[HIDDEN]"
-
-            # Build set of merged-cell origins
-            merge_origins: set[tuple[int, int]] = set()
-            for rlo, _rhi, clo, _chi in sheet.merged_cells:
-                # xlrd uses 0-based, convert to 1-based
-                merge_origins.add((rlo + 1, clo + 1))
-
-            cells: Sheet = []
-            for row_idx in range(sheet.nrows):
-                for col_idx in range(sheet.ncols):
-                    cell = sheet.cell(row_idx, col_idx)
-                    if cell.ctype == xlrd.XL_CELL_EMPTY:
-                        continue
-
-                    raw = cell.value
-                    if cell.ctype == xlrd.XL_CELL_NUMBER and float(raw).is_integer():
-                        # xlrd returns every number as a float; a numeric
-                        # password 12345678 must not be reported as "12345678.0"
-                        value = str(int(raw))
-                    else:
-                        value = str(raw) if raw != "" else ""
-                    if not value:
-                        continue
-
-                    # Convert to 1-based indices
-                    r = row_idx + 1
-                    c = col_idx + 1
-                    is_merged_origin = (r, c) in merge_origins
-
-                    cells.append(
-                        (r, c, value, "", "", sheet_name, is_merged_origin)
-                    )
-
-            sheets.append(cells)
+        for sheet_idx, name in enumerate(book.sheet_names()):
+            try:
+                sheets.append(_extract_sheet(book.sheet_by_index(sheet_idx)))
+            except sheet_errors as exc:
+                if on_sheet_error is None:
+                    raise
+                on_sheet_error(name, exc)
     finally:
         book.release_resources()
 
     return sheets
+
+
+def _extract_sheet(sheet: Any) -> Sheet:
+    """Extract one xlrd sheet as raw cell tuples."""
+    import xlrd
+
+    sheet_name = sheet.name
+
+    # Hidden sheets: visibility 0=visible, 1=hidden, 2=very hidden
+    if sheet.visibility in (1, 2):
+        sheet_name = f"{sheet_name}[HIDDEN]"
+
+    # Build set of merged-cell origins
+    merge_origins: set[tuple[int, int]] = set()
+    for rlo, _rhi, clo, _chi in sheet.merged_cells:
+        # xlrd uses 0-based, convert to 1-based
+        merge_origins.add((rlo + 1, clo + 1))
+
+    cells: Sheet = []
+    for row_idx in range(sheet.nrows):
+        for col_idx in range(sheet.ncols):
+            cell = sheet.cell(row_idx, col_idx)
+            if cell.ctype == xlrd.XL_CELL_EMPTY:
+                continue
+
+            raw = cell.value
+            if cell.ctype == xlrd.XL_CELL_NUMBER and float(raw).is_integer():
+                # xlrd returns every number as a float; a numeric
+                # password 12345678 must not be reported as "12345678.0"
+                value = str(int(raw))
+            else:
+                value = str(raw) if raw != "" else ""
+            if not value:
+                continue
+
+            # Convert to 1-based indices
+            r = row_idx + 1
+            c = col_idx + 1
+            is_merged_origin = (r, c) in merge_origins
+
+            cells.append(
+                (r, c, value, "", "", sheet_name, is_merged_origin)
+            )
+
+    return cells

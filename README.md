@@ -75,7 +75,8 @@ Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 | `doormat.load(path, *, max_uncompressed_bytes=512 MiB)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension, a file whose signature does not match it, or a zip-based file that looks like a zip bomb. `max_uncompressed_bytes=None` lifts the size limit. |
 | `GridDoc.credentials(min_confidence=0.0)` | Relationships at or above a confidence score. `120` is a sensible default; scores above `200` are high-confidence inline or formula detections. |
 | `GridDoc.relationships()` | Every inferred key/value relationship, regardless of score. |
-| `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook. |
+| `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook (sheets that were read). |
+| `GridDoc.errors`, `GridDoc.complete` | A sheet that cannot be parsed does not stop the scan: it is listed in `errors` as a `SheetError(sheet, kind, message)` and the other sheets are still scanned. `complete` is `True` when every sheet was read; check it when a scan must be exhaustive. |
 | `Relationship` | Frozen dataclass: `key`, `value`, `confidence`, `reason` (a `;`-separated breakdown of the score), and where it was found: `sheet`, `row`, `col` (1-based), `header_row`, `header_col` and `hidden` (the sheet is hidden). |
 | `Relationship.coordinate`, `.header_coordinate` | Spreadsheet references of the value and label cells, e.g. `"B3"` and `"A3"`. |
 

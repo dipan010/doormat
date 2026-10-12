@@ -52,10 +52,29 @@ it, so logging findings is safe; printing `.value` is not.
 Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 ```
 
+## Damaged sheets
+
+A sheet that cannot be parsed does not stop the scan. It is listed in
+`doc.errors` and the other sheets are still scanned. When a scan must be
+exhaustive, for example a CI gate, check `doc.complete`:
+
+```python
+doc = doormat.load("export.xlsx")
+for err in doc.errors:
+    print(f"could not read sheet {err.sheet!r}: {err.kind}")
+if not doc.complete:
+    raise SystemExit(2)
+```
+
+`err.message` holds the parser's message, which can quote file content, so
+`repr()` of a `SheetError` leaves it out. Problems with the file as a whole
+(missing, wrong format, zip bomb, unreadable workbook structure) still raise.
+
 ## Untrusted files
 
-`load()` refuses XML entity attacks and zip bombs with `ValueError`. Zip-based
-files declaring more than 512 MiB are refused by default:
+`load()` refuses zip bombs with `ValueError`, and refuses XML entity attacks:
+a worksheet that declares entities is skipped and listed in `doc.errors`.
+Zip-based files declaring more than 512 MiB are refused by default:
 
 ```python
 doormat.load("huge.xlsx", max_uncompressed_bytes=2 * 1024**3)  # allow 2 GiB

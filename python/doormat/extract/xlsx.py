@@ -5,72 +5,88 @@ Only cells present in the file are visited, never the declared sheet range.
 
 openpyxl's loader also parses workbook parts doormat never uses, and a
 malformed one makes the whole file unreadable. ``_CellReader`` reads only what
-extraction needs. It relies on openpyxl internals, so openpyxl is pinned below 4
-and regression tests build each malformed part.
+extraction needs, one sheet at a time, so a malformed sheet can be reported
+while the others are still read. It relies on openpyxl internals, so openpyxl
+is pinned below 4 and regression tests build each malformed part.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from openpyxl.cell.cell import MergedCell
+from openpyxl.comments.comment_sheet import CommentSheet
+from openpyxl.packaging.relationship import (
+    RelationshipList,
+    get_dependents,
+    get_rels_path,
+)
 from openpyxl.reader.excel import ExcelReader
-from openpyxl.reader.workbook import WorkbookParser
 from openpyxl.styles.stylesheet import apply_stylesheet
+from openpyxl.worksheet._reader import WorksheetReader
 from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.xml.constants import COMMENTS_NS
+from openpyxl.xml.functions import fromstring
 
-from doormat._types import Sheet
-
-
-class _NoPivotCaches(dict[int, Any]):
-    """Pivot-cache lookup that resolves every cache id to ``None``."""
-
-    def __missing__(self, key: int) -> None:
-        return None
-
-
-class _CellsOnlyParser(WorkbookParser):
-    """Workbook parser that skips pivot caches.
-
-    A pivot cache is a copy of the pivot's source data; the values a pivot
-    table shows are stored in the sheet's cells. Parsing caches only adds ways
-    to fail (a ``-`` where a number belongs raises ``TypeError``).
-    """
-
-    @property
-    def pivot_caches(self) -> dict[int, Any]:
-        return _NoPivotCaches()
+from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
 
 
 class _CellReader(ExcelReader):
     """openpyxl reader limited to the parts that hold cells.
 
-    Reads shared strings, the sheet list, styles (to recognise dates) and the
-    worksheets with their comments. It skips document properties, the theme,
-    defined names and print settings (an invalid print-titles name such as
-    ``#N/A`` makes openpyxl refuse the file) and external-link caches (broken
-    link parts raise ``KeyError``).
+    ``open()`` reads shared strings, the sheet list and styles (to recognise
+    dates); ``read_worksheet()`` then reads one sheet with its comments. Nothing
+    else is parsed: not document properties, the theme, defined names or print
+    settings (an invalid print-titles name such as ``#N/A`` makes openpyxl refuse
+    the file), pivot tables and their caches (a ``-`` where a number belongs
+    raises ``TypeError``), charts, images or external-link caches (broken link
+    parts raise ``KeyError``).
     """
 
     def __init__(self, filepath: Path) -> None:
         super().__init__(filepath, data_only=False, keep_links=False)
 
-    def read_workbook(self) -> None:
-        super().read_workbook()
-        # openpyxl constructs the parser inside read_workbook; retype it rather
-        # than copy that method, so only pivot-cache handling changes.
-        self.parser.__class__ = _CellsOnlyParser
+    def open(self) -> None:
+        """Read everything the worksheets depend on."""
+        self.read_manifest()
+        self.read_strings()
+        self.read_workbook()
+        apply_stylesheet(self.archive, self.wb)
 
-    def read(self) -> None:
-        try:
-            self.read_manifest()
-            self.read_strings()
-            self.read_workbook()
-            apply_stylesheet(self.archive, self.wb)
-            self.read_worksheets()
-        finally:
-            self.archive.close()
+    def worksheet_parts(self) -> Iterator[tuple[Any, Any]]:
+        """Yield ``(sheet, relationship)`` for each worksheet, skipping chartsheets."""
+        for sheet, rel in self.parser.find_sheets():
+            if rel.target in self.valid_files and "chartsheet" not in rel.Type:
+                yield sheet, rel
+
+    def read_worksheet(self, sheet: Any, rel: Any) -> Worksheet:
+        """Read one worksheet's cells, merged ranges, comments and visibility."""
+        rels_path = get_rels_path(rel.target)  # type: ignore[no-untyped-call]
+        rels = RelationshipList()
+        if rels_path in self.valid_files:
+            rels = get_dependents(self.archive, rels_path)
+
+        ws = Worksheet(self.wb, title=sheet.name)
+        ws._rels = rels  # type: ignore[attr-defined]  # hyperlinks resolve through it
+        with self.archive.open(rel.target) as fh:
+            WorksheetReader(ws, fh, self.shared_strings, self.data_only, self.rich_text).bind_all()
+
+        for comments_rel in rels.find(COMMENTS_NS):
+            tree = fromstring(self.archive.read(comments_rel.target))
+            comment_sheet = CommentSheet.from_tree(tree)  # type: ignore[arg-type]
+            if comment_sheet is None:
+                continue
+            for ref, comment in comment_sheet.comments:
+                cell = ws[ref]
+                # A merged cell other than the range's origin cannot hold a comment.
+                if not isinstance(cell, MergedCell):
+                    cell.comment = comment
+
+        ws.sheet_state = sheet.state
+        return ws
 
 
 def clean_comment(raw_text: str) -> str:
@@ -171,7 +187,10 @@ def extract_single_sheet(
     return cells
 
 
-def extract_xlsx(filepath: str | Path) -> list[Sheet]:
+def extract_xlsx(
+    filepath: str | Path,
+    on_sheet_error: SheetErrorHandler | None = None,
+) -> list[Sheet]:
     """Open an xlsx/xlsm workbook and extract all sheets as raw cell tuples.
 
     The workbook is opened exactly once with data_only=False to
@@ -179,23 +198,28 @@ def extract_xlsx(filepath: str | Path) -> list[Sheet]:
 
     Args:
         filepath: Path to the xlsx or xlsm file.
+        on_sheet_error: Called with the sheet name and error when a sheet
+            cannot be read; extraction continues with the next sheet. If
+            None, the error is raised.
 
     Returns:
-        A list of lists, one inner list of 7-element tuples per sheet.
-        Each tuple contains (row, col, value, formula, comment,
+        A list of lists, one inner list of 7-element tuples per sheet that
+        was read. Each tuple contains (row, col, value, formula, comment,
         sheet_name, is_merged_origin).
     """
     reader = _CellReader(Path(filepath))
-    reader.read()
-    wb = reader.wb
-
     try:
+        reader.open()
         sheets: list[Sheet] = []
-        # wb.worksheets excludes chartsheets, which hold no cells
-        for ws in wb.worksheets:
-            cells = extract_single_sheet(ws, ws.title, ws.sheet_state)
-            sheets.append(cells)
+        for sheet, rel in reader.worksheet_parts():
+            try:
+                ws = reader.read_worksheet(sheet, rel)
+                sheets.append(extract_single_sheet(ws, ws.title, ws.sheet_state))
+            except SHEET_ERRORS as exc:
+                if on_sheet_error is None:
+                    raise
+                on_sheet_error(sheet.name, exc)
     finally:
-        wb.close()
+        reader.archive.close()
 
     return sheets

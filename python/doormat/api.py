@@ -108,19 +108,48 @@ class Relationship:
 
 
 @dataclass(frozen=True)
+class SheetError:
+    """A sheet that could not be read. The other sheets were still scanned.
+
+    Attributes:
+        sheet: Name of the sheet, as stored in the file.
+        kind: Name of the exception that stopped it, e.g. ``"TypeError"``.
+        message: The exception's message. Parsers sometimes quote the content
+            they failed on, so treat it like file content: ``repr()`` omits it.
+    """
+
+    sheet: str
+    kind: str
+    message: str
+
+    def __repr__(self) -> str:
+        return f"SheetError(sheet={self.sheet!r}, kind={self.kind!r})"
+
+
+@dataclass(frozen=True)
 class GridDoc:
     """Result of processing a spreadsheet file through the doormat engine.
 
     Attributes:
         filepath: Path to the source spreadsheet file.
-        sheet_count: Number of sheets (or 1 for single-sheet formats like CSV).
-        cell_count: Total number of non-empty cells across all sheets.
+        sheet_count: Number of sheets read (1 for CSV and TSV). Sheets that
+            could not be read are not counted; they are listed in ``errors``.
+        cell_count: Total number of non-empty cells across the sheets read.
+        errors: One entry per sheet that could not be read. Its findings are
+            missing, so a scan that must be exhaustive should check
+            ``complete``.
     """
 
     filepath: Path
     sheet_count: int
     cell_count: int
     _relationships: list[Relationship] = field(repr=False)
+    errors: tuple[SheetError, ...] = ()
+
+    @property
+    def complete(self) -> bool:
+        """True if every sheet in the file was read."""
+        return not self.errors
 
     def relationships(self) -> list[Relationship]:
         """Return all inferred key-value relationships.
@@ -156,6 +185,11 @@ def load(
     Supports .xlsx, .xlsm, .xls, .csv, .tsv, and .ods formats.
     Opens the file, extracts all cells, sends them through the Rust
     detection pipeline, and returns the results as a GridDoc.
+
+    A sheet that cannot be parsed does not stop the scan: it is recorded in
+    ``GridDoc.errors`` and the remaining sheets are scanned. Problems with the
+    file as a whole (missing, wrong format, zip bomb, unreadable workbook
+    structure) raise.
 
     Args:
         filepath: Path to a spreadsheet file. Accepts both str and
@@ -213,7 +247,12 @@ def load(
         if magic_bytes == ZIP_MAGIC:
             check_zip(filepath, max_uncompressed_bytes)
 
-    sheets = extractor(filepath)
+    errors: list[SheetError] = []
+
+    def record(sheet: str, exc: Exception) -> None:
+        errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
+
+    sheets = extractor(filepath, record)
 
     sheet_count = len(sheets)
     cell_count = sum(len(s) for s in sheets)
@@ -241,4 +280,5 @@ def load(
         sheet_count=sheet_count,
         cell_count=cell_count,
         _relationships=rels,
+        errors=tuple(errors),
     )

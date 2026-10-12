@@ -10,10 +10,13 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from doormat._types import Sheet
+from doormat._types import Sheet, SheetErrorHandler
 
 
-def extract_csv(filepath: str | Path) -> list[Sheet]:
+def extract_csv(
+    filepath: str | Path,
+    on_sheet_error: SheetErrorHandler | None = None,
+) -> list[Sheet]:
     """Extract cells from a CSV or TSV file as raw cell tuples.
 
     The delimiter is inferred from the file extension: ``.csv`` uses
@@ -26,6 +29,10 @@ def extract_csv(filepath: str | Path) -> list[Sheet]:
     Args:
         filepath: Path to the CSV or TSV file.
 
+        on_sheet_error: Called with the sheet name and error when the file
+            cannot be decoded or parsed; an empty list is then returned. If
+            None, the error is raised.
+
     Returns:
         A single-element list containing one list of 7-element tuples
         (one "sheet"). Each tuple is
@@ -34,7 +41,8 @@ def extract_csv(filepath: str | Path) -> list[Sheet]:
         always ``False``.
 
     Raises:
-        ValueError: If the file cannot be decoded as UTF-8.
+        ValueError: If the file cannot be decoded as UTF-8 or parsed as
+            delimited text, and ``on_sheet_error`` is None.
     """
     filepath = Path(filepath)
     sheet_name = filepath.stem
@@ -52,9 +60,11 @@ def extract_csv(filepath: str | Path) -> list[Sheet]:
                     cells.append(
                         (row_idx, col_idx, value, "", "", sheet_name, False)
                     )
-    except UnicodeDecodeError as exc:
-        raise ValueError(
-            f"Failed to decode {filepath.name} as UTF-8: {exc}"
-        ) from exc
+    except (UnicodeDecodeError, csv.Error) as exc:
+        error = ValueError(f"Failed to read {filepath.name} as UTF-8 delimited text: {exc}")
+        if on_sheet_error is None:
+            raise error from exc
+        on_sheet_error(sheet_name, error)
+        return []
 
     return [cells]

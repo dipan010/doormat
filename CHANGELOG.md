@@ -24,10 +24,12 @@ First release under the name `doormat` (previously `gridmap`, never published).
 - Renamed the project from `gridmap` to `doormat`, because the PyPI name `gridmap` belongs to another project. The Python import is now `doormat`, the crates are `doormat-core` and `doormat-py`, and the extension module is `doormat._core`. The public API (`load()`, `GridDoc`, `Relationship`) is unchanged
 - `python/gridmap/extract.py` split into the `gridmap.extract` package (now `doormat.extract`) with one module per format; `extract_workbook` kept as an alias for `extract_xlsx`
 - `doormat.load()` dispatches on file extension and raises `ValueError` for unsupported extensions or mismatched file signatures
+- A `.csv` or `.tsv` file that is not valid UTF-8, or has a field over the `csv` module's size limit, is reported in `GridDoc.errors` instead of raising `ValueError`
 - Inline detection no longer matches whitespace-separated forms such as `(800) 555-0100 PIN 1234` or `password for Sheet = x`. On the Enron corpus these patterns were mostly false positives (offshore block names, pipeline interconnect IDs, prose)
 
 ### Added
 
+- A sheet that cannot be parsed no longer fails the whole file. It is listed in `GridDoc.errors` as a `SheetError(sheet, kind, message)` and the other sheets are still scanned; `GridDoc.complete` is `True` only when every sheet was read. `repr(SheetError)` omits the message, which can quote file content. Problems with the file as a whole (missing, wrong format, zip bomb, unreadable workbook structure) still raise
 - Every finding now says where it is: `Relationship.sheet`, `row`, `col` (1-based), `header_row`, `header_col`, `hidden`, and the A1-style `coordinate` and `header_coordinate` properties
 
 ### Changed
@@ -51,7 +53,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 - Release and CI workflows pin every GitHub Action to a commit SHA, do not persist checkout credentials, scope elevated permissions to the jobs that need them, and are audited by zizmor on every push
 - A sheet whose declared range is far larger than its content (one formatted cell at `XFD1048576` claims about 17 billion positions) made the `.xlsx` extractor run indefinitely. It now visits only the cells present in the file. Similarly, an `.ods` cell repeated a billion times was expanded cell by cell; repeated empty cells are now skipped and repeated values are capped at 16,384 columns. Both reproduced with files under 100 KB
 - `.xlsx`, `.xlsm` and `.ods` files are checked for zip bombs before parsing: more than 10,000 archive parts, more than 512 MiB of declared content (configurable with `load(..., max_uncompressed_bytes=...)`), or any part of 10 MiB or more compressed beyond 500:1 is refused with `ValueError`. Limits were calibrated on 15,871 real spreadsheets (largest 353 MB, highest ratio 157:1), none of which are refused. The check reads only the archive directory, so it trusts declared sizes
-- Spreadsheets containing XML entity declarations are rejected with `ValueError` instead of being parsed. `defusedxml` is now a dependency; openpyxl uses it automatically, which blocks entity-expansion attacks ("billion laughs") and external entities in `.xlsx` files
+- XML containing entity declarations is refused instead of being parsed: in a worksheet, that sheet is skipped and reported in `GridDoc.errors`; in the workbook structure, `load()` raises `ValueError`. `defusedxml` is now a dependency; openpyxl uses it automatically, which blocks entity-expansion attacks ("billion laughs") and external entities in `.xlsx` files
 - Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)
 - Updated `crossbeam-epoch` to 0.9.21, resolving RUSTSEC-2026-0204
 - Removed the unmaintained `arrow2` crate (RUSTSEC-2025-0038, no fixed release). `CellStore` now uses plain `Vec` columns; the affected API was never called. `cargo audit` and `cargo deny` report no advisories

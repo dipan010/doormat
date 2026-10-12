@@ -41,11 +41,12 @@ receives already-extracted cell text.
 
 | Attack | Mitigation | Status |
 |---|---|---|
-| XML entity expansion ("billion laughs"), external entities (XXE) | `defusedxml` refuses entity declarations in `.xlsx` and `.ods` XML; `load()` raises `ValueError` | Mitigated, tested |
+| XML entity expansion ("billion laughs"), external entities (XXE) | `defusedxml` refuses entity declarations in `.xlsx` and `.ods` XML. A worksheet that declares entities is skipped and listed in `GridDoc.errors`; anywhere else `load()` raises `ValueError` | Mitigated, tested |
 | Zip bomb (tiny file, huge decompressed parts) | Before parsing, the zip directory is checked: more than 10,000 parts, more than 512 MiB declared (configurable), or a part of 10 MiB or more compressed beyond 500:1 is refused | Mitigated for honest headers, tested with real bombs |
 | Range inflation (one formatted cell at `XFD1048576`, about 17 billion positions) | The `.xlsx` extractor visits only cells present in the file, never the declared range | Mitigated, tested |
 | Repeat inflation in `.ods` (a cell "repeated" a billion times) | Repeated empty cells are skipped; repeated values are capped at 16,384 columns and rows at 1,000 repetitions | Mitigated, tested |
 | Secret leaking into logs | `repr(Relationship)` omits the value; doormat logs nothing | Mitigated |
+| A malformed sheet hides the rest of the workbook | Each sheet is parsed separately; one that fails is listed in `GridDoc.errors` and the others are still scanned | Mitigated, tested |
 | Wrong location reported | Findings carry sheet, row and column from the file; regressions are tested (e.g. repeated ODS rows) | Mitigated |
 | Evasion: secret with no label near it | Not detectable by design; doormat finds labelled secrets | Not mitigated |
 | Evasion: label in a language or form doormat does not know | Keyword lists are finite | Partially mitigated |
@@ -62,8 +63,11 @@ receives already-extracted cell text.
 - **Third-party parsers.** openpyxl, odfpy and xlrd parse untrusted input in
   pure Python. A bug in them is a bug in doormat's attack surface; Dependabot
   and `pip-audit` watch for published advisories.
-- **One bad sheet fails the whole file.** If a parser rejects part of a
-  workbook, `load()` raises and no findings are returned for its other sheets.
+- **A sheet that cannot be parsed is not scanned.** `load()` reports it in
+  `GridDoc.errors` and scans the other sheets, so its secrets are missed.
+  Callers that need an exhaustive scan must check `GridDoc.complete`. An
+  `.ods` file keeps all sheets in one XML document, so damage there still
+  fails the whole file.
 
 ## Recommendations for deployment
 

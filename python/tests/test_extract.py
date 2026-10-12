@@ -389,5 +389,22 @@ def test_xml_entity_declarations_are_rejected(tmp_xlsx):
                 assert b"<!DOCTYPE" in data
             dst.writestr(item, data)
 
+    doc = doormat.load(evil)
+    assert [(e.sheet, e.kind) for e in doc.errors] == [("Sheet", "EntitiesForbidden")]
+    assert doc.credentials() == []
+    assert not doc.complete
+
+
+def test_xml_entity_declarations_in_workbook_structure_raise(tmp_xlsx):
+    import doormat
+
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "x"
+    clean = tmp_xlsx(wb)
+    wb.close()
+
+    evil = _rewrite(clean, "entities_wb.xlsx", {
+        "xl/workbook.xml": (b"<workbook", b'<!DOCTYPE workbook [<!ENTITY e "x">]><workbook'),
+    })
     with pytest.raises(ValueError):
         doormat.load(evil)
