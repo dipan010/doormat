@@ -7,7 +7,15 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 dist/
+
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+lcov.info
 
 # Compiled extension written into the source tree by `maturin develop`
 *.so
