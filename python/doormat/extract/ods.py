@@ -140,6 +140,5 @@ def _get_text(element: Any) -> str:
     if hasattr(element, "data"):
         parts.append(element.data)
     if hasattr(element, "childNodes"):
-        for child in element.childNodes:
-            parts.append(_get_text(child))
+        parts.extend(_get_text(child) for child in element.childNodes)
     return "".join(parts)
