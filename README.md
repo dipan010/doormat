@@ -10,7 +10,7 @@
   <a href="https://dipan010.github.io/doormat/"><img alt="Docs" src="https://img.shields.io/badge/docs-dipan010.github.io%2Fdoormat-blue.svg"></a>
   <a href="https://pypi.org/project/doormat/"><img alt="PyPI" src="https://img.shields.io/pypi/v/doormat.svg"></a>
   <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg">
+  <a href="https://pypi.org/project/doormat/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/doormat.svg"></a>
   <img alt="Rust core" src="https://img.shields.io/badge/core-Rust-orange.svg">
   <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-yellow.svg">
 </p>
@@ -144,8 +144,9 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 
 ## Roadmap
 
-- **[0.2.0](https://github.com/dipan010/doormat/milestone/1)**: first PyPI release
+- **[0.2.0](https://github.com/dipan010/doormat/releases/tag/v0.2.0)**: first PyPI release, published 2026-10-13
 - **[0.3.0](https://github.com/dipan010/doormat/milestone/2)**: password-table detection, fewer false positives on empty form fields, faster extraction of large workbooks
+- **[0.4.0](https://github.com/dipan010/doormat/milestone/3)**: proposed command-line scanner with SARIF and JSON output
 
 All planned work is tracked in [milestones](https://github.com/dipan010/doormat/milestones); changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
