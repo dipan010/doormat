@@ -27,3 +27,6 @@ bench/fixtures/*.xlsx
 # Enron corpus data and scan results (third-party data, never committed)
 bench/corpus/data/
 bench/corpus/results/
+
+# Generated evaluation set A (regenerate with bench/exports/generate.py)
+bench/exports/data/
