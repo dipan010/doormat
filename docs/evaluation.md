@@ -30,8 +30,8 @@ measured on dev.
   recall is likely lower.
 - **Results are concentrated.** One directory file holds 31 of the test-split
   true positives, and recurring service-account templates repeat across dev.
-  Counting each distinct (key, value) pair once, precision is 72% on test and
-  31% on dev.
+  Counting each distinct (key, value) pair once, precision is 76% on test and
+  34% on dev.
 - **Labels were assigned by one reviewer**, who also designed the fixes. No
   second-annotator agreement has been measured.
 
@@ -39,8 +39,8 @@ measured on dev.
 
 0.2.0 reads all 15,929 files. The last 4 failures were malformed parts that
 hold no cells (an invalid print-titles name, a pivot cache with `-` where a
-number belongs); the `.xlsx` reader now skips those parts. Reading the whole corpus takes about 63 minutes
-of CPU time.
+number belongs); the `.xlsx` reader now skips those parts. Reading the whole corpus takes about 27 minutes
+of summed per-file time.
 
 ## Reproducing
 

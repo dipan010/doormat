@@ -61,6 +61,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 ### Performance
 
 - Reading `.xlsx` files only visits cells present in the file: total time over the 15,929-file Enron corpus fell from 8,510 s to 3,798 s (-55%), with identical findings
+- The `.xlsx` reader skips parts that hold no cells (pivot tables and caches, charts, images, defined names, document properties, the theme). On 300 Enron files timed back to back it takes 58% less time than openpyxl's own loader, with identical output; summed per-file time over the full corpus is now about 27 minutes
 - Compared with 0.1.0 in the same benchmark session: `process_sheet` about 17% faster (1k and 5k cells) and `process_workbook` about 8% faster (10 sheets of 5k cells), while also resolving each finding's location
 - Dropping `arrow2` moves cell strings instead of copying them into Arrow buffers: `from_raw` is 24% faster, `process_sheet` 12% and `process_workbook` 6% on the criterion benchmarks
 

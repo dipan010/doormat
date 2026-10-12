@@ -96,8 +96,13 @@ belongs) load since the extractor stopped reading parts that hold no cells, so
 all 15,929 files now load. They are dev files and add 2 findings, both false
 positives (an empty `Password:` field pairing with a table header). The same
 change fixed array formulas, which were read as an object description; the 201
-files containing them were rescanned with identical findings. Reading the whole corpus takes about 63
-minutes of CPU time, down from 142. On the largest workbooks, openpyxl
+files containing them were rescanned with identical findings. A full rescan
+(2026-10-12, 4 workers) loaded all 15,929 files, with findings identical to the
+previous scan apart from those 2. Per-file times summed to about 27 minutes,
+down from 63 and originally 142. On 300 files timed back to back, the reader
+that skips parts without cells took 58% less time than openpyxl's own loader,
+with identical output. One 42 MB workbook needs about 52 s and can exceed the
+default 60 s timeout under load. On the largest workbooks, openpyxl
 extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 170k cells).
 
@@ -121,14 +126,15 @@ reported. Formula cells are no longer paired as values: on dev that removed
 19 false positives and added 12 (the header then pairs with a nearby label),
 with no true positive lost.
 
-Read these with the concentration in mind. 31 of the 55 current test true
-positives come from one directory file. 100 of the 169 test credentials sit
-in three files (two are copies of the same workbook). Collapsing duplicate
-(key, value) pairs gives 72% precision on test and 31% on dev, because the
+Read these with the concentration in mind. 31 of the 61 current test true
+positives come from one directory file. 102 of the 176 test credentials sit
+in three files (two are copies of the same workbook). Counting each distinct
+(key, value) pair once gives 76% precision on test (42/55) and 34% on dev
+(17/50), because the
 same service-account templates recur across many dev files. The split is by
 file hash, so near-identical templates appear on both sides.
 
-Recall by credential kind (test, current): adjacent to a header 20/21,
+Recall by credential kind (test, current): adjacent to a header 26/27,
 inline 35/49, password-table column 0/100. The fixes dropped 14 inline
 credentials on purpose: phone dial-in PINs (`(800) ... PIN nnnnnn`) and
 `password for X = y` notes no longer match, because the looser patterns
