@@ -119,7 +119,7 @@ Rust core only, Apple Silicon, criterion.rs on synthetic workbooks:
 | 1 sheet, 5,000 cells | 695 µs |
 | 10 sheets, 5,000 cells each | 2.6 ms |
 
-On very large real workbooks, reading the file with openpyxl dominates: 27.5 s to read a 170,000-cell workbook against 0.1 s of detection.
+On very large real workbooks, reading the file with openpyxl dominates: about 27 s to read a 170,000-cell workbook against 0.1 s of detection.
 
 ## How it works
 

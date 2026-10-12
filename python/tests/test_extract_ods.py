@@ -70,3 +70,34 @@ def test_basic_extraction(sample_ods):
     assert cells[2][:3] == (2, 1, "Token")
     assert cells[3][:3] == (2, 2, "abc123")
     assert cells[0][5] == "Sheet1"
+
+
+def test_rows_after_a_long_repeated_row_keep_their_numbers(tmp_path):
+    """A non-empty row repeated 1,500 times is emitted at most 1,000 times,
+    but the rows after it must still be numbered from 1,501."""
+    pytest.importorskip("odf")
+    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf.table import Table, TableCell, TableRow
+    from odf.text import P
+
+    import doormat
+
+    doc = OpenDocumentSpreadsheet()
+    table = Table(name="S1")
+    filler = TableRow(numberrowsrepeated=1500)
+    cell = TableCell()
+    cell.addElement(P(text="x"))
+    filler.addElement(cell)
+    table.addElement(filler)
+    row = TableRow()
+    for text in ("Password", "s3cret!!"):
+        cell = TableCell()
+        cell.addElement(P(text=text))
+        row.addElement(cell)
+    table.addElement(row)
+    doc.spreadsheet.addElement(table)
+    path = tmp_path / "rows.ods"
+    doc.save(str(path))
+
+    found = doormat.load(path).credentials(120)
+    assert [(c.row, c.coordinate) for c in found] == [(1501, "B1501")]

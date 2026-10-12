@@ -1,7 +1,7 @@
 """Extract raw cell tuples from xlsx/xlsm files via openpyxl.
 
 The workbook is opened exactly once, with data_only=False so formulas are kept.
-Duplicate (row, col) entries merge their comments into the existing cell.
+Only cells present in the file are visited, never the declared sheet range.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def extract_single_sheet(
 
     Hidden or veryHidden sheets get '[HIDDEN]' appended to sheet_name.
     Empty cells (value is None and no formula and no comment) are skipped.
-    Duplicate (row, col) entries merge the comment into the first seen cell.
+    Cells are returned in row-major order.
 
     Args:
         worksheet: An openpyxl Worksheet object.
@@ -72,61 +72,37 @@ def extract_single_sheet(
 
     merge_origins = collect_merge_origins(worksheet)
 
-    # Track seen coordinates for comment merging
-    seen: dict[tuple[int, int], int] = {}
     cells: Sheet = []
 
-    for row in worksheet.iter_rows():
-        for cell in row:
-            if cell.row is None or cell.column is None:
-                continue
+    # Walk only the cells present in the file, in row-major order. iter_rows()
+    # would visit every position in the declared range instead, which a sheet
+    # with formatting on a far corner (A1:XFD1048576) inflates to a billion
+    # positions: a 100 KB file that never finishes. openpyxl keeps the parsed
+    # cells in Worksheet._cells, keyed by (row, column); openpyxl is pinned
+    # below 4 and a regression test guards this.
+    for (r, c), cell in sorted(worksheet._cells.items()):
+        # Extract value and formula
+        raw_value = cell.value
+        formula = ""
+        if isinstance(raw_value, str) and raw_value.startswith("="):
+            formula = raw_value
+            value = raw_value
+        elif raw_value is not None:
+            value = str(raw_value)
+        else:
+            value = ""
 
-            r = cell.row
-            c = cell.column
+        # Extract comment
+        comment = ""
+        if cell.comment is not None:
+            comment = clean_comment(cell.comment.text)
 
-            # Extract value and formula
-            raw_value = cell.value
-            formula = ""
-            if isinstance(raw_value, str) and raw_value.startswith("="):
-                formula = raw_value
-                value = raw_value
-            elif raw_value is not None:
-                value = str(raw_value)
-            else:
-                value = ""
+        # Skip truly empty cells
+        if not value and not formula and not comment:
+            continue
 
-            # Extract comment
-            comment = ""
-            if cell.comment is not None:
-                comment = clean_comment(cell.comment.text)
-
-            # Skip truly empty cells
-            if not value and not formula and not comment:
-                continue
-
-            coord = (r, c)
-            is_merged_origin = coord in merge_origins
-
-            # Duplicate (row, col): merge comment into the existing cell
-            if coord in seen:
-                idx = seen[coord]
-                if comment:
-                    existing = cells[idx]
-                    existing_comment = existing[4]
-                    merged_comment = f"{existing_comment}\n{comment}".strip()
-                    cells[idx] = (
-                        existing[0],
-                        existing[1],
-                        existing[2],
-                        existing[3],
-                        merged_comment,
-                        existing[5],
-                        existing[6],
-                    )
-                continue
-
-            seen[coord] = len(cells)
-            cells.append((r, c, value, formula, comment, sheet_name, is_merged_origin))
+        is_merged_origin = (r, c) in merge_origins
+        cells.append((r, c, value, formula, comment, sheet_name, is_merged_origin))
 
     return cells
 

@@ -46,6 +46,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Security
 
+- A sheet whose declared range is far larger than its content (one formatted cell at `XFD1048576` claims about 17 billion positions) made the `.xlsx` extractor run indefinitely. It now visits only the cells present in the file. Similarly, an `.ods` cell repeated a billion times was expanded cell by cell; repeated empty cells are now skipped and repeated values are capped at 16,384 columns. Both reproduced with files under 100 KB
 - `.xlsx`, `.xlsm` and `.ods` files are checked for zip bombs before parsing: more than 10,000 archive parts, more than 512 MiB of declared content (configurable with `load(..., max_uncompressed_bytes=...)`), or any part of 10 MiB or more compressed beyond 500:1 is refused with `ValueError`. Limits were calibrated on 15,871 real spreadsheets (largest 353 MB, highest ratio 157:1), none of which are refused. The check reads only the archive directory, so it trusts declared sizes
 - Spreadsheets containing XML entity declarations are rejected with `ValueError` instead of being parsed. `defusedxml` is now a dependency; openpyxl uses it automatically, which blocks entity-expansion attacks ("billion laughs") and external entities in `.xlsx` files
 - Upgraded `pyo3` 0.22 to 0.29, resolving RUSTSEC-2025-0020 (buffer overflow risk in `PyString::from_object`) and RUSTSEC-2026-0177 (missing `Sync` bound on closures)
@@ -54,11 +55,14 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Performance
 
+- Reading `.xlsx` files only visits cells present in the file: total time over the 15,929-file Enron corpus fell from 8,510 s to 3,798 s (-55%), with identical findings
 - Compared with 0.1.0 in the same benchmark session: `process_sheet` about 17% faster (1k and 5k cells) and `process_workbook` about 8% faster (10 sheets of 5k cells), while also resolving each finding's location
 - Dropping `arrow2` moves cell strings instead of copying them into Arrow buffers: `from_raw` is 24% faster, `process_sheet` 12% and `process_workbook` 6% on the criterion benchmarks
 
 ### Fixed
 
+- In `.ods` files, rows after a non-empty row repeated more than 1,000 times were reported with the wrong row number
+- Four Enron workbooks that timed out now load; failures on the corpus are down to 4 malformed files that openpyxl rejects
 - Inline detection ran on formula cells, whose value is the formula text, producing a garbled duplicate of the formula finding
 - Inline and formula keyword patterns missed keywords after `_` or `.` (`DB_PASSWORD=x`, `app.pwd: x`, `"API_KEY"`) because `\b` treats `_` as a word character; the formula keyword pattern also matched inside words (`spin`, `monkey`)
 - Workbooks with broken external-link parts raised `KeyError` in openpyxl; external links are now skipped (`keep_links=False`). This recovered 64 of 73 failing files in the Enron corpus

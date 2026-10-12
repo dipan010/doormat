@@ -75,3 +75,52 @@ def test_non_zip_formats_are_not_checked(tmp_path: Path) -> None:
     path = tmp_path / "data.csv"
     path.write_text("Password,s3cret!!\n")
     assert len(doormat.load(path, max_uncompressed_bytes=1).credentials(120)) == 1
+
+
+def test_far_formatted_cell_does_not_inflate_xlsx(tmp_path: Path) -> None:
+    """One styled empty cell at XFD1048576 must not make the extractor walk 17 billion positions."""
+    import time
+
+    from openpyxl.styles import Font
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws["A1"] = "Password"
+    ws["B1"] = "s3cret!!"
+    ws["XFD1048576"].font = Font(bold=True)
+    path = tmp_path / "far.xlsx"
+    wb.save(path)
+    wb.close()
+
+    start = time.perf_counter()
+    found = doormat.load(path).credentials(120)
+    assert time.perf_counter() - start < 5
+    assert [c.coordinate for c in found] == ["B1"]
+
+
+def test_huge_column_repeat_does_not_inflate_ods(tmp_path: Path) -> None:
+    """An empty cell repeated a billion times must not be expanded cell by cell."""
+    import time
+
+    pytest.importorskip("odf")
+    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf.table import Table, TableCell, TableRow
+    from odf.text import P
+
+    doc = OpenDocumentSpreadsheet()
+    table = Table(name="S1")
+    row = TableRow()
+    for text in ("Password", "s3cret!!"):
+        cell = TableCell()
+        cell.addElement(P(text=text))
+        row.addElement(cell)
+    row.addElement(TableCell(numbercolumnsrepeated=1_000_000_000))
+    table.addElement(row)
+    doc.spreadsheet.addElement(table)
+    path = tmp_path / "repeat.ods"
+    doc.save(str(path))
+
+    start = time.perf_counter()
+    found = doormat.load(path).credentials(120)
+    assert time.perf_counter() - start < 5
+    assert [c.coordinate for c in found] == ["B1"]
