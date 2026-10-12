@@ -23,7 +23,7 @@ measured on dev.
 |---|---|---|---|---|
 | test | 0.1.0 | 334 | 16.5% | 31.2% (55 of 176) |
 | test | 0.2.0 | 90 | 67.8% (in sample) | 34.7% (61 of 176) |
-| dev | 0.2.0 | 241 | **59.8%** | not measured |
+| dev | 0.2.0 | 243 | **59.3%** | not measured |
 
 - **Recall is measured against keyword-discoverable credentials.** Credentials
   with no label nearby are invisible to both doormat and the reviewer, so true
@@ -37,8 +37,9 @@ measured on dev.
 
 ## Robustness
 
-0.2.0 reads 15,925 of the 15,929 files (99.97%). The 4 failures are malformed
-workbooks that openpyxl rejects. Reading the whole corpus takes about 63 minutes
+0.2.0 reads all 15,929 files. The last 4 failures were malformed parts that
+hold no cells (an invalid print-titles name, a pivot cache with `-` where a
+number belongs); the `.xlsx` reader now skips those parts. Reading the whole corpus takes about 63 minutes
 of CPU time.
 
 ## Reproducing

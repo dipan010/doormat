@@ -17,3 +17,7 @@
 - `.xls` files expose no formulas or comments through xlrd, so the formula and
   comment pathways do not apply to them. Whole numbers are reported without a
   trailing `.0`.
+- From `.xlsx` and `.xlsm` files doormat reads cell values, formulas
+  (including array formulas), comments, merged ranges and sheet visibility.
+  It does not read defined names, print settings, pivot caches or
+  external-link caches, so a malformed part of that kind does not stop a scan.

@@ -2,16 +2,75 @@
 
 The workbook is opened exactly once, with data_only=False so formulas are kept.
 Only cells present in the file are visited, never the declared sheet range.
+
+openpyxl's loader also parses workbook parts doormat never uses, and a
+malformed one makes the whole file unreadable. ``_CellReader`` reads only what
+extraction needs. It relies on openpyxl internals, so openpyxl is pinned below 4
+and regression tests build each malformed part.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
-import openpyxl
+from openpyxl.reader.excel import ExcelReader
+from openpyxl.reader.workbook import WorkbookParser
+from openpyxl.styles.stylesheet import apply_stylesheet
+from openpyxl.worksheet.formula import ArrayFormula, DataTableFormula
 from openpyxl.worksheet.worksheet import Worksheet
 
 from doormat._types import Sheet
+
+
+class _NoPivotCaches(dict[int, Any]):
+    """Pivot-cache lookup that resolves every cache id to ``None``."""
+
+    def __missing__(self, key: int) -> None:
+        return None
+
+
+class _CellsOnlyParser(WorkbookParser):
+    """Workbook parser that skips pivot caches.
+
+    A pivot cache is a copy of the pivot's source data; the values a pivot
+    table shows are stored in the sheet's cells. Parsing caches only adds ways
+    to fail (a ``-`` where a number belongs raises ``TypeError``).
+    """
+
+    @property
+    def pivot_caches(self) -> dict[int, Any]:
+        return _NoPivotCaches()
+
+
+class _CellReader(ExcelReader):
+    """openpyxl reader limited to the parts that hold cells.
+
+    Reads shared strings, the sheet list, styles (to recognise dates) and the
+    worksheets with their comments. It skips document properties, the theme,
+    defined names and print settings (an invalid print-titles name such as
+    ``#N/A`` makes openpyxl refuse the file) and external-link caches (broken
+    link parts raise ``KeyError``).
+    """
+
+    def __init__(self, filepath: Path) -> None:
+        super().__init__(filepath, data_only=False, keep_links=False)
+
+    def read_workbook(self) -> None:
+        super().read_workbook()
+        # openpyxl constructs the parser inside read_workbook; retype it rather
+        # than copy that method, so only pivot-cache handling changes.
+        self.parser.__class__ = _CellsOnlyParser
+
+    def read(self) -> None:
+        try:
+            self.read_manifest()
+            self.read_strings()
+            self.read_workbook()
+            apply_stylesheet(self.archive, self.wb)
+            self.read_worksheets()
+        finally:
+            self.archive.close()
 
 
 def clean_comment(raw_text: str) -> str:
@@ -81,8 +140,13 @@ def extract_single_sheet(
     # cells in Worksheet._cells, keyed by (row, column); openpyxl is pinned
     # below 4 and a regression test guards this.
     for (r, c), cell in sorted(worksheet._cells.items()):
-        # Extract value and formula
+        # Extract value and formula. Array formulas arrive as objects holding the
+        # formula text; a what-if data table cell has no text of its own.
         raw_value = cell.value
+        if isinstance(raw_value, ArrayFormula):
+            raw_value = raw_value.text
+        elif isinstance(raw_value, DataTableFormula):
+            raw_value = None
         formula = ""
         if isinstance(raw_value, str) and raw_value.startswith("="):
             formula = raw_value
@@ -121,10 +185,9 @@ def extract_xlsx(filepath: str | Path) -> list[Sheet]:
         Each tuple contains (row, col, value, formula, comment,
         sheet_name, is_merged_origin).
     """
-    filepath = Path(filepath)
-    # keep_links=False skips cached external-link parts: doormat never reads
-    # them, and openpyxl raises KeyError when a workbook's link parts are broken.
-    wb = openpyxl.load_workbook(filepath, data_only=False, keep_links=False)
+    reader = _CellReader(Path(filepath))
+    reader.read()
+    wb = reader.wb
 
     try:
         sheets: list[Sheet] = []

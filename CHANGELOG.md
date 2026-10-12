@@ -43,7 +43,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 - Eight prebuilt wheels instead of five: Linux x86_64 and aarch64 for both glibc (manylinux) and musl (Alpine), macOS arm64 and x86_64, Windows x64 and arm64. Every wheel is built on a runner of its own architecture and installed and tested there; `abi3audit` verifies each one uses only the stable ABI
 - Documentation site at https://dipan010.github.io/doormat/: API reference, how detection works, threat model and evaluation
 - Ships type information (`py.typed`, plus a stub for the compiled extension); `mypy --strict` passes on the package and checks user code against it
-- Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.10 and every newer version. Prebuilt for Linux x86_64/aarch64 (manylinux), macOS arm64/x86_64 and Windows x64; other platforms build from the source distribution
+- Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.10 and every newer version. Other platforms build from the source distribution
 - The source distribution and wheels now include both licence files
 
 ### Security
@@ -66,7 +66,9 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 - `.xls` files reported whole-number cells as floats, so a numeric password `12345678` was returned as `12345678.0`
 - In `.ods` files, rows after a non-empty row repeated more than 1,000 times were reported with the wrong row number
-- Four Enron workbooks that timed out now load; failures on the corpus are down to 4 malformed files that openpyxl rejects
+- Four Enron workbooks that timed out now load
+- `.xlsx` workbooks with a malformed part that holds no cells were refused entirely: an invalid print-titles name (`#N/A`) or a pivot cache with `-` where a number belongs. The extractor now reads only shared strings, the sheet list, styles and worksheets, and skips defined names, print settings, document properties, the theme and pivot caches. Every file in the Enron corpus now loads
+- Array formulas in `.xlsx` files were extracted as a Python object description (`<openpyxl...ArrayFormula object at 0x...>`) instead of the formula text, so credentials in them were missed. Data-table cells, which have no formula text, are now treated as empty
 - Inline detection ran on formula cells, whose value is the formula text, producing a garbled duplicate of the formula finding
 - Inline and formula keyword patterns missed keywords after `_` or `.` (`DB_PASSWORD=x`, `app.pwd: x`, `"API_KEY"`) because `\b` treats `_` as a word character; the formula keyword pattern also matched inside words (`spin`, `monkey`)
 - Workbooks with broken external-link parts raised `KeyError` in openpyxl; external links are now skipped (`keep_links=False`). This recovered 64 of 73 failing files in the Enron corpus
@@ -78,7 +80,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Validation
 
-- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 31.2% recall on the held-out test split; the current code measures 59.8% precision on the dev split (out of sample), and 67.8% precision / 34.7% recall on test (in sample). See `bench/corpus/README.md`
+- Real-world evaluation on the Enron spreadsheet corpus (15,929 files) under `bench/corpus/`. v0.1.0 measured 16.5% precision and 31.2% recall on the held-out test split; the current code measures 59.3% precision on the dev split (out of sample), and 67.8% precision / 34.7% recall on test (in sample). See `bench/corpus/README.md`
 
 ## [0.1.0] - 2026-06-29
 

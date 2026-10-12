@@ -90,9 +90,13 @@ Scan of all 15,929 files (2026-10-06): 99.5% processed, 15.5 minutes on an
 Apple Silicon laptop. Failures: 64 openpyxl `KeyError`s on broken external
 links, 5 timeouts, 4 other parse errors. Since 2026-10-07 the extractor
 skips external-link parts (`keep_links=False`), and since 2026-10-12 it visits
-only cells present in each sheet rather than the declared range. 15,925 of
-15,929 files now load; the 4 failures are malformed workbooks openpyxl rejects
-(2 `ValueError`, 2 `TypeError`). Reading the whole corpus takes about 63
+only cells present in each sheet rather than the declared range. The last 4
+failures (2 invalid print-titles names, 2 pivot caches with `-` where a number
+belongs) load since the extractor stopped reading parts that hold no cells, so
+all 15,929 files now load. They are dev files and add 2 findings, both false
+positives (an empty `Password:` field pairing with a table header). The same
+change fixed array formulas, which were read as an object description; the 201
+files containing them were rescanned with identical findings. Reading the whole corpus takes about 63
 minutes of CPU time, down from 142. On the largest workbooks, openpyxl
 extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 170k cells).
@@ -101,7 +105,7 @@ extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 |---|---|---|---|---|---|
 | test | v0.1.0 | 334 | **16.5%** (55) | **31.2%** (55/176) | Clean: labelled before any code change |
 | test | current | 90 | 67.8% (61) | 34.7% (61/176) | In-sample: fixes were designed from these errors |
-| dev | current | 241 | **59.8%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
+| dev | current | 243 | **59.3%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
 
 On 2026-10-07 deduplication changed from "one finding per value" to "one
 finding per cell", so the same credential in two cells is reported twice.

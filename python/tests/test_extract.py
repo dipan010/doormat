@@ -238,22 +238,136 @@ def test_extract_workbook_skips_chartsheet(tmp_xlsx):
     assert [c[2] for c in sheets[0]] == ["Password", "s3cRet!99"]
 
 
-def test_extract_workbook_skips_external_links(tmp_xlsx, monkeypatch):
+REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+
+def _credential_workbook(tmp_xlsx) -> Path:
     wb = openpyxl.Workbook()
-    wb.active["A1"] = "x"
+    wb.active["A1"] = "Password"
+    wb.active["B1"] = "s3cRet!99"
+    path = tmp_xlsx(wb)
+    wb.close()
+    return path
+
+
+def _rewrite(src: Path, name: str, edits: dict[str, object]) -> Path:
+    """Copy ``src`` to ``name`` beside it. ``edits`` maps a part to new bytes, or
+    to a ``(old, new)`` replacement applied once to that part's XML."""
+    dst = src.with_name(name)
+    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(dst, "w") as zout:
+        present = set(zin.namelist())
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            edit = edits.get(item.filename)
+            if isinstance(edit, tuple):
+                old, new = edit
+                assert old in data, (item.filename, old)
+                data = data.replace(old, new, 1)
+            elif isinstance(edit, bytes):
+                data = edit
+            zout.writestr(item.filename, data)
+        for part, data in edits.items():
+            if part not in present:
+                assert isinstance(data, bytes), part
+                zout.writestr(part, data)
+    return dst
+
+
+def _assert_only_doormat_reads(path: Path) -> None:
+    """openpyxl's own loader refuses the file; doormat still finds the credential."""
+    with pytest.raises((KeyError, TypeError, ValueError)):
+        openpyxl.load_workbook(path, data_only=False)
+    sheets = extract_workbook(path)
+    assert [c[2] for c in sheets[0]] == ["Password", "s3cRet!99"]
+
+
+def test_extract_workbook_ignores_broken_external_link(tmp_xlsx):
+    # The link part exists but its relationships part is missing.
+    src = _credential_workbook(tmp_xlsx)
+    path = _rewrite(src, "links.xlsx", {
+        "xl/_rels/workbook.xml.rels": (
+            b"</Relationships>",
+            (
+                b'<Relationship Id="rIdLink" Target="externalLinks/externalLink1.xml" '
+                b'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/'
+                b'externalLink"/></Relationships>'
+            ),
+        ),
+        "xl/workbook.xml": (
+            b"</sheets>",
+            f'</sheets><externalReferences><externalReference xmlns:r="{REL_NS}" '
+            'r:id="rIdLink"/></externalReferences>'.encode(),
+        ),
+        "xl/externalLinks/externalLink1.xml": (
+            '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            f'xmlns:r="{REL_NS}"><externalBook r:id="rId1"/></externalLink>'.encode()
+        ),
+    })
+    _assert_only_doormat_reads(path)
+
+
+def test_extract_workbook_ignores_invalid_print_titles(tmp_xlsx):
+    src = _credential_workbook(tmp_xlsx)
+    path = _rewrite(src, "titles.xlsx", {
+        "xl/workbook.xml": (
+            b"<definedNames />",
+            (
+                b'<definedNames><definedName name="_xlnm.Print_Titles" '
+                b'localSheetId="0">#N/A</definedName></definedNames>'
+            ),
+        ),
+    })
+    _assert_only_doormat_reads(path)
+
+
+def test_extract_workbook_ignores_malformed_pivot_cache(tmp_xlsx):
+    # A pivot cache with "-" where a number belongs, plus a pivot table using it.
+    src = _credential_workbook(tmp_xlsx)
+    main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    pivot_rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable"
+    cache_rel = (
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition"
+    )
+    path = _rewrite(src, "pivot.xlsx", {
+        "xl/_rels/workbook.xml.rels": (
+            b"</Relationships>",
+            f'<Relationship Id="rIdCache" Target="pivotCache/pivotCacheDefinition1.xml" '
+            f'Type="{cache_rel}"/></Relationships>'.encode(),
+        ),
+        "xl/workbook.xml": (
+            b"</workbook>",
+            f'<pivotCaches><pivotCache xmlns:r="{REL_NS}" cacheId="1" r:id="rIdCache"/>'
+            "</pivotCaches></workbook>".encode(),
+        ),
+        "xl/pivotCache/pivotCacheDefinition1.xml": (
+            f'<pivotCacheDefinition xmlns="{main}"><cacheSource type="worksheet"/>'
+            '<cacheFields count="1"><cacheField name="Amount"><sharedItems>'
+            '<n v="-"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>'.encode()
+        ),
+        "xl/worksheets/_rels/sheet1.xml.rels": (
+            f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f'<Relationship Id="rId1" Target="../pivotTables/pivotTable1.xml" Type="{pivot_rel}"/>'
+            "</Relationships>".encode()
+        ),
+        "xl/pivotTables/pivotTable1.xml": (
+            f'<pivotTableDefinition xmlns="{main}" name="Pivot1" cacheId="1" dataCaption="Values">'
+            '<location ref="D1:E2" firstHeaderRow="1" firstDataRow="1" firstDataCol="1"/>'
+            "</pivotTableDefinition>".encode()
+        ),
+    })
+    _assert_only_doormat_reads(path)
+
+
+def test_extract_array_formula_as_text(tmp_xlsx):
+    from openpyxl.worksheet.formula import ArrayFormula
+
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = ArrayFormula("A1", "=SUM(B1:B2*C1:C2)")
     p = tmp_xlsx(wb)
     wb.close()
 
-    calls = []
-    real_load = openpyxl.load_workbook
-
-    def spy(*args, **kwargs):
-        calls.append(kwargs)
-        return real_load(*args, **kwargs)
-
-    monkeypatch.setattr(openpyxl, "load_workbook", spy)
-    extract_workbook(p)
-    assert calls == [{"data_only": False, "keep_links": False}]
+    cells = extract_workbook(p)[0]
+    assert [c[2:4] for c in cells] == [("=SUM(B1:B2*C1:C2)", "=SUM(B1:B2*C1:C2)")]
 
 
 def test_xml_entity_declarations_are_rejected(tmp_xlsx):
