@@ -101,6 +101,9 @@ pub const NEIGHBOR_RADIUS: i32 = 3;
 pub const RELATIONSHIP_THRESHOLD: f32 = 120.0;
 /// Minimum value length to be considered a credential candidate.
 pub const MIN_CANDIDATE_LENGTH: usize = 4;
+/// A password label whose exact text repeats this many times in its own column
+/// is a category value in a data column (a help-desk log), not a label.
+pub const CATEGORY_REPEAT: u32 = 3;
 /// Confidence of a value found in a credential table column.
 pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
 /// A credential table needs at least this many rows below its header.
@@ -111,6 +114,9 @@ pub const TABLE_MAX_ROWS: u32 = 1000;
 /// table, beside the general username labels. A bare `ID` is too common to
 /// count as a username anywhere else.
 pub const TABLE_USERNAME_LABELS: &[&str] = &["id", "uid", "loginid", "logonid"];
+/// How many columns either side of a password header the header row is
+/// searched for the account (username) label of a credential table.
+pub const TABLE_HEADER_REACH: u32 = 10;
 /// Empty rows allowed between two rows of a credential table column.
 pub const TABLE_MAX_GAP: u32 = 1;
 /// Share of a column's cells that must look like single tokens.

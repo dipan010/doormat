@@ -1,4 +1,4 @@
-use ahash::AHashSet;
+use ahash::{AHashMap, AHashSet};
 
 use crate::scoring::score_candidate;
 use crate::spatial::{query_radius, DistanceTable};
@@ -33,7 +33,8 @@ fn is_table_token(store: &CellStore, id: usize) -> bool {
 /// one account per row).
 ///
 /// The password header must share its row with a username label (or one of
-/// `TABLE_USERNAME_LABELS`, such as `ID`) at most `NEIGHBOR_RADIUS` columns away. The column is the cells directly below it,
+/// `TABLE_USERNAME_LABELS`, such as `ID`) at most `TABLE_HEADER_REACH` columns
+/// away. The column is the cells directly below it,
 /// ending at a label or after more than `TABLE_MAX_GAP` consecutive empty rows
 /// (accounts are often separated by a blank row). It qualifies with
 /// at least `TABLE_MIN_ROWS` cells, of which at least `TABLE_TOKEN_SHARE` are
@@ -44,7 +45,7 @@ fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
     let h = header_id as usize;
     let (row, col) = (store.get_row(h), store.get_col(h));
 
-    let has_username_label = (1..=NEIGHBOR_RADIUS as u32)
+    let has_username_label = (1..=TABLE_HEADER_REACH)
         .flat_map(|d| [col.checked_sub(d), col.checked_add(d)])
         .flatten()
         .filter_map(|c| store.coord_to_id.get(&(row, c)))
@@ -157,7 +158,9 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 ///
 /// For each cell with `FLAG_IS_PASSWORD_HEADER`:
 /// 0. Try `detect_table_column`; if it qualifies, emit one relationship per
-///    row with `TABLE_COLUMN_CONFIDENCE` and move to the next header
+///    row with `TABLE_COLUMN_CONFIDENCE` and move to the next header. A label
+///    occurring `CATEGORY_REPEAT` or more times in its column is a category
+///    value and skips the steps below.
 /// 1. Try `detect_split_password`; if found, emit with confidence 200.0
 /// 2. Otherwise, query all neighbors within `NEIGHBOR_RADIUS`
 /// 3. Filter to `CellType::Value` only, skip already-used values and
@@ -169,7 +172,19 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
     let mut results: Vec<Relationship> = Vec::new();
     let mut used_value_ids: AHashSet<u32> = AHashSet::new();
 
-    // Collect all password header cell IDs
+    // A label repeated down one column is usually data (`Category: Password`
+    // in a ticket log), not a label with a value beside it. Such a cell may
+    // still head a credential table (stacked tables repeat their header row),
+    // but it is never paired by the fallback steps.
+    let mut per_column: AHashMap<(u32, &str), u32> = AHashMap::new();
+    for i in (0..store.len()).filter(|&i| store.feature_flags[i] & FLAG_IS_PASSWORD_HEADER != 0) {
+        *per_column
+            .entry((store.get_col(i), store.normalized_values[i].as_str()))
+            .or_insert(0) += 1;
+    }
+    let is_category = |i: usize| {
+        per_column[&(store.get_col(i), store.normalized_values[i].as_str())] >= CATEGORY_REPEAT
+    };
     let header_ids: Vec<u32> = (0..store.len())
         .filter(|&i| store.feature_flags[i] & FLAG_IS_PASSWORD_HEADER != 0)
         .map(|i| i as u32)
@@ -192,6 +207,9 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
                     reason: "table_column".into(),
                 });
             }
+            continue;
+        }
+        if is_category(h) {
             continue;
         }
 
@@ -387,6 +405,65 @@ mod tests {
         ]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn table_column_finds_a_distant_username_label() {
+        // Dashlane's export: username in column 1, password in column 5.
+        let mut cells = ["username", "username2", "username3", "title", "password"]
+            .iter()
+            .enumerate()
+            .map(|(c, h)| raw(1, c as u32 + 1, h))
+            .collect::<Vec<_>>();
+        for (r, (user, pw)) in [("ada", "Tr0ub4dor"), ("bob", "c0rrectH0rse")]
+            .iter()
+            .enumerate()
+        {
+            cells.push(raw(r as u32 + 2, 1, user));
+            cells.push(raw(r as u32 + 2, 4, "Portal login"));
+            cells.push(raw(r as u32 + 2, 5, pw));
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn repeated_label_in_one_column_is_a_category_value() {
+        let mut cells = vec![raw(1, 1, "Category"), raw(1, 2, "Action")];
+        for (r, action) in ["Unlock", "Reset", "Unlock"].iter().enumerate() {
+            cells.push(raw(r as u32 + 2, 1, "Password"));
+            cells.push(raw(r as u32 + 2, 2, action));
+        }
+        assert!(infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE).is_empty());
+    }
+
+    #[test]
+    fn two_stacked_login_blocks_are_still_labels() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "Password"),
+            raw(1, 2, "Tr0ub4dor!9"),
+            raw(5, 1, "Password"),
+            raw(5, 2, "c0rrectH0rse#2"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor!9", "c0rrectH0rse#2"]);
+    }
+
+    #[test]
+    fn stacked_credential_tables_repeat_their_header() {
+        let mut cells = Vec::new();
+        for block in 0..3u32 {
+            let top = block * 5 + 1;
+            cells.push(raw(top, 1, "User ID"));
+            cells.push(raw(top, 2, "Password"));
+            cells.push(raw(top + 1, 1, "svc_a"));
+            cells.push(raw(top + 1, 2, &format!("Tr0ub4dor{block}")));
+            cells.push(raw(top + 2, 1, "svc_b"));
+            cells.push(raw(top + 2, 2, &format!("c0rrectH0rse{block}")));
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert_eq!(rels.len(), 6);
+        assert!(rels.iter().all(|r| r.reason == "table_column"));
     }
 
     #[test]
