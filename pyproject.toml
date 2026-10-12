@@ -47,7 +47,7 @@ all = ["xlrd>=2.0", "odfpy>=1.4"]
 
 [project.urls]
 Homepage = "https://github.com/dipan010/doormat"
-Documentation = "https://github.com/dipan010/doormat#readme"
+Documentation = "https://dipan010.github.io/doormat/"
 Repository = "https://github.com/dipan010/doormat"
 Issues = "https://github.com/dipan010/doormat/issues"
 Changelog = "https://github.com/dipan010/doormat/blob/main/CHANGELOG.md"

@@ -21,10 +21,12 @@ jobs:
     name: Rust dependencies (cargo-deny)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # RustSec advisories (what cargo-audit checks), licences, bans and sources,
       # configured in deny.toml.
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
         with:
           command: check
 
@@ -32,8 +34,10 @@ jobs:
     name: Python dependencies (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: Audit runtime and optional dependencies declared in pyproject.toml
@@ -53,14 +57,20 @@ jobs:
     name: Static analysis (bandit, semgrep)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
       - name: Install scanners
         run: python -m pip install --upgrade pip bandit semgrep
       - name: Bandit
         run: bandit -q -r python/doormat bench
+      - name: Workflow security audit (zizmor)
+        run: |
+          python -m pip install zizmor==1.30.1
+          zizmor --offline .github/workflows/
       - name: Semgrep
         run: >-
           semgrep scan --error --metrics=off

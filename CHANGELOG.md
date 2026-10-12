@@ -40,12 +40,15 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Packaging
 
+- Eight prebuilt wheels instead of five: Linux x86_64 and aarch64 for both glibc (manylinux) and musl (Alpine), macOS arm64 and x86_64, Windows x64 and arm64. Every wheel is built on a runner of its own architecture and installed and tested there; `abi3audit` verifies each one uses only the stable ABI
+- Documentation site at https://dipan010.github.io/doormat/: API reference, how detection works, threat model and evaluation
 - Ships type information (`py.typed`, plus a stub for the compiled extension); `mypy --strict` passes on the package and checks user code against it
 - Wheels use the CPython stable ABI (`abi3`): one wheel per platform works on CPython 3.10 and every newer version. Prebuilt for Linux x86_64/aarch64 (manylinux), macOS arm64/x86_64 and Windows x64; other platforms build from the source distribution
 - The source distribution and wheels now include both licence files
 
 ### Security
 
+- Release and CI workflows pin every GitHub Action to a commit SHA, do not persist checkout credentials, scope elevated permissions to the jobs that need them, and are audited by zizmor on every push
 - A sheet whose declared range is far larger than its content (one formatted cell at `XFD1048576` claims about 17 billion positions) made the `.xlsx` extractor run indefinitely. It now visits only the cells present in the file. Similarly, an `.ods` cell repeated a billion times was expanded cell by cell; repeated empty cells are now skipped and repeated values are capped at 16,384 columns. Both reproduced with files under 100 KB
 - `.xlsx`, `.xlsm` and `.ods` files are checked for zip bombs before parsing: more than 10,000 archive parts, more than 512 MiB of declared content (configurable with `load(..., max_uncompressed_bytes=...)`), or any part of 10 MiB or more compressed beyond 500:1 is refused with `ValueError`. Limits were calibrated on 15,871 real spreadsheets (largest 353 MB, highest ratio 157:1), none of which are refused. The check reads only the archive directory, so it trusts declared sizes
 - Spreadsheets containing XML entity declarations are rejected with `ValueError` instead of being parsed. `defusedxml` is now a dependency; openpyxl uses it automatically, which blocks entity-expansion attacks ("billion laughs") and external entities in `.xlsx` files

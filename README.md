@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://github.com/dipan010/doormat/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dipan010/doormat/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/dipan010/doormat/actions/workflows/security.yml"><img alt="Security" src="https://github.com/dipan010/doormat/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://dipan010.github.io/doormat/"><img alt="Docs" src="https://img.shields.io/badge/docs-dipan010.github.io%2Fdoormat-blue.svg"></a>
   <a href="https://pypi.org/project/doormat/"><img alt="PyPI" src="https://img.shields.io/pypi/v/doormat.svg"></a>
   <a href="LICENSE-MIT"><img alt="License: MIT OR Apache-2.0" src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg"></a>
   <img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg">
@@ -23,6 +24,8 @@ People hide the spare key under the doormat. They hide passwords the same way: i
 - **Fast.** Rust core with sheet-level parallelism: under 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
 - **Measured on real data.** Precision and recall are reported on the public Enron spreadsheet corpus, not just synthetic fixtures. See [Accuracy](#accuracy).
 - **Offline and dependency-light.** Two small runtime dependencies (`openpyxl`, and `defusedxml` to refuse malicious XML inside spreadsheet files). No network calls, no model downloads.
+
+**Documentation:** https://dipan010.github.io/doormat/ (API reference, how detection works, threat model, evaluation).
 
 ## Installation
 
