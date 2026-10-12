@@ -69,7 +69,7 @@ Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 
 | Name | Description |
 |---|---|
-| `doormat.load(path)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension or a file whose signature does not match it. |
+| `doormat.load(path, *, max_uncompressed_bytes=512 MiB)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension, a file whose signature does not match it, or a zip-based file that looks like a zip bomb. `max_uncompressed_bytes=None` lifts the size limit. |
 | `GridDoc.credentials(min_confidence=0.0)` | Relationships at or above a confidence score. `120` is a sensible default; scores above `200` are high-confidence inline or formula detections. |
 | `GridDoc.relationships()` | Every inferred key/value relationship, regardless of score. |
 | `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook. |
@@ -133,6 +133,7 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 
 ## Limitations
 
+- **Hostile files are checked, not sandboxed.** XML entity attacks are refused, and `.xlsx`/`.xlsm`/`.ods` files that would decompress beyond 512 MiB, or with a zip-bomb compression ratio, are rejected before parsing. Those checks trust the sizes declared inside the archive, which a determined attacker can forge; run doormat with a memory limit when scanning files from untrusted sources at scale.
 - **Password tables are not detected.** A `Password` column with one credential per row is the most common pattern doormat misses today.
 - **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
 - **Python only.** Bindings for other languages are planned, as is a command-line tool.

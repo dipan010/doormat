@@ -8,6 +8,7 @@ from pathlib import Path
 
 from doormat import _core
 from doormat._types import Sheet
+from doormat._zipguard import DEFAULT_MAX_UNCOMPRESSED_BYTES, ZIP_MAGIC, check_zip
 from doormat.extract import extract_xlsx
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
@@ -145,7 +146,11 @@ class GridDoc:
         return [r for r in self._relationships if r.confidence >= min_confidence]
 
 
-def load(filepath: str | Path) -> GridDoc:
+def load(
+    filepath: str | Path,
+    *,
+    max_uncompressed_bytes: int | None = DEFAULT_MAX_UNCOMPRESSED_BYTES,
+) -> GridDoc:
     """Load a spreadsheet file and run the credential detection engine.
 
     Supports .xlsx, .xlsm, .xls, .csv, .tsv, and .ods formats.
@@ -156,14 +161,19 @@ def load(filepath: str | Path) -> GridDoc:
         filepath: Path to a spreadsheet file. Accepts both str and
             pathlib.Path. Supported extensions: .xlsx, .xlsm, .xls,
             .csv, .tsv, .ods.
+        max_uncompressed_bytes: For zip-based formats (.xlsx, .xlsm, .ods),
+            refuse files that would decompress to more than this many bytes.
+            Defaults to 512 MiB; None removes the size limit. Parts with a
+            zip-bomb compression ratio are refused regardless.
 
     Returns:
         A GridDoc containing all detected relationships and file metadata.
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file extension is unsupported or the file
-            content does not match the expected format.
+        ValueError: If the file extension is unsupported, the file content
+            does not match the expected format, or a zip-based file looks like
+            a zip bomb (see ``max_uncompressed_bytes``).
         ImportError: If an optional dependency is missing for the
             requested format (.xls requires xlrd, .ods requires odfpy).
 
@@ -200,6 +210,8 @@ def load(filepath: str | Path) -> GridDoc:
                 f"File does not appear to be a valid {ext} file "
                 f"(expected {magic_bytes!r} signature, got {magic!r})"
             )
+        if magic_bytes == ZIP_MAGIC:
+            check_zip(filepath, max_uncompressed_bytes)
 
     sheets = extractor(filepath)
 
