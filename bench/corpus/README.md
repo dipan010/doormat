@@ -89,8 +89,11 @@ values) that form the recall denominator.
 Scan of all 15,929 files (2026-10-06): 99.5% processed, 15.5 minutes on an
 Apple Silicon laptop. Failures: 64 openpyxl `KeyError`s on broken external
 links, 5 timeouts, 4 other parse errors. Since 2026-10-07 the extractor
-skips external-link parts (`keep_links=False`), and 5 files still fail
-(2 `ValueError`, 2 `TypeError`, 1 timeout at 120 s). On the largest workbooks, openpyxl
+skips external-link parts (`keep_links=False`), and since 2026-10-12 it visits
+only cells present in each sheet rather than the declared range. 15,925 of
+15,929 files now load; the 4 failures are malformed workbooks openpyxl rejects
+(2 `ValueError`, 2 `TypeError`). Reading the whole corpus takes about 63
+minutes of CPU time, down from 142. On the largest workbooks, openpyxl
 extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 170k cells).
 

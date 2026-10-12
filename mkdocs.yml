@@ -1,0 +1,63 @@
+site_name: doormat
+site_description: Find passwords and secrets hidden in spreadsheets with spatial analysis and a fast Rust core
+site_url: https://dipan010.github.io/doormat/
+repo_url: https://github.com/dipan010/doormat
+repo_name: dipan010/doormat
+edit_uri: edit/main/docs/
+copyright: MIT OR Apache-2.0
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle: { icon: material/brightness-7, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle: { icon: material/brightness-4, name: Switch to light mode }
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - API reference: api.md
+  - File formats: formats.md
+  - How detection works: how-it-works.md
+  - Threat model: threat-model.md
+  - Evaluation: evaluation.md
+  - Security policy: security.md
+  - Changelog: changelog.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [python]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+validation:
+  links:
+    absolute_links: info
+    unrecognized_links: warn

@@ -1,0 +1,10 @@
+# Documentation toolchain, pinned. mkdocs stays on 1.x: MkDocs 2.0 drops the
+# plugin and theme systems this site uses. Material for MkDocs is in maintenance mode
+# (security fixes until November 2026); mkdocs.yml is kept compatible with its
+# successor, Zensical, for a later migration.
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+mkdocstrings==1.0.7
+mkdocstrings-python==2.0.9
+pymdown-extensions==12.2
+ruff==0.16.10

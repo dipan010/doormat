@@ -1,0 +1,74 @@
+# Threat model
+
+doormat reads spreadsheets that may come from anyone and reports the secrets it
+finds. This page states what it protects, against whom, how, and what it does
+not protect. It describes version 0.2.
+
+## Assets
+
+1. **The host process.** doormat runs inside your Python process, often in a
+   scanner that processes many files. A file must not be able to crash it,
+   hang it, exhaust its memory or run code in it.
+2. **The secrets it finds.** A finding contains a live credential. doormat must
+   not spread it further than the caller asked.
+3. **The integrity of results.** A scan is used to make decisions (block a
+   commit, open an incident). Results must be correct about *where* a secret is.
+
+## Adversary
+
+The main adversary is the **author of a spreadsheet** being scanned. They
+control every byte of the file: zip structure, XML, cell contents, declared
+sizes and ranges. They may want to disrupt the scanner (denial of service) or
+hide a secret from it (evasion).
+
+doormat does not defend against an adversary who controls the Python
+environment, the doormat package itself, or its dependencies; those are
+supply-chain risks covered by the project's dependency policy instead.
+
+## Parser surface by format
+
+| Format | Parsed by | Container | Notes |
+|---|---|---|---|
+| `.xlsx`, `.xlsm` | openpyxl | zip | XML parsed through `defusedxml` |
+| `.ods` | odfpy | zip | odfpy parses XML through `defusedxml` itself |
+| `.xls` | xlrd | OLE2 compound file | binary, no XML |
+| `.csv`, `.tsv` | Python `csv` | plain text | no container, no XML |
+
+doormat's own detection code is Rust with no `unsafe` in the bindings; it
+receives already-extracted cell text.
+
+## Attacks and mitigations
+
+| Attack | Mitigation | Status |
+|---|---|---|
+| XML entity expansion ("billion laughs"), external entities (XXE) | `defusedxml` refuses entity declarations in `.xlsx` and `.ods` XML; `load()` raises `ValueError` | Mitigated, tested |
+| Zip bomb (tiny file, huge decompressed parts) | Before parsing, the zip directory is checked: more than 10,000 parts, more than 512 MiB declared (configurable), or a part of 10 MiB or more compressed beyond 500:1 is refused | Mitigated for honest headers, tested with real bombs |
+| Range inflation (one formatted cell at `XFD1048576`, about 17 billion positions) | The `.xlsx` extractor visits only cells present in the file, never the declared range | Mitigated, tested |
+| Repeat inflation in `.ods` (a cell "repeated" a billion times) | Repeated empty cells are skipped; repeated values are capped at 16,384 columns and rows at 1,000 repetitions | Mitigated, tested |
+| Secret leaking into logs | `repr(Relationship)` omits the value; doormat logs nothing | Mitigated |
+| Wrong location reported | Findings carry sheet, row and column from the file; regressions are tested (e.g. repeated ODS rows) | Mitigated |
+| Evasion: secret with no label near it | Not detectable by design; doormat finds labelled secrets | Not mitigated |
+| Evasion: label in a language or form doormat does not know | Keyword lists are finite | Partially mitigated |
+
+## Residual risks
+
+- **Forged zip sizes.** The zip check trusts the sizes declared in the
+  archive directory. A deliberately falsified archive can understate them; the
+  decompressor then produces more data than declared. A Rust-side reader that
+  counts decompressed bytes is planned.
+- **No time limit.** doormat has no per-file deadline. Inputs that are slow but
+  within the limits above (a genuinely huge workbook) can take minutes.
+  Run large-scale scans with a process-level timeout and memory limit.
+- **Third-party parsers.** openpyxl, odfpy and xlrd parse untrusted input in
+  pure Python. A bug in them is a bug in doormat's attack surface; Dependabot
+  and `pip-audit` watch for published advisories.
+- **One bad sheet fails the whole file.** If a parser rejects part of a
+  workbook, `load()` raises and no findings are returned for its other sheets.
+
+## Recommendations for deployment
+
+- Treat findings as secrets: store and transmit them as you would the
+  credentials themselves, and avoid printing `Relationship.value`.
+- Scan untrusted files in a separate process with a timeout and memory limit.
+- Report suspected vulnerabilities privately, as described in the
+  [security policy](security.md).
