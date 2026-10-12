@@ -54,3 +54,24 @@ def test_basic_extraction(sample_xls):
     # formula and comment are empty
     assert cells[0][3] == ""
     assert cells[0][4] == ""
+
+
+def test_numeric_password_keeps_its_digits(tmp_path):
+    """xlrd returns numbers as floats; 12345678 must not become '12345678.0'."""
+    pytest.importorskip("xlrd")
+    xlwt = pytest.importorskip("xlwt")
+    import doormat
+
+    wb = xlwt.Workbook()
+    ws = wb.add_sheet("Logins")
+    ws.write(0, 0, "Password")
+    ws.write(0, 1, 12345678)
+    ws.write(1, 0, "Rate")
+    ws.write(1, 1, 2.5)
+    path = tmp_path / "numbers.xls"
+    wb.save(str(path))
+
+    found = doormat.load(path).credentials(120)
+    assert [(c.sheet, c.coordinate, c.value) for c in found] == [("Logins", "B1", "12345678")]
+    cells = {(r, c): v for r, c, v, *_ in doormat.extract.extract_xls(path)[0]}
+    assert cells[(2, 2)] == "2.5"

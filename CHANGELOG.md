@@ -61,6 +61,7 @@ First release under the name `doormat` (previously `gridmap`, never published).
 
 ### Fixed
 
+- `.xls` files reported whole-number cells as floats, so a numeric password `12345678` was returned as `12345678.0`
 - In `.ods` files, rows after a non-empty row repeated more than 1,000 times were reported with the wrong row number
 - Four Enron workbooks that timed out now load; failures on the corpus are down to 4 malformed files that openpyxl rejects
 - Inline detection ran on formula cells, whose value is the formula text, producing a garbled duplicate of the formula finding

@@ -63,7 +63,13 @@ def extract_xls(filepath: str | Path) -> list[Sheet]:
                     if cell.ctype == xlrd.XL_CELL_EMPTY:
                         continue
 
-                    value = str(cell.value) if cell.value != "" else ""
+                    raw = cell.value
+                    if cell.ctype == xlrd.XL_CELL_NUMBER and float(raw).is_integer():
+                        # xlrd returns every number as a float; a numeric
+                        # password 12345678 must not be reported as "12345678.0"
+                        value = str(int(raw))
+                    else:
+                        value = str(raw) if raw != "" else ""
                     if not value:
                         continue
 
