@@ -17,3 +17,4 @@ says which one it replaces.
 | [0008](0008-per-sheet-errors.md) | A sheet that fails is reported; the others are scanned | 2026-10-12 |
 | [0009](0009-pre-registered-evaluation.md) | Pre-registered evaluation sets split by layout family | 2026-10-13 |
 | [0010](0010-cell-limit.md) | A default limit of 2,000,000 cells per file | 2026-10-16 |
+| [0011](0011-compound-labels.md) | Compound credential labels by their final part | 2026-10-16 |

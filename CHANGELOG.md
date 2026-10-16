@@ -14,6 +14,7 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 - Credential tables: a `Password` column with one account per row is reported row by row (`reason` `table_column`, confidence 190). The column qualifies only when a username or ID label shares its header row and at least 80% of the cells below are single tokens, so help-desk logs, form templates and notes columns do not. On the Enron corpus it finds 44 of 46 table credentials on dev and 47 of 100 on test, with no false positives; see `bench/corpus/README.md` for which parts of that are independent
 - Credential tables follow their account column: the username or ID label may sit up to 10 columns from the password header, and empty passwords no longer end the table. Password-manager and browser exports with the password column further from the username (Dashlane) are now read row by row
 - `load(..., max_cells=2_000_000)`: a file is refused with `ValueError` once more cells than this have been read. Cells are counted while each sheet is parsed, so an oversized workbook fails early instead of filling memory; `None` removes the limit (#12)
+- Compound credential labels: an identifier-style label such as `MYSQL_ROOT_PASSWORD`, `login_password`, `mail__options__auth__pass` or `ME_CONFIG_MONGODB_ADMINPASSWORD` is a credential label when its final part is a credential word; `POSTGRES_PASSWORD_FILE` and `..._PASSWORD_HASH` are not. In a list of configuration variables each label takes the value across from it (`reason` `variable_value`), `..._KEY`/`..._SALT` labels count when the value is key material, and `NAME=value` lines are read as inline credentials. Switches (`yes`, `true`, `0`) and signed or decimal amounts are never reported as credentials (#19)
 - TOTP secrets: `totp` and `otpsecret` are secret labels, so a TOTP column in an export is reported like a password column
 
 ### Fixed
@@ -26,6 +27,10 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 - Table cells holding a placeholder (`N/A`, `TBD`, `none`, `?`, `xxxx`, `****`) are no longer reported
 - `docs/how-it-works.md` pointed to the wrong steps for the inline pattern and formula handling, and ended with a stray `EOF` line
 
+### Performance
+
+- Recognising compound labels costs about 3-4% in the Rust core on the criterion benchmarks (`process_sheet` 1k cells 137 µs, 5k cells 718 µs; 10 sheets of 5k cells 2.7 ms), measured in one session against the previous commit. The credential-word scan runs once per cell, in the same pass as label detection
+
 ### Documentation
 
 - Design decision records under `docs/decisions/` (ten so far, from removing `arrow2` to the cell limit), each with its options and evidence (#13)
@@ -34,6 +39,7 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 
 - Credential-table answer key for dev (`bench/corpus/creds_dev_tables.json`), built from the keyword pool independently of the detector; `evaluate.py` reports `table_column` findings as their own pathway
 - New fixture `15_credential_table.xlsx`
+- Evaluation set A2 (`bench/configs/`): configuration variables from the Docker Official Images documentation, 11 image families split into design, holdout and test before any result. Test split, run once: recall 12/81 -> 81/81, precision 98.8%. Set A's test split, re-run (not independent): Bitwarden and Chromium passwords 140 -> 592 of 605. See `bench/configs/RESULTS.md`
 - Evaluation set A (`bench/exports/`): spreadsheets in 8 documented password-manager and browser export layouts, generated from a protocol committed before any data or result. Test split, run once: 100% precision, 23% password recall (Chromium 140/140; Bitwarden 0/465, whose `login_password` header is not recognised). Enron: test precision 80.6% -> 90.0% and dev 66.0% -> 93.5% with recall unchanged. See `bench/exports/RESULTS.md`
 
 ## [0.2.0] - 2026-10-13

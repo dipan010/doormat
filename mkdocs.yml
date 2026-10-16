@@ -40,6 +40,7 @@ nav:
       - decisions/0008-per-sheet-errors.md
       - decisions/0009-pre-registered-evaluation.md
       - decisions/0010-cell-limit.md
+      - decisions/0011-compound-labels.md
   - Security policy: security.md
   - Changelog: changelog.md
 

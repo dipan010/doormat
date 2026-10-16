@@ -112,17 +112,17 @@ On 15 synthetic fixtures, one per detection pathway, doormat scores 100% precisi
 | 0.2.0 | 59.3% | 34.7% |
 | current `main` | 93.5% | 61.4% |
 
-Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic; its later precision fixes target false-positive patterns first seen on dev. Inline credentials are found with few false positives. On spreadsheets laid out like password-manager and browser exports ([`bench/exports/`](bench/exports/RESULTS.md)), precision is 100% on every split, but compound header names such as Bitwarden's `login_password` are not recognised yet. The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
+Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic; its later precision fixes target false-positive patterns first seen on dev. Inline credentials are found with few false positives. On spreadsheets laid out like password-manager and browser exports ([`bench/exports/`](bench/exports/RESULTS.md)), precision is 100% on every split. On spreadsheets that list configuration variables such as `MYSQL_ROOT_PASSWORD` ([`bench/configs/`](bench/configs/RESULTS.md)), recall is 100% and precision 98.8% on the test split. The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
 ## Performance
 
-Rust core only, Apple Silicon, criterion.rs on synthetic workbooks:
+Rust core only, Apple Silicon, criterion.rs on synthetic workbooks (measured 2026-10-16 for 0.3.0):
 
 | Workbook | Time |
 |---|---|
-| 1 sheet, 1,000 cells | 138 µs |
-| 1 sheet, 5,000 cells | 695 µs |
-| 10 sheets, 5,000 cells each | 2.6 ms |
+| 1 sheet, 1,000 cells | 137 µs |
+| 1 sheet, 5,000 cells | 718 µs |
+| 10 sheets, 5,000 cells each | 2.7 ms |
 
 On very large real workbooks, reading the file with openpyxl dominates: about 27 s to read a 170,000-cell workbook against 0.1 s of detection.
 
@@ -146,8 +146,8 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 ## Roadmap
 
 - **[0.2.0](https://github.com/dipan010/doormat/releases/tag/v0.2.0)**: first PyPI release, published 2026-10-13
-- **[0.3.0](https://github.com/dipan010/doormat/releases/tag/v0.3.0)**: credential tables, TOTP secrets, far fewer false positives
-- **[0.4.0](https://github.com/dipan010/doormat/milestone/3)**: compound labels such as `login_password`, tables without an account column, faster extraction of large workbooks, a per-file work limit; a command-line scanner is proposed
+- **[0.3.0](https://github.com/dipan010/doormat/releases/tag/v0.3.0)**: credential tables, compound labels such as `MYSQL_ROOT_PASSWORD`, TOTP secrets, far fewer false positives
+- **[0.4.0](https://github.com/dipan010/doormat/milestone/3)**: tables without an account column, faster extraction of large workbooks, a per-file work limit; a command-line scanner is proposed
 
 All planned work is tracked in [milestones](https://github.com/dipan010/doormat/milestones); changes are listed in [CHANGELOG.md](CHANGELOG.md).
 

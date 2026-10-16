@@ -44,6 +44,22 @@ is not. The password list covers English (`password`, `pwd`, `pass`, `passwd`,
 Russian, Japanese, Chinese, Korean, Dutch, Polish and Swedish forms. Username
 and URL lists are separate and only add context.
 
+**Compound labels.** An identifier-style label (letters, digits and `_ . -`,
+no spaces, at most **64** characters; `COMPOUND_LABEL_MAX_LEN`) is also a
+password label when its final part, split at `_ . -` and camelCase, is a
+password keyword or ends in `password`, `passwd`, `passphrase`, `passcode`,
+`secret` or `token` (`COMPOUND_SUFFIXES`): `MYSQL_ROOT_PASSWORD`,
+`login_password`, `mail__options__auth__pass`,
+`ME_CONFIG_MONGODB_ADMINPASSWORD`. A credential word followed by another part
+is something else (`POSTGRES_PASSWORD_FILE` is a path,
+`MARIADB_ROOT_PASSWORD_HASH` a hash), and short keywords must be a whole part,
+so `bypass` never matches. Labels whose final part is `key` or `salt`
+(`KEY_PARTS`, `WORDPRESS_AUTH_KEY`) are weaker: they count only in lists of
+configuration variables (step 8) and only for values that look like key
+material (at least **16** characters mixing upper case, lower case and digits,
+entropy at least **3.5**; `KEY_MATERIAL_MIN_LEN`). Labels with spaces
+(`Admin Password`) are matched as before.
+
 Shannon entropy is computed only for values of at least **8** characters
 (`ENTROPY_MIN_LENGTH`, `types.rs`); shorter values skip the floating-point work.
 
@@ -85,7 +101,14 @@ Credentials written inside one cell are matched by a regular expression
 - or, for password-family keywords only, whitespace followed by a single token
   containing a digit (`Password X333#`);
 - in a URL query (`otpauth://totp/ada?secret=X&issuer=Y`), the value ends at
-  the next `&` or `#`.
+  the next `&` or `#`;
+- an assignment `NAME=value` or `NAME: value` whose name is a compound label
+  (`ME_CONFIG_MONGODB_ADMINPASSWORD=x`, `WORDPRESS_AUTH_KEY=x` with key
+  material) yields its value.
+
+A switch (`yes`, `no`, `true`, `false`, `on`, `off`, `y`, `n`, `0`, `1`;
+`BOOLEAN_LITERALS`) is never a credential value, so
+`MYSQL_ALLOW_EMPTY_PASSWORD=true` is not reported.
 
 Formula cells are skipped here; their text is a formula, handled by the
 formula pathways in the table below.
@@ -99,6 +122,7 @@ formula pathways in the table below.
 | comment containing `password: x` | `comment_contains_credential` | 220 |
 | value split down a column under a label | `split_password` | 200 |
 | one row of a credential table (step 6) | `table_column` | 190 |
+| the value of a configuration variable (step 8) | `variable_value` | 190 |
 
 ## 6. Credential tables (`inference.rs`)
 
@@ -142,6 +166,18 @@ cell with something beside it is a form row or a table row, not a fragment.
 The joined value must be at least 6 characters.
 
 ## 8. Pairing and scoring (`spatial.rs`, `scoring.rs`, `inference.rs`)
+
+**Configuration variables.** A compound label in a list of configuration
+variables takes its value from across the list, never from a neighbouring
+variable. If more of its vertical neighbours than horizontal ones are variable
+names (two or more `_`/`.` parts, starting with a letter), the names run down a
+column and the value is the cell to the label's right. If more horizontal
+neighbours are names, they form a header row and the values are the column
+below (one row per environment), down to a label or more than **1** empty row.
+Values must be single tokens of at least **3** characters that are not
+placeholders, switches or amounts (a signed or decimal number such as
+`-12345.67`); each is reported with reason `variable_value` and confidence
+**190** (`VARIABLE_VALUE_CONFIDENCE`).
 
 A password label ending in `:` is a form field: its value is to the right.
 If none of the **2** cells to its right is filled (`FORM_FIELD_REACH`; two

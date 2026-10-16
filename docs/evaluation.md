@@ -48,8 +48,21 @@ password managers and browsers, in 8 layouts taken from vendor documentation
 and source code. Its protocol was committed before any data or result, and
 splits are by layout family. On the test split, run once, precision is 100%
 and password recall 23%: Chromium-format exports are found in full, while
-Bitwarden's `login_password` header is not recognised. Details in
+Bitwarden's `login_password` header was not recognised. Details in
 [`bench/exports/RESULTS.md`](https://github.com/dipan010/doormat/blob/main/bench/exports/RESULTS.md).
+
+## Configuration variables (set A2)
+
+A third set, built to fix compound labels such as `login_password` (#19),
+lists configuration variables taken from the Docker Official Images
+documentation, including hard negatives (`POSTGRES_PASSWORD_FILE`,
+`MYSQL_RANDOM_ROOT_PASSWORD`, `MARIADB_ROOT_PASSWORD_HASH`). Its protocol was
+committed first and splits are by image family. On the test split, run once,
+recall is 81/81 and precision 98.8% (one false positive), against 12/81
+before. Re-running set A's spent test split, which is not independent
+evidence because Bitwarden motivated the change, finds 592 of 605 Bitwarden
+and Chromium passwords. Details in
+[`bench/configs/RESULTS.md`](https://github.com/dipan010/doormat/blob/main/bench/configs/RESULTS.md).
 
 ## Robustness
 
