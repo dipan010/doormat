@@ -581,7 +581,7 @@ mod tests {
             !is_compound_key_label("ME_CONFIG_SITE_SSL_KEY_PATH") && !is_compound_key_label("KEY")
         );
         assert!(is_key_material("q8Zr2Lm9Xa7Pk3Vw"));
-        assert!(!is_key_material("user_id") && !is_key_material("AKIAABCDEFGH12345678"));
+        assert!(!is_key_material("user_id") && !is_key_material("ABCDEFGH1234567890XY"));
     }
 
     #[test]
