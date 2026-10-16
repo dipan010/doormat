@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-10-16
+## [0.3.0] - 2026-10-17
 
 Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from 67.8% to 90.0% on test, and test recall from 34.7% to 61.4%; see `bench/corpus/README.md` and `bench/exports/RESULTS.md` for which parts are independent evidence.
 
