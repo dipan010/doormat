@@ -104,6 +104,9 @@ pub const MIN_CANDIDATE_LENGTH: usize = 4;
 /// A password label whose exact text repeats this many times in its own column
 /// is a category value in a data column (a help-desk log), not a label.
 pub const CATEGORY_REPEAT: u32 = 3;
+/// A form label ending in `:` takes its value from the right; if none of this
+/// many cells to its right is filled, the field is empty.
+pub const FORM_FIELD_REACH: u32 = 2;
 /// Confidence of a value found in a credential table column.
 pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
 /// A credential table needs at least this many rows below its header.

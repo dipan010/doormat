@@ -189,6 +189,8 @@ fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u
 ///    occurring `CATEGORY_REPEAT` or more times in its column is a category
 ///    value and skips the steps below.
 /// 1. Try `detect_split_password`; if found, emit with confidence 200.0
+///    A label ending in `:` with nothing in the `FORM_FIELD_REACH` cells to
+///    its right is an empty form field and is not paired below.
 /// 2. Otherwise, query all neighbors within `NEIGHBOR_RADIUS`
 /// 3. Filter to `CellType::Value` only, skip already-used values and
 ///    formula cells (a formula's text is never the stored secret; string
@@ -251,6 +253,15 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
                 confidence: 200.0,
                 reason: "split_password".into(),
             });
+            continue;
+        }
+
+        // A form field (`Password:`) takes its value from the right; with nothing
+        // there it is an empty field, and the label below is not its value.
+        let (row, col) = (store.get_row(h), store.get_col(h));
+        if store.get_value(h).trim_end().ends_with(':')
+            && (1..=FORM_FIELD_REACH).all(|d| filled(store, row, col + d).is_none())
+        {
             continue;
         }
 
@@ -543,6 +554,26 @@ mod tests {
         ]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         assert_eq!(values(&rels), ["c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn empty_form_field_does_not_pair_with_the_label_below() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "User ID:"),
+            raw(2, 1, "Password:"),
+            raw(4, 1, "Date"),
+            raw(4, 2, "Price"),
+            raw(5, 1, "2025-01-01"),
+            raw(5, 2, "4.25"),
+        ]);
+        assert!(infer_relationships(&store, &DISTANCE_TABLE).is_empty());
+    }
+
+    #[test]
+    fn form_field_value_may_sit_two_columns_right() {
+        let store = pipeline_store(vec![raw(1, 1, "Password:"), raw(1, 3, "Tr0ub4dor!9")]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor!9"]);
     }
 
     #[test]
