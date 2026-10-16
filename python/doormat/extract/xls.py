@@ -9,12 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from doormat._limits import CellBudget, sheet_failed
 from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
 
 
 def extract_xls(
     filepath: str | Path,
     on_sheet_error: SheetErrorHandler | None = None,
+    budget: CellBudget | None = None,
 ) -> list[Sheet]:
     """Extract cells from a legacy .xls file as raw cell tuples.
 
@@ -25,6 +27,8 @@ def extract_xls(
         on_sheet_error: Called with the sheet name and error when a sheet
             cannot be read; extraction continues with the next sheet. If
             None, the error is raised.
+        budget: Counts cells as they are read and raises CellLimitError
+            (a ValueError) past its limit. If None, nothing is counted.
 
     Returns:
         A list of lists, one inner list of 7-element tuples per sheet that
@@ -55,18 +59,16 @@ def extract_xls(
         sheets: list[Sheet] = []
         for sheet_idx, name in enumerate(book.sheet_names()):
             try:
-                sheets.append(_extract_sheet(book.sheet_by_index(sheet_idx)))
+                sheets.append(_extract_sheet(book.sheet_by_index(sheet_idx), budget))
             except sheet_errors as exc:
-                if on_sheet_error is None:
-                    raise
-                on_sheet_error(name, exc)
+                sheet_failed(on_sheet_error, name, exc)
     finally:
         book.release_resources()
 
     return sheets
 
 
-def _extract_sheet(sheet: Any) -> Sheet:
+def _extract_sheet(sheet: Any, budget: CellBudget | None = None) -> Sheet:
     """Extract one xlrd sheet as raw cell tuples."""
     import xlrd
 
@@ -84,6 +86,8 @@ def _extract_sheet(sheet: Any) -> Sheet:
 
     cells: Sheet = []
     for row_idx in range(sheet.nrows):
+        if budget is not None:
+            budget.take(sheet.ncols)
         for col_idx in range(sheet.ncols):
             cell = sheet.cell(row_idx, col_idx)
             if cell.ctype == xlrd.XL_CELL_EMPTY:

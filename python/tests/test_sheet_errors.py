@@ -122,10 +122,10 @@ def test_failing_xls_sheet_is_reported_and_others_scanned(
 
     real = xls._extract_sheet
 
-    def fail_on_broken(sheet):  # type: ignore[no-untyped-def]
+    def fail_on_broken(sheet, budget=None):  # type: ignore[no-untyped-def]
         if sheet.name == "Broken":
             raise ValueError("bad record")
-        return real(sheet)
+        return real(sheet, budget)
 
     monkeypatch.setattr(xls, "_extract_sheet", fail_on_broken)
     doc = doormat.load(path)

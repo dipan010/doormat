@@ -124,3 +124,83 @@ def test_huge_column_repeat_does_not_inflate_ods(tmp_path: Path) -> None:
     found = doormat.load(path).credentials(120)
     assert time.perf_counter() - start < 5
     assert [c.coordinate for c in found] == ["B1"]
+
+
+def _grid_workbook(tmp_path: Path, rows: int, cols: int, sheets: int = 1) -> Path:
+    wb = openpyxl.Workbook()
+    for s in range(sheets):
+        ws = wb.active if s == 0 else wb.create_sheet(f"S{s}")
+        for r in range(rows):
+            ws.append([f"v{r}_{c}" for c in range(cols)])
+    path = tmp_path / "grid.xlsx"
+    wb.save(path)
+    wb.close()
+    return path
+
+
+def test_cell_limit_refuses_the_file(tmp_path: Path) -> None:
+    path = _grid_workbook(tmp_path, rows=30, cols=10, sheets=2)
+    with pytest.raises(ValueError, match="max_cells"):
+        doormat.load(path, max_cells=400)
+
+
+def test_cell_limit_is_not_reported_as_a_sheet_error(tmp_path: Path) -> None:
+    from doormat._limits import CellLimitError
+
+    path = _grid_workbook(tmp_path, rows=30, cols=10, sheets=3)
+    with pytest.raises(CellLimitError):
+        doormat.load(path, max_cells=350)
+
+
+def test_cell_limit_can_be_disabled(tmp_path: Path) -> None:
+    path = _grid_workbook(tmp_path, rows=30, cols=10)
+    assert doormat.load(path, max_cells=None).cell_count == 300
+    assert doormat.load(path, max_cells=300).cell_count == 300
+
+
+def test_cell_limit_stops_parsing_part_way_through_a_sheet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The count runs while the sheet is parsed, not after it is in memory."""
+    from doormat.extract import xlsx
+
+    path = _grid_workbook(tmp_path, rows=200, cols=10)
+    rows_seen = []
+    real = xlsx.extract_single_sheet
+
+    def spy(ws, *args):  # type: ignore[no-untyped-def]
+        rows_seen.append(ws.max_row)
+        return real(ws, *args)
+
+    monkeypatch.setattr(xlsx, "extract_single_sheet", spy)
+    with pytest.raises(ValueError, match="max_cells"):
+        doormat.load(path, max_cells=100)
+    assert rows_seen == []
+
+
+def test_cell_limit_applies_to_csv(tmp_path: Path) -> None:
+    path = tmp_path / "big.csv"
+    path.write_text("\n".join(",".join(f"v{c}" for c in range(10)) for _ in range(30)))
+    with pytest.raises(ValueError, match="max_cells"):
+        doormat.load(path, max_cells=100)
+    assert doormat.load(path).cell_count == 300
+
+
+def test_cell_limit_applies_to_ods(tmp_path: Path) -> None:
+    pytest.importorskip("odf")
+    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf.table import Table, TableCell, TableRow
+    from odf.text import P
+
+    doc = OpenDocumentSpreadsheet()
+    table = Table(name="S1")
+    for r in range(30):
+        row = TableRow()
+        for c in range(10):
+            cell = TableCell()
+            cell.addElement(P(text=f"v{r}_{c}"))
+            row.addElement(cell)
+        table.addElement(row)
+    doc.spreadsheet.addElement(table)
+    path = tmp_path / "grid.ods"
+    doc.save(str(path))
+    with pytest.raises(ValueError, match="max_cells"):
+        doormat.load(path, max_cells=100)

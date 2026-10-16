@@ -31,9 +31,10 @@ You can expect an acknowledgement within 7 days and a fix or a decision within
 
 - a crafted spreadsheet that crashes the process, hangs it, or exhausts memory
   (beyond the cost of reading a genuinely large file). doormat refuses XML
-  entity declarations and zip-based files that declare more than 512 MiB of
-  content or a zip-bomb compression ratio; a file that gets past those checks
-  and still exhausts memory is in scope
+  entity declarations, zip-based files that declare more than 512 MiB of
+  content or a zip-bomb compression ratio, and files with more than 2,000,000
+  cells; a file that gets past those checks and still exhausts memory is in
+  scope
 - memory unsafety in the Rust core or the Python extension
 - a finding's credential value appearing somewhere the API does not put it,
   such as `repr()`, exception messages or warnings

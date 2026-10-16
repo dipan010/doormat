@@ -74,11 +74,16 @@ if not doc.complete:
 
 `load()` refuses zip bombs with `ValueError`, and refuses XML entity attacks:
 a worksheet that declares entities is skipped and listed in `doc.errors`.
-Zip-based files declaring more than 512 MiB are refused by default:
+Zip-based files declaring more than 512 MiB, and files with more than
+2,000,000 cells, are refused by default. Cells are counted while sheets are
+parsed, so an oversized file fails early; reading costs roughly 0.6 KB of
+memory and 25 µs per cell, so the default bounds a file at about 1 GiB and
+under a minute:
 
 ```python
 doormat.load("huge.xlsx", max_uncompressed_bytes=2 * 1024**3)  # allow 2 GiB
-doormat.load("huge.xlsx", max_uncompressed_bytes=None)         # no size limit
+doormat.load("huge.xlsx", max_cells=10_000_000)                # allow 10 million cells
+doormat.load("huge.xlsx", max_uncompressed_bytes=None, max_cells=None)  # no limits
 ```
 
 See the [threat model](threat-model.md) for what is and is not covered.

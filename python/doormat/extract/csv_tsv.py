@@ -10,12 +10,14 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+from doormat._limits import CellBudget
 from doormat._types import Sheet, SheetErrorHandler
 
 
 def extract_csv(
     filepath: str | Path,
     on_sheet_error: SheetErrorHandler | None = None,
+    budget: CellBudget | None = None,
 ) -> list[Sheet]:
     """Extract cells from a CSV or TSV file as raw cell tuples.
 
@@ -32,6 +34,8 @@ def extract_csv(
         on_sheet_error: Called with the sheet name and error when the file
             cannot be decoded or parsed; an empty list is then returned. If
             None, the error is raised.
+        budget: Counts cells as they are read and raises CellLimitError
+            (a ValueError) past its limit. If None, nothing is counted.
 
     Returns:
         A single-element list containing one list of 7-element tuples
@@ -54,6 +58,8 @@ def extract_csv(
             reader = csv.reader(f, delimiter=delimiter)
             cells: Sheet = []
             for row_idx, row in enumerate(reader, start=1):
+                if budget is not None:
+                    budget.take(len(row))
                 for col_idx, value in enumerate(row, start=1):
                     if not value:
                         continue

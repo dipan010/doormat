@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from doormat import _core
+from doormat._limits import DEFAULT_MAX_CELLS, CellBudget
 from doormat._types import Sheet
 from doormat._zipguard import DEFAULT_MAX_UNCOMPRESSED_BYTES, ZIP_MAGIC, check_zip
 from doormat.extract import extract_xlsx
@@ -179,6 +180,7 @@ def load(
     filepath: str | Path,
     *,
     max_uncompressed_bytes: int | None = DEFAULT_MAX_UNCOMPRESSED_BYTES,
+    max_cells: int | None = DEFAULT_MAX_CELLS,
 ) -> GridDoc:
     """Load a spreadsheet file and run the credential detection engine.
 
@@ -199,6 +201,10 @@ def load(
             refuse files that would decompress to more than this many bytes.
             Defaults to 512 MiB; None removes the size limit. Parts with a
             zip-bomb compression ratio are refused regardless.
+        max_cells: Refuse a file once more than this many cells have been
+            read, counted while sheets are parsed so an oversized file fails
+            early. Defaults to 2,000,000 (roughly 1 GiB of memory); None
+            removes the limit.
 
     Returns:
         A GridDoc containing all detected relationships and file metadata.
@@ -206,8 +212,9 @@ def load(
     Raises:
         FileNotFoundError: If the file does not exist.
         ValueError: If the file extension is unsupported, the file content
-            does not match the expected format, or a zip-based file looks like
-            a zip bomb (see ``max_uncompressed_bytes``).
+            does not match the expected format, a zip-based file looks like
+            a zip bomb (see ``max_uncompressed_bytes``), or the file holds
+            more cells than ``max_cells``.
         ImportError: If an optional dependency is missing for the
             requested format (.xls requires xlrd, .ods requires odfpy).
 
@@ -252,7 +259,7 @@ def load(
     def record(sheet: str, exc: Exception) -> None:
         errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
 
-    sheets = extractor(filepath, record)
+    sheets = extractor(filepath, record, CellBudget(max_cells, filepath.name))
 
     sheet_count = len(sheets)
     cell_count = sum(len(s) for s in sheets)

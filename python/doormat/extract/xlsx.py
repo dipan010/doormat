@@ -31,6 +31,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.xml.constants import COMMENTS_NS
 from openpyxl.xml.functions import fromstring
 
+from doormat._limits import CellBudget, sheet_failed
 from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
 
 
@@ -62,8 +63,12 @@ class _CellReader(ExcelReader):
             if rel.target in self.valid_files and "chartsheet" not in rel.Type:
                 yield sheet, rel
 
-    def read_worksheet(self, sheet: Any, rel: Any) -> Worksheet:
-        """Read one worksheet's cells, merged ranges, comments and visibility."""
+    def read_worksheet(self, sheet: Any, rel: Any, budget: CellBudget | None = None) -> Worksheet:
+        """Read one worksheet's cells, merged ranges, comments and visibility.
+
+        With a budget, cells are counted row by row while the sheet is parsed,
+        so an oversized sheet is refused before it is fully in memory.
+        """
         rels_path = get_rels_path(rel.target)  # type: ignore[no-untyped-call]
         rels = RelationshipList()
         if rels_path in self.valid_files:
@@ -72,7 +77,18 @@ class _CellReader(ExcelReader):
         ws = Worksheet(self.wb, title=sheet.name)
         ws._rels = rels  # type: ignore[attr-defined]  # hyperlinks resolve through it
         with self.archive.open(rel.target) as fh:
-            WorksheetReader(ws, fh, self.shared_strings, self.data_only, self.rich_text).bind_all()
+            ws_reader = WorksheetReader(ws, fh, self.shared_strings, self.data_only, self.rich_text)
+            if budget is not None:
+                parse = ws_reader.parser.parse
+
+                def counted() -> Iterator[Any]:
+                    for row in parse():
+                        budget.take(len(row[1]))
+                        yield row
+
+                # Wrap this reader's parser only; openpyxl itself is not patched.
+                setattr(ws_reader.parser, "parse", counted)  # noqa: B010
+            ws_reader.bind_all()
 
         for comments_rel in rels.find(COMMENTS_NS):
             tree = fromstring(self.archive.read(comments_rel.target))
@@ -192,6 +208,7 @@ def extract_single_sheet(
 def extract_xlsx(
     filepath: str | Path,
     on_sheet_error: SheetErrorHandler | None = None,
+    budget: CellBudget | None = None,
 ) -> list[Sheet]:
     """Open an xlsx/xlsm workbook and extract all sheets as raw cell tuples.
 
@@ -203,6 +220,8 @@ def extract_xlsx(
         on_sheet_error: Called with the sheet name and error when a sheet
             cannot be read; extraction continues with the next sheet. If
             None, the error is raised.
+        budget: Counts cells as they are read and raises CellLimitError
+            (a ValueError) past its limit. If None, nothing is counted.
 
     Returns:
         A list of lists, one inner list of 7-element tuples per sheet that
@@ -215,12 +234,10 @@ def extract_xlsx(
         sheets: list[Sheet] = []
         for sheet, rel in reader.worksheet_parts():
             try:
-                ws = reader.read_worksheet(sheet, rel)
+                ws = reader.read_worksheet(sheet, rel, budget)
                 sheets.append(extract_single_sheet(ws, ws.title, ws.sheet_state))
             except SHEET_ERRORS as exc:
-                if on_sheet_error is None:
-                    raise
-                on_sheet_error(sheet.name, exc)
+                sheet_failed(on_sheet_error, sheet.name, exc)
     finally:
         reader.archive.close()
 

@@ -72,7 +72,7 @@ Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 
 | Name | Description |
 |---|---|
-| `doormat.load(path, *, max_uncompressed_bytes=512 MiB)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension, a file whose signature does not match it, or a zip-based file that looks like a zip bomb. `max_uncompressed_bytes=None` lifts the size limit. |
+| `doormat.load(path, *, max_uncompressed_bytes=512 MiB, max_cells=2_000_000)` | Read a spreadsheet (`str` or `pathlib.Path`) and run detection. Returns a `GridDoc`. Raises `FileNotFoundError`, or `ValueError` for an unsupported extension, a file whose signature does not match it, a zip-based file that looks like a zip bomb, or a file with more cells than `max_cells` (counted while sheets are parsed). `None` lifts either limit. |
 | `GridDoc.credentials(min_confidence=0.0)` | Relationships at or above a confidence score. `120` is a sensible default; scores above `200` are high-confidence inline or formula detections. |
 | `GridDoc.relationships()` | Every inferred key/value relationship, regardless of score. |
 | `GridDoc.sheet_count`, `GridDoc.cell_count` | Size of the scanned workbook (sheets that were read). |
