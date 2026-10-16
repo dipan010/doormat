@@ -79,6 +79,22 @@ Publishing uses [PyPI trusted publishing](https://docs.pypi.org/trusted-publishe
 
 Running the workflow manually (Actions > Release > Run workflow) builds and checks everything without publishing. To run the dependency checks locally: `cargo install cargo-deny && cargo deny check`.
 
+## Building the docs
+
+The documentation site at https://dipan010.github.io/doormat/ is built by
+[Zensical](https://zensical.org) from `docs/` and `mkdocs.yml`; the API
+reference is generated from docstrings by mkdocstrings.
+
+```bash
+python -m pip install -r docs/requirements.txt
+zensical serve                   # live preview at http://localhost:8000
+zensical build --strict --clean  # what CI runs: any warning fails the build
+```
+
+`docs/security.md` and `docs/changelog.md` include `SECURITY.md` and
+`CHANGELOG.md` from the repository root, so edit those files, not the copies.
+The site is deployed from release tags, not from every push to `main`.
+
 ## Running benchmarks
 
 ### Phase-level benchmarks

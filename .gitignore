@@ -32,3 +32,6 @@ bench/corpus/results/
 bench/exports/data/
 # Generated evaluation set A2 (regenerate with bench/configs/generate.py)
 bench/configs/data/
+
+# Built documentation site (zensical build)
+site/

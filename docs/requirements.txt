@@ -1,9 +1,9 @@
-# Documentation toolchain, pinned. mkdocs stays on 1.x: MkDocs 2.0 drops the
-# plugin and theme systems this site uses. Material for MkDocs is in maintenance mode
-# (security fixes until November 2026); mkdocs.yml is kept compatible with its
-# successor, Zensical, for a later migration.
+# Documentation toolchain, pinned. The site is built by Zensical, the successor
+# to Material for MkDocs (whose security fixes end in November 2026), reading
+# mkdocs.yml with the classic theme variant. mkdocs is not the build tool: it is
+# the library mkdocstrings is written against, so it is pinned with it.
+zensical==0.0.71
 mkdocs==1.6.1
-mkdocs-material==9.7.7
 mkdocstrings==1.0.7
 mkdocstrings-python==2.0.9
 pymdown-extensions==12.2

@@ -8,6 +8,8 @@ copyright: MIT OR Apache-2.0
 
 theme:
   name: material
+  # Zensical's classic variant keeps the Material for MkDocs look.
+  variant: classic
   features:
     - content.code.copy
     - navigation.sections
@@ -41,6 +43,7 @@ nav:
       - decisions/0009-pre-registered-evaluation.md
       - decisions/0010-cell-limit.md
       - decisions/0011-compound-labels.md
+      - decisions/0012-zensical.md
   - Security policy: security.md
   - Changelog: changelog.md
 

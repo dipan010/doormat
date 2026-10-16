@@ -33,6 +33,7 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 
 ### Documentation
 
+- The documentation site is built with Zensical, the successor to Material for MkDocs (whose security fixes end in November 2026), keeping the same configuration and look (#14)
 - Design decision records under `docs/decisions/` (ten so far, from removing `arrow2` to the cell limit), each with its options and evidence (#13)
 
 ### Validation
