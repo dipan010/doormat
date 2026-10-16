@@ -30,3 +30,5 @@ bench/corpus/results/
 
 # Generated evaluation set A (regenerate with bench/exports/generate.py)
 bench/exports/data/
+# Generated evaluation set A2 (regenerate with bench/configs/generate.py)
+bench/configs/data/

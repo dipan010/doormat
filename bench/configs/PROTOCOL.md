@@ -119,4 +119,7 @@ hard-negative traps are visible.
 
 ## Amendments
 
-None yet.
+1. **2026-10-16, before any detection result.** Three seeded files per family
+   and layout instead of one. With one file each, the test split held only 28
+   credentials (its three families document one or two secret variables
+   each); with three it holds 81. No result had been produced for any split.
