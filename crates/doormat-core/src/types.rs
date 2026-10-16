@@ -117,6 +117,9 @@ pub const TABLE_USERNAME_LABELS: &[&str] = &["id", "uid", "loginid", "logonid"];
 /// How many columns either side of a password header the header row is
 /// searched for the account (username) label of a credential table.
 pub const TABLE_HEADER_REACH: u32 = 10;
+/// Values (normalized) that stand in for a missing secret in a credential
+/// table, taken from the corpus labelling rubric.
+pub const TABLE_PLACEHOLDERS: &[&str] = &["n/a", "na", "tbd", "none", "?", "xxxx", "****"];
 /// Empty rows allowed between two rows of a credential table column.
 pub const TABLE_MAX_GAP: u32 = 1;
 /// Share of a column's cells that must look like single tokens.

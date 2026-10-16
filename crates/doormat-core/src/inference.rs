@@ -29,67 +29,94 @@ fn is_table_token(store: &CellStore, id: usize) -> bool {
         && flags & (FLAG_IS_PASSWORD_HEADER | FLAG_IS_USERNAME_HEADER | FLAG_HAS_FORMULA) == 0
 }
 
+/// True when a cell names a credential table's account column: a username
+/// label or one of `TABLE_USERNAME_LABELS`.
+fn is_account_label(store: &CellStore, id: usize) -> bool {
+    store.feature_flags[id] & FLAG_IS_USERNAME_HEADER != 0
+        || TABLE_USERNAME_LABELS.contains(&store.normalized_values[id].as_str())
+}
+
+/// True when a cell is a credential or account label, which starts a new table.
+fn is_table_label(store: &CellStore, id: usize) -> bool {
+    store.feature_flags[id] & FLAG_IS_PASSWORD_HEADER != 0 || is_account_label(store, id)
+}
+
+/// The id of the non-empty cell at `(row, col)`, if any.
+fn filled(store: &CellStore, row: u32, col: u32) -> Option<u32> {
+    store
+        .coord_to_id
+        .get(&(row, col))
+        .copied()
+        .filter(|&id| !store.get_value(id as usize).trim().is_empty())
+}
+
 /// Find a credential table column under `header_id` (`User ID` | `Password`,
 /// one account per row).
 ///
-/// The password header must share its row with a username label (or one of
-/// `TABLE_USERNAME_LABELS`, such as `ID`) at most `TABLE_HEADER_REACH` columns
-/// away. The column is the cells directly below it,
-/// ending at a label or after more than `TABLE_MAX_GAP` consecutive empty rows
-/// (accounts are often separated by a blank row). It qualifies with
-/// at least `TABLE_MIN_ROWS` cells, of which at least `TABLE_TOKEN_SHARE` are
-/// single tokens; prose, dates and form labels fail that test. Returns the ids
-/// of the token cells with at least `TABLE_MIN_VALUE_LEN` characters and a
-/// letter or digit, or an empty vector if the column does not qualify.
+/// The password header must share its row with an account label: a username
+/// label or one of `TABLE_USERNAME_LABELS` (such as `ID`), at most
+/// `TABLE_HEADER_REACH` columns away; the nearest one names the account
+/// column. The table's rows run down from the header while the account cell or
+/// the secret cell is filled, ending at a new label row or after more than
+/// `TABLE_MAX_GAP` consecutive rows with both empty. Rows without a secret are
+/// allowed (an account with no password, or a TOTP column that is mostly
+/// empty). The table qualifies with at least `TABLE_MIN_ROWS` rows and at least
+/// one secret, and at least `TABLE_TOKEN_SHARE` of its secrets must be single
+/// tokens; prose, dates and form labels fail that test. Returns the ids of the
+/// token secrets with at least `TABLE_MIN_VALUE_LEN` characters and a letter or
+/// digit that are not a placeholder (`TABLE_PLACEHOLDERS`), or an empty vector
+/// if the column does not qualify.
 fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
     let h = header_id as usize;
     let (row, col) = (store.get_row(h), store.get_col(h));
 
-    let has_username_label = (1..=TABLE_HEADER_REACH)
+    let account_col = (1..=TABLE_HEADER_REACH)
         .flat_map(|d| [col.checked_sub(d), col.checked_add(d)])
         .flatten()
-        .filter_map(|c| store.coord_to_id.get(&(row, c)))
-        .any(|&id| {
-            let id = id as usize;
-            store.feature_flags[id] & FLAG_IS_USERNAME_HEADER != 0
-                || TABLE_USERNAME_LABELS.contains(&store.normalized_values[id].as_str())
-        });
-    if !has_username_label {
+        .find(|&c| filled(store, row, c).is_some_and(|id| is_account_label(store, id as usize)));
+    let Some(account_col) = account_col else {
         return Vec::new();
-    }
+    };
 
     let mut gap = 0;
-    let column: Vec<u32> = (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
-        .map(|r| {
-            store
-                .coord_to_id
-                .get(&(r, col))
-                .copied()
-                .filter(|&id| !store.get_value(id as usize).trim().is_empty())
+    let rows: Vec<(Option<u32>, Option<u32>)> = (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
+        .map(|r| (filled(store, r, col), filled(store, r, account_col)))
+        .take_while(|&(secret, account)| {
+            gap = if secret.is_some() || account.is_some() {
+                0
+            } else {
+                gap + 1
+            };
+            let new_header = [secret, account]
+                .into_iter()
+                .flatten()
+                .any(|id| is_table_label(store, id as usize));
+            gap <= TABLE_MAX_GAP && !new_header
         })
-        .take_while(|cell| {
-            gap = if cell.is_some() { 0 } else { gap + 1 };
-            gap <= TABLE_MAX_GAP
-        })
-        .flatten()
-        .take_while(|&id| store.get_cell_type(id as usize) != CellType::Header)
+        .filter(|&(secret, account)| secret.is_some() || account.is_some())
         .collect();
+    let secrets: Vec<u32> = rows.iter().filter_map(|&(secret, _)| secret).collect();
 
-    let tokens = column
+    let tokens = secrets
         .iter()
         .filter(|&&id| is_table_token(store, id as usize))
         .count();
-    if column.len() < TABLE_MIN_ROWS || (tokens as f32) < TABLE_TOKEN_SHARE * column.len() as f32 {
+    if rows.len() < TABLE_MIN_ROWS
+        || secrets.is_empty()
+        || (tokens as f32) < TABLE_TOKEN_SHARE * secrets.len() as f32
+    {
         return Vec::new();
     }
 
-    column
+    secrets
         .into_iter()
         .filter(|&id| {
-            let value = store.get_value(id as usize).trim();
-            is_table_token(store, id as usize)
+            let id = id as usize;
+            let value = store.get_value(id).trim();
+            is_table_token(store, id)
                 && value.chars().count() >= TABLE_MIN_VALUE_LEN
                 && value.chars().any(char::is_alphanumeric)
+                && !TABLE_PLACEHOLDERS.contains(&store.normalized_values[id].as_str())
         })
         .collect()
 }
@@ -464,6 +491,58 @@ mod tests {
         let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
         assert_eq!(rels.len(), 6);
         assert!(rels.iter().all(|r| r.reason == "table_column"));
+    }
+
+    #[test]
+    fn table_rows_follow_the_account_column_past_empty_secrets() {
+        let mut cells = vec![raw(1, 1, "Username"), raw(1, 2, "Password")];
+        let secrets = ["Tr0ub4dor", "", "", "", "c0rrectH0rse", "Xy7!fake9"];
+        for (i, secret) in secrets.iter().enumerate() {
+            let r = i as u32 + 2;
+            cells.push(raw(r, 1, &format!("user{i}")));
+            if !secret.is_empty() {
+                cells.push(raw(r, 2, secret));
+            }
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor", "c0rrectH0rse", "Xy7!fake9"]);
+    }
+
+    #[test]
+    fn sparse_secret_column_uses_the_account_column_not_another_secret() {
+        // username | password | totp: the password column has gaps, the TOTP
+        // column has a single secret; neither may cut the table short.
+        let mut cells = vec![
+            raw(1, 1, "username"),
+            raw(1, 2, "password"),
+            raw(1, 3, "totp"),
+        ];
+        for r in 2..=6u32 {
+            cells.push(raw(r, 1, &format!("user{r}")));
+        }
+        cells.push(raw(2, 2, "Tr0ub4dor"));
+        cells.push(raw(6, 2, "c0rrectH0rse"));
+        cells.push(raw(6, 3, "JBSWY3DPEHPK3PXP"));
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        let mut found = values(&rels);
+        found.sort_unstable();
+        assert_eq!(found, ["JBSWY3DPEHPK3PXP", "Tr0ub4dor", "c0rrectH0rse"]);
+    }
+
+    #[test]
+    fn table_column_skips_rubric_placeholders() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "Login"),
+            raw(1, 2, "Password"),
+            raw(2, 1, "alice"),
+            raw(2, 2, "N/A"),
+            raw(3, 1, "bob"),
+            raw(3, 2, "TBD"),
+            raw(4, 1, "carol"),
+            raw(4, 2, "c0rrectH0rse"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["c0rrectH0rse"]);
     }
 
     #[test]

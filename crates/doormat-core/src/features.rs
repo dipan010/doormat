@@ -32,6 +32,8 @@ static PASSWORD_PATTERNS: &[&str] = &[
     "token",
     "accesstoken",
     "authtoken",
+    "totp",
+    "otpsecret",
 ];
 
 static USERNAME_PATTERNS: &[&str] = &[
@@ -370,6 +372,13 @@ mod tests {
         assert!(ac_exact_match(&PASSWORD_AC, "hasło"));
         assert!(ac_exact_match(&PASSWORD_AC, "lösenord"));
         assert!(ac_exact_match(&PASSWORD_AC, "senha"));
+    }
+
+    #[test]
+    fn password_headers_contains_totp_secrets() {
+        assert!(ac_exact_match(&PASSWORD_AC, "totp"));
+        assert!(ac_exact_match(&PASSWORD_AC, "otpsecret"));
+        assert!(!ac_exact_match(&PASSWORD_AC, "otp"));
     }
 
     #[test]
