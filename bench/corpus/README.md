@@ -110,9 +110,9 @@ extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 |---|---|---|---|---|---|
 | test | v0.1.0 | 334 | **16.5%** (55) | **31.2%** (55/176) | Clean: labelled before any code change |
 | test | 0.2.0 | 90 | 67.8% (61) | 34.7% (61/176) | In-sample: fixes were designed from these errors |
-| test | main | 134 | 80.6% (108) | 61.4% (108/176) | Adds credential tables (47/100), run once; see below for what is independent |
+| test | main | 120 | 90.0% (108) | 61.4% (108/176) | Credential tables (47/100, run once) and the set A precision fixes; see below and `bench/exports/RESULTS.md` |
 | dev | 0.2.0 | 243 | **59.3%** (144) | not measured | Out of sample for the split-password, scoring and formula-pairing fixes; the inline digit-token rule was chosen on dev (2 findings) |
-| dev | main | 285 | 66.0% (188) | tables 44/46 | Credential tables were designed on all of dev, so their dev figures are in sample; 1 table finding labelled unsure |
+| dev | main | 201 | 93.5% (188) | tables 44/46 | In sample: credential tables were designed on dev, and the help-desk and empty-form fixes target patterns first seen on dev; 1 table finding labelled unsure |
 
 On 2026-10-07 deduplication changed from "one finding per value" to "one
 finding per cell", so the same credential in two cells is reported twice.

@@ -110,9 +110,9 @@ On 15 synthetic fixtures, one per detection pathway, doormat scores 100% precisi
 |---|---|---|
 | 0.1.0 | 16.5% | 31.2% |
 | 0.2.0 | 59.3% | 34.7% |
-| current `main` | 66.0% | 61.4% |
+| current `main` | 93.5% | 61.4% |
 
-Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic. Inline credentials are found with few false positives. Values beside a label are usually found, but a large share of those findings are still wrong pairings (usually a nearby label when the password cell is empty). The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
+Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic; its later precision fixes target false-positive patterns first seen on dev. Inline credentials are found with few false positives. On spreadsheets laid out like password-manager and browser exports ([`bench/exports/`](bench/exports/RESULTS.md)), precision is 100% on every split, but compound header names such as Bitwarden's `login_password` are not recognised yet. The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
 ## Performance
 

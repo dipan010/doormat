@@ -23,9 +23,9 @@ measured on dev.
 |---|---|---|---|---|
 | test | 0.1.0 | 334 | 16.5% | 31.2% (55 of 176) |
 | test | 0.2.0 | 90 | 67.8% (in sample) | 34.7% (61 of 176) |
-| test | main | 134 | 80.6% | 61.4% (108 of 176) |
+| test | main | 120 | 90.0% | 61.4% (108 of 176) |
 | dev | 0.2.0 | 243 | **59.3%** | not measured |
-| dev | main | 285 | 66.0% | credential tables 44 of 46 |
+| dev | main | 201 | 93.5% | credential tables 44 of 46 |
 
 - **Recall is measured against keyword-discoverable credentials.** Credentials
   with no label nearby are invisible to both doormat and the reviewer, so true
@@ -40,6 +40,16 @@ measured on dev.
   one unrelated workbook gives 8 of 31. Details in the corpus README.
 - **Labels were assigned by one reviewer**, who also designed the fixes. No
   second-annotator agreement has been measured.
+
+## Credential exports (set A)
+
+A second, synthetic evaluation set lays credentials out like the exports of
+password managers and browsers, in 8 layouts taken from vendor documentation
+and source code. Its protocol was committed before any data or result, and
+splits are by layout family. On the test split, run once, precision is 100%
+and password recall 23%: Chromium-format exports are found in full, while
+Bitwarden's `login_password` header is not recognised. Details in
+[`bench/exports/RESULTS.md`](https://github.com/dipan010/doormat/blob/main/bench/exports/RESULTS.md).
 
 ## Robustness
 
