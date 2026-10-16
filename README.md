@@ -146,8 +146,8 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 ## Roadmap
 
 - **[0.2.0](https://github.com/dipan010/doormat/releases/tag/v0.2.0)**: first PyPI release, published 2026-10-13
-- **[0.3.0](https://github.com/dipan010/doormat/milestone/2)**: password-table detection, fewer false positives on empty form fields, faster extraction of large workbooks
-- **[0.4.0](https://github.com/dipan010/doormat/milestone/3)**: proposed command-line scanner with SARIF and JSON output
+- **[0.3.0](https://github.com/dipan010/doormat/releases/tag/v0.3.0)**: credential tables, TOTP secrets, far fewer false positives
+- **[0.4.0](https://github.com/dipan010/doormat/milestone/3)**: compound labels such as `login_password`, tables without an account column, faster extraction of large workbooks, a per-file work limit; a command-line scanner is proposed
 
 All planned work is tracked in [milestones](https://github.com/dipan010/doormat/milestones); changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
