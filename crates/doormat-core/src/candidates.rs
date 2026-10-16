@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 use ahash::AHashMap;
 use regex::Regex;
 
+use crate::features::secret_assignment;
 use crate::store::CellStore;
 use crate::types::*;
 
@@ -90,7 +91,18 @@ pub fn reduce_candidate_space(store: &CellStore) -> Vec<u32> {
         }
 
         // Inline credential regex match
-        if INLINE_CREDENTIAL_REGEX.is_match(store.get_value(i)) {
+        // Assignments (`NAME=value`) only matter when the name holds a credential
+        // word or ends in a key part, which the flags and normalized value show.
+        let value = store.get_value(i);
+        let maybe_assignment = value.contains(['=', ':']) && {
+            let normalized = store.normalized_values[i].as_str();
+            flags & FLAG_HAS_CREDENTIAL_WORD != 0
+                || normalized.contains("key")
+                || normalized.contains("salt")
+        };
+        if INLINE_CREDENTIAL_REGEX.is_match(value)
+            || (maybe_assignment && secret_assignment(value).is_some())
+        {
             candidates.push(i as u32);
             continue;
         }

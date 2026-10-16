@@ -1,5 +1,9 @@
 use ahash::{AHashMap, AHashSet};
 
+use crate::features::{
+    is_boolean_literal, is_compound_credential_label, is_key_material, is_numeric_amount,
+    is_variable_name,
+};
 use crate::scoring::score_candidate;
 use crate::spatial::{query_radius, DistanceTable};
 use crate::store::CellStore;
@@ -117,8 +121,94 @@ fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
                 && value.chars().count() >= TABLE_MIN_VALUE_LEN
                 && value.chars().any(char::is_alphanumeric)
                 && !TABLE_PLACEHOLDERS.contains(&store.normalized_values[id].as_str())
+                && !is_boolean_literal(&store.normalized_values[id])
         })
         .collect()
+}
+
+/// True when a cell can be reported as a credential value next to a label:
+/// a single token of at least `TABLE_MIN_VALUE_LEN` characters with a letter or
+/// digit, and not a placeholder, a switch or an amount.
+fn is_credential_value(store: &CellStore, id: usize) -> bool {
+    let value = store.get_value(id).trim();
+    let normalized = store.normalized_values[id].as_str();
+    is_table_token(store, id)
+        && value.chars().count() >= TABLE_MIN_VALUE_LEN
+        && value.chars().any(char::is_alphanumeric)
+        && !TABLE_PLACEHOLDERS.contains(&normalized)
+        && !is_boolean_literal(normalized)
+        && !is_numeric_amount(value)
+}
+
+/// True when the cell at `(row, col)` holds a variable name.
+fn variable_name_at(store: &CellStore, row: u32, col: u32) -> bool {
+    filled(store, row, col).is_some_and(|id| is_variable_name(store.get_value(id as usize)))
+}
+
+/// Values of a compound credential label (`MYSQL_ROOT_PASSWORD`) or key label
+/// (`WORDPRESS_AUTH_KEY`) in a list of configuration variables, or `None` if
+/// `header_id` is neither. A key label's values must also be key material.
+///
+/// Variable names run along one axis and their values sit across from them.
+/// If more of the label's vertical neighbours than horizontal ones are
+/// variable names, the names run down a column and the value is the cell to
+/// the label's right. If more horizontal neighbours are names, they form a
+/// header row (one row per environment below) and the values are the column
+/// below, down to a label or more than `TABLE_MAX_GAP` empty rows. A label with
+/// no neighbouring names takes the cell to its right when there is one.
+/// Cells that are not credential values (`yes`, a placeholder, prose) are not
+/// reported, and a label never takes another variable's value: an empty
+/// result means the label has no value.
+fn detect_variable_values(store: &CellStore, header_id: u32) -> Option<Vec<u32>> {
+    let h = header_id as usize;
+    let label = store.get_value(h);
+    let key_label = store.feature_flags[h] & FLAG_IS_KEY_LABEL != 0;
+    if !key_label && !is_compound_credential_label(label) {
+        return None;
+    }
+    let (row, col) = (store.get_row(h), store.get_col(h));
+    let names = |cells: [(Option<u32>, Option<u32>); 2]| {
+        cells
+            .into_iter()
+            .filter(|&(r, c)| matches!((r, c), (Some(r), Some(c)) if variable_name_at(store, r, c)))
+            .count()
+    };
+    let vertical = names([
+        (row.checked_sub(1), Some(col)),
+        (row.checked_add(1), Some(col)),
+    ]);
+    let horizontal = names([
+        (Some(row), col.checked_sub(1)),
+        (Some(row), col.checked_add(1)),
+    ]);
+
+    let values: Vec<u32> = if horizontal > vertical {
+        let mut gap = 0;
+        (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
+            .map(|r| filled(store, r, col))
+            .take_while(|cell| {
+                gap = if cell.is_some() { 0 } else { gap + 1 };
+                gap <= TABLE_MAX_GAP && !cell.is_some_and(|id| is_table_label(store, id as usize))
+            })
+            .flatten()
+            .collect()
+    } else {
+        match filled(store, row, col + 1) {
+            Some(id) => vec![id],
+            None if vertical > 0 => Vec::new(),
+            None => return None,
+        }
+    };
+    Some(
+        values
+            .into_iter()
+            .filter(|&id| {
+                let id = id as usize;
+                is_credential_value(store, id)
+                    && (!key_label || is_key_material(store.get_value(id)))
+            })
+            .collect(),
+    )
 }
 
 /// Walk up to 5 cells directly below `header_id` in the same column.
@@ -212,18 +302,28 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
             .or_insert(0) += 1;
     }
     let is_category = |i: usize| {
-        per_column[&(store.get_col(i), store.normalized_values[i].as_str())] >= CATEGORY_REPEAT
+        per_column
+            .get(&(store.get_col(i), store.normalized_values[i].as_str()))
+            .copied()
+            .unwrap_or(0)
+            >= CATEGORY_REPEAT
     };
+    // Key labels (`..._KEY`, `..._SALT`) are considered only in variable lists.
     let header_ids: Vec<u32> = (0..store.len())
-        .filter(|&i| store.feature_flags[i] & FLAG_IS_PASSWORD_HEADER != 0)
+        .filter(|&i| store.feature_flags[i] & (FLAG_IS_PASSWORD_HEADER | FLAG_IS_KEY_LABEL) != 0)
         .map(|i| i as u32)
         .collect();
 
     for &header_id in &header_ids {
         let h = header_id as usize;
+        let password_label = store.feature_flags[h] & FLAG_IS_PASSWORD_HEADER != 0;
 
         // 0. A credential table: one relationship per row of the column
-        let table = detect_table_column(store, header_id);
+        let table = if password_label {
+            detect_table_column(store, header_id)
+        } else {
+            Vec::new()
+        };
         if !table.is_empty() {
             for value_id in table {
                 used_value_ids.insert(value_id);
@@ -242,6 +342,25 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
             continue;
         }
 
+        // A compound label in a list of configuration variables: its value is
+        // across from it, and it never takes another variable's value.
+        if let Some(values) = detect_variable_values(store, header_id) {
+            for value_id in values {
+                if !used_value_ids.insert(value_id) {
+                    continue;
+                }
+                results.push(Relationship {
+                    header_cell_id: h,
+                    value_cell_id: value_id as usize,
+                    key: store.get_value(h).to_string(),
+                    value: store.get_value(value_id as usize).to_string(),
+                    confidence: VARIABLE_VALUE_CONFIDENCE,
+                    reason: "variable_value".into(),
+                });
+            }
+            continue;
+        }
+
         // 1. Try split password detection
         if let Some((combined, first_cell_id)) = detect_split_password(store, header_id) {
             used_value_ids.insert(first_cell_id);
@@ -253,6 +372,9 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
                 confidence: 200.0,
                 reason: "split_password".into(),
             });
+            continue;
+        }
+        if !password_label {
             continue;
         }
 
@@ -281,7 +403,7 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
             if used_value_ids.contains(&nid) {
                 continue;
             }
-            if !store.get_formula(n).is_empty() {
+            if !store.get_formula(n).is_empty() || is_boolean_literal(&store.normalized_values[n]) {
                 continue;
             }
 
@@ -574,6 +696,34 @@ mod tests {
         let store = pipeline_store(vec![raw(1, 1, "Password:"), raw(1, 3, "Tr0ub4dor!9")]);
         let rels = infer_relationships(&store, &DISTANCE_TABLE);
         assert_eq!(values(&rels), ["Tr0ub4dor!9"]);
+    }
+
+    #[test]
+    fn compound_label_pairs_with_its_value_but_not_a_switch() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "Variable"),
+            raw(1, 2, "Value"),
+            raw(2, 1, "MYSQL_ROOT_PASSWORD"),
+            raw(2, 2, "Tr0ub4dor!9"),
+            raw(3, 1, "MYSQL_RANDOM_ROOT_PASSWORD"),
+            raw(3, 2, "yes"),
+            raw(4, 1, "MYSQL_ROOT_PASSWORD_FILE"),
+            raw(4, 2, "/run/secrets/mysql_root_password"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["Tr0ub4dor!9"]);
+    }
+
+    #[test]
+    fn key_label_takes_key_material_only() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "WORDPRESS_AUTH_KEY"),
+            raw(1, 2, "q8Zr2Lm9Xa7Pk3Vw#d"),
+            raw(2, 1, "PRIMARY_KEY"),
+            raw(2, 2, "user_id"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert_eq!(values(&rels), ["q8Zr2Lm9Xa7Pk3Vw#d"]);
     }
 
     #[test]

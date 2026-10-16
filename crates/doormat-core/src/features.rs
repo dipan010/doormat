@@ -75,12 +75,147 @@ static URL_AC: LazyLock<AhoCorasick> = LazyLock::new(|| build_ac(URL_PATTERNS));
 /// Check if `text` exactly matches any pattern in the automaton.
 /// Aho-Corasick finds substrings; we need full-string match.
 fn ac_exact_match(ac: &AhoCorasick, text: &str) -> bool {
+    ac_scan(ac, text).0
+}
+
+/// One pass over `text`: whether a pattern matches the whole text, and
+/// whether any pattern occurs in it at all.
+fn ac_scan(ac: &AhoCorasick, text: &str) -> (bool, bool) {
+    let mut any = false;
     for mat in ac.find_iter(text) {
+        any = true;
         if mat.start() == 0 && mat.end() == text.len() {
-            return true;
+            return (true, true);
         }
     }
-    false
+    (false, any)
+}
+
+// ---------- Compound labels ----------
+
+/// Split an identifier-style label into lowercase parts at `_`, `.`, `-` and
+/// camelCase boundaries: `loginPassword` -> `login`, `password`.
+fn label_parts(label: &str) -> Vec<String> {
+    let mut parts = vec![String::new()];
+    let mut prev_lower = false;
+    for c in label.chars() {
+        if matches!(c, '_' | '.' | '-') {
+            parts.push(String::new());
+            prev_lower = false;
+            continue;
+        }
+        if c.is_uppercase() && prev_lower {
+            parts.push(String::new());
+        }
+        prev_lower = c.is_lowercase();
+        parts
+            .last_mut()
+            .expect("parts is never empty")
+            .extend(c.to_lowercase());
+    }
+    parts.retain(|p| !p.is_empty());
+    parts
+}
+
+/// True when `value` looks like a variable name: letters, digits and `_ . -`
+/// only, starting with a letter, in at least two `_`/`.`-separated parts
+/// (`MYSQL_DATABASE`, `database__connection__user`). A trailing `:` or `=` is
+/// ignored.
+pub fn is_variable_name(value: &str) -> bool {
+    let label = value.trim().trim_end_matches([':', '=']);
+    label.len() <= COMPOUND_LABEL_MAX_LEN
+        && label.chars().next().is_some_and(char::is_alphabetic)
+        && label
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '.' | '-'))
+        && label.split(['_', '.']).filter(|p| !p.is_empty()).count() >= 2
+}
+
+/// True when `value` is an identifier-style compound label whose final part
+/// names a credential: `MYSQL_ROOT_PASSWORD`, `login_password`,
+/// `mail__options__auth__pass`, `ME_CONFIG_MONGODB_ADMINPASSWORD`.
+///
+/// Only labels without whitespace and made of letters, digits and `_ . -` are
+/// considered (a trailing `:` or `=` is ignored), so prose and URLs never
+/// match. The final part must be a password keyword, or end in one of
+/// `COMPOUND_SUFFIXES`; a credential word followed by another part is a
+/// different thing (`PASSWORD_FILE` is a path, `PASSWORD_HASH` a hash).
+pub fn is_compound_credential_label(value: &str) -> bool {
+    let label = value.trim().trim_end_matches([':', '=']);
+    if label.is_empty()
+        || label.len() > COMPOUND_LABEL_MAX_LEN
+        || !label
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '.' | '-'))
+    {
+        return false;
+    }
+    let parts = label_parts(label);
+    let Some(last) = parts.last() else {
+        return false;
+    };
+    (parts.len() >= 2 && ac_exact_match(&PASSWORD_AC, last))
+        || COMPOUND_SUFFIXES
+            .iter()
+            .any(|s| last.len() > s.len() && last.ends_with(s))
+}
+
+/// True when `value` is an identifier-style label whose final part names key
+/// material (`WORDPRESS_AUTH_KEY`, `WORDPRESS_NONCE_SALT`; `KEY_PARTS`).
+pub fn is_compound_key_label(value: &str) -> bool {
+    is_variable_name(value)
+        && label_parts(value.trim().trim_end_matches([':', '=']))
+            .last()
+            .is_some_and(|last| KEY_PARTS.contains(&last.as_str()))
+}
+
+/// True when `value` looks like key material: at least `KEY_MATERIAL_MIN_LEN`
+/// characters mixing upper case, lower case and digits, with entropy of at
+/// least `ENTROPY_THRESHOLD`.
+pub fn is_key_material(value: &str) -> bool {
+    value.chars().count() >= KEY_MATERIAL_MIN_LEN
+        && value.chars().any(char::is_uppercase)
+        && value.chars().any(char::is_lowercase)
+        && value.chars().any(|c| c.is_ascii_digit())
+        && compute_entropy(value) >= ENTROPY_THRESHOLD
+}
+
+/// Split a one-line assignment (`NAME=value`, `NAME: value`) whose name is a
+/// compound credential or key label; returns `(name, value)`. The value must
+/// be non-empty, and for a key label it must be key material.
+pub fn secret_assignment(text: &str) -> Option<(&str, &str)> {
+    let at = text.find(['=', ':'])?;
+    let (name, rest) = (text[..at].trim(), text[at + 1..].trim());
+    let value = rest.trim_matches(['"', '\'']);
+    if value.is_empty() || value.chars().any(char::is_whitespace) {
+        return None;
+    }
+    let credential = is_compound_credential_label(name) && is_variable_name(name);
+    let key = is_compound_key_label(name) && is_key_material(value);
+    (credential || key).then_some((name, value))
+}
+
+/// True when `value` is a money amount or measurement rather than a secret: an
+/// optionally signed number with a decimal part or a leading sign
+/// (`-12345.67`, `1,250.00`, `+3`). Plain digit strings such as PINs are not
+/// amounts.
+pub fn is_numeric_amount(value: &str) -> bool {
+    let v = value.trim();
+    let (signed, body) = match v.strip_prefix(['-', '+']) {
+        Some(rest) => (true, rest),
+        None => (false, v),
+    };
+    let (whole, fraction) = body.split_once('.').unwrap_or((body, ""));
+    let digits = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit() || c == ',');
+    digits(whole)
+        && (fraction.is_empty() || fraction.chars().all(|c| c.is_ascii_digit()))
+        && (signed || !fraction.is_empty())
+}
+
+/// True when a normalized value is a switch (`yes`, `true`, `0`, ...), which is
+/// never a credential.
+pub fn is_boolean_literal(normalized: &str) -> bool {
+    BOOLEAN_LITERALS.contains(&normalized)
 }
 
 // ---------- Normalize ----------
@@ -296,8 +431,18 @@ pub fn precompute_features(store: &mut CellStore) {
         }
 
         // Header detection against normalized value (Aho-Corasick exact match)
-        if ac_exact_match(&PASSWORD_AC, &norm_buf) {
+        // One automaton pass gives both the exact label match and whether a
+        // credential word occurs at all; compound labels are checked only then.
+        let (exact, credential_word) = ac_scan(&PASSWORD_AC, &norm_buf);
+        if credential_word {
+            flags |= FLAG_HAS_CREDENTIAL_WORD;
+        }
+        if exact || (credential_word && is_compound_credential_label(value)) {
             flags |= FLAG_IS_PASSWORD_HEADER;
+        } else if (norm_buf.ends_with("key") || norm_buf.ends_with("salt"))
+            && is_compound_key_label(value)
+        {
+            flags |= FLAG_IS_KEY_LABEL;
         }
         if ac_exact_match(&USERNAME_AC, &norm_buf) {
             flags |= FLAG_IS_USERNAME_HEADER;
@@ -379,6 +524,102 @@ mod tests {
         assert!(ac_exact_match(&PASSWORD_AC, "totp"));
         assert!(ac_exact_match(&PASSWORD_AC, "otpsecret"));
         assert!(!ac_exact_match(&PASSWORD_AC, "otp"));
+    }
+
+    #[test]
+    fn compound_labels_ending_in_a_credential_word() {
+        for label in [
+            "MYSQL_ROOT_PASSWORD",
+            "login_password",
+            "loginPassword",
+            "mail__options__auth__pass",
+            "ME_CONFIG_MONGODB_ADMINPASSWORD",
+            "ME_CONFIG_SITE_COOKIESECRET",
+            "app.pwd",
+            "DB_PASSWORD:",
+        ] {
+            assert!(is_compound_credential_label(label), "{label}");
+        }
+    }
+
+    #[test]
+    fn compound_labels_that_are_not_credentials() {
+        for label in [
+            "POSTGRES_PASSWORD_FILE",
+            "MARIADB_ROOT_PASSWORD_HASH",
+            "ME_CONFIG_SITE_SSL_KEY_PATH",
+            "bypass",
+            "compass",
+            "Change Password",
+            "https://example.test/?password",
+            "PASSWORD",
+            "",
+        ] {
+            assert!(!is_compound_credential_label(label), "{label}");
+        }
+    }
+
+    #[test]
+    fn variable_names() {
+        assert!(
+            is_variable_name("MYSQL_DATABASE") && is_variable_name("database__connection__user")
+        );
+        assert!(
+            !is_variable_name("PGDATA")
+                && !is_variable_name("Variable")
+                && !is_variable_name("Tr0ub4dor!9")
+        );
+    }
+
+    #[test]
+    fn key_labels_and_key_material() {
+        assert!(
+            is_compound_key_label("WORDPRESS_AUTH_KEY")
+                && is_compound_key_label("WORDPRESS_NONCE_SALT")
+        );
+        assert!(
+            !is_compound_key_label("ME_CONFIG_SITE_SSL_KEY_PATH") && !is_compound_key_label("KEY")
+        );
+        assert!(is_key_material("q8Zr2Lm9Xa7Pk3Vw"));
+        assert!(!is_key_material("user_id") && !is_key_material("AKIAABCDEFGH12345678"));
+    }
+
+    #[test]
+    fn secret_assignments() {
+        assert_eq!(
+            secret_assignment("ME_CONFIG_MONGODB_ADMINPASSWORD=Tr0ub4dor!9"),
+            Some(("ME_CONFIG_MONGODB_ADMINPASSWORD", "Tr0ub4dor!9"))
+        );
+        assert_eq!(
+            secret_assignment("WORDPRESS_AUTH_KEY=q8Zr2Lm9Xa7Pk3Vw"),
+            Some(("WORDPRESS_AUTH_KEY", "q8Zr2Lm9Xa7Pk3Vw"))
+        );
+        assert_eq!(secret_assignment("WORDPRESS_AUTH_KEY=short"), None);
+        assert_eq!(
+            secret_assignment("POSTGRES_PASSWORD_FILE=/run/secrets/pw"),
+            None
+        );
+        assert_eq!(secret_assignment("Password reset = done today"), None);
+    }
+
+    #[test]
+    fn numeric_amounts() {
+        assert!(
+            is_numeric_amount("-99999.9999")
+                && is_numeric_amount("1,250.00")
+                && is_numeric_amount("+3")
+        );
+        assert!(
+            !is_numeric_amount("4821")
+                && !is_numeric_amount("Tr0ub4dor")
+                && !is_numeric_amount("1.2.3")
+        );
+    }
+
+    #[test]
+    fn boolean_literals() {
+        assert!(is_boolean_literal("yes") && is_boolean_literal("true") && is_boolean_literal("0"));
+        assert!(!is_boolean_literal("yes123") && !is_boolean_literal("Tr0ub4dor"));
     }
 
     #[test]

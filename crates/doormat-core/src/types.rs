@@ -99,6 +99,31 @@ pub struct Region {
 pub const NEIGHBOR_RADIUS: i32 = 3;
 /// Minimum confidence score for a relationship to be accepted.
 pub const RELATIONSHIP_THRESHOLD: f32 = 120.0;
+/// Longest identifier-style label (`MYSQL_ROOT_PASSWORD`) checked as a
+/// compound credential label.
+pub const COMPOUND_LABEL_MAX_LEN: usize = 64;
+/// Credential keywords recognised at the end of a label's final part even
+/// when joined to another word (`ADMINPASSWORD`, `COOKIESECRET`). Shorter
+/// keywords (`pass`, `pwd`) must be a whole part, so `bypass` never matches.
+pub const COMPOUND_SUFFIXES: &[&str] = &[
+    "password",
+    "passwd",
+    "passphrase",
+    "passcode",
+    "secret",
+    "token",
+];
+/// Final label parts that name key material (`WORDPRESS_AUTH_KEY`,
+/// `..._SALT`). They are weaker than credential words (`PRIMARY_KEY` is a
+/// column name), so their value must also look like key material.
+pub const KEY_PARTS: &[&str] = &["key", "salt"];
+/// Shortest value accepted as key material for a `KEY_PARTS` label; it must
+/// also mix upper, lower and digits with entropy of at least `ENTROPY_THRESHOLD`.
+pub const KEY_MATERIAL_MIN_LEN: usize = 16;
+/// Values (normalized) that are switches, not secrets: `MYSQL_RANDOM_ROOT_PASSWORD=yes`.
+pub const BOOLEAN_LITERALS: &[&str] = &[
+    "yes", "no", "true", "false", "on", "off", "y", "n", "0", "1",
+];
 /// Minimum value length to be considered a credential candidate.
 pub const MIN_CANDIDATE_LENGTH: usize = 4;
 /// A password label whose exact text repeats this many times in its own column
@@ -107,6 +132,9 @@ pub const CATEGORY_REPEAT: u32 = 3;
 /// A form label ending in `:` takes its value from the right; if none of this
 /// many cells to its right is filled, the field is empty.
 pub const FORM_FIELD_REACH: u32 = 2;
+/// Confidence of the value of a compound credential label in a list of
+/// configuration variables (`MYSQL_ROOT_PASSWORD | x`).
+pub const VARIABLE_VALUE_CONFIDENCE: f32 = 190.0;
 /// Confidence of a value found in a credential table column.
 pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
 /// A credential table needs at least this many rows below its header.
@@ -167,6 +195,11 @@ pub const FLAG_IS_USERNAME_HEADER: u16 = 0b0_1000_0000_0000;
 pub const FLAG_IS_URL_HEADER: u16 = 0b01_0000_0000_0000;
 /// Cell has a comment annotation.
 pub const FLAG_HAS_COMMENT: u16 = 0b10_0000_0000_0000;
+/// Normalized value contains a password keyword anywhere (`mysqlrootpassword`);
+/// set in the same automaton pass as `FLAG_IS_PASSWORD_HEADER`.
+pub const FLAG_HAS_CREDENTIAL_WORD: u16 = 0b100_0000_0000_0000;
+/// Value is a compound key label (`WORDPRESS_AUTH_KEY`, `..._SALT`).
+pub const FLAG_IS_KEY_LABEL: u16 = 0b1000_0000_0000_0000;
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,7 @@
 use crate::candidates::{
     inline_value, FORMULA_KEYWORD_REGEX, FORMULA_STRING_REGEX, INLINE_CREDENTIAL_REGEX,
 };
+use crate::features::{is_boolean_literal, normalize, secret_assignment};
 use crate::store::CellStore;
 use crate::types::*;
 
@@ -41,16 +42,27 @@ pub fn detect_inline_credentials(store: &CellStore, candidate_ids: &[u32]) -> Ve
             }
             let value = store.get_value(id);
 
-            let caps = INLINE_CREDENTIAL_REGEX.captures(value)?;
-            let captured = inline_value(&caps)?;
-
-            let raw_value = strip_quotes(captured.as_str());
-            if raw_value.len() < MIN_CANDIDATE_LENGTH {
+            // `key: value` around a credential keyword, or a variable assignment
+            // whose name is a compound credential or key label
+            // (`ME_CONFIG_MONGODB_ADMINPASSWORD=x`, `WORDPRESS_AUTH_KEY=x`).
+            let (key, raw_value) = match INLINE_CREDENTIAL_REGEX
+                .captures(value)
+                .and_then(|caps| inline_value(&caps))
+            {
+                // Key: everything before the captured group in the original value
+                Some(captured) => (
+                    strip_key(&value[..captured.start()]),
+                    strip_quotes(captured.as_str()),
+                ),
+                None => {
+                    let (name, secret) = secret_assignment(value)?;
+                    (name.to_string(), secret.to_string())
+                }
+            };
+            if raw_value.len() < MIN_CANDIDATE_LENGTH || is_boolean_literal(&normalize(&raw_value))
+            {
                 return None;
             }
-
-            // Key: everything before the captured group in the original value
-            let key = strip_key(&value[..captured.start()]);
 
             Some(Relationship {
                 header_cell_id: id,
@@ -261,6 +273,27 @@ mod tests {
         let rels = detect_inline_credentials(&store, &[0]);
         assert_eq!(rels.len(), 1);
         assert_eq!(rels[0].value, "JBSWY3DPEHPK3PXP");
+    }
+
+    #[test]
+    fn inline_switch_is_not_a_credential() {
+        let store = build_store(vec![raw(1, 1, "MYSQL_ALLOW_EMPTY_PASSWORD=true", "", "")]);
+        assert!(detect_inline_credentials(&store, &[0]).is_empty());
+    }
+
+    #[test]
+    fn inline_assignment_with_a_glued_credential_word() {
+        let store = build_store(vec![raw(
+            1,
+            1,
+            "ME_CONFIG_MONGODB_ADMINPASSWORD=Tr0ub4dor!9",
+            "",
+            "",
+        )]);
+        let rels = detect_inline_credentials(&store, &[0]);
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].key, "ME_CONFIG_MONGODB_ADMINPASSWORD");
+        assert_eq!(rels[0].value, "Tr0ub4dor!9");
     }
 
     #[test]
