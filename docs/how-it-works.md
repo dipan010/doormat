@@ -39,7 +39,8 @@ Header keywords are matched with Aho-Corasick against whole normalised values,
 so `Password:` and `PASS_WORD` are password labels but `Password reset policy`
 is not. The password list covers English (`password`, `pwd`, `pass`, `passwd`,
 `passphrase`, `passcode`, `secret`, `secretkey`, `apikey`, `token`,
-`accesstoken`, `authtoken`, ...) and German, Spanish, French, Portuguese,
+`accesstoken`, `authtoken`, and the TOTP secret labels `totp` and
+`otpsecret`, ...) and German, Spanish, French, Portuguese,
 Russian, Japanese, Chinese, Korean, Dutch, Polish and Swedish forms. Username
 and URL lists are separate and only add context.
 
@@ -82,7 +83,9 @@ Credentials written inside one cell are matched by a regular expression
   (`Password - X`). Plain whitespace is not a separator, which excludes prose
   such as "cost pass through";
 - or, for password-family keywords only, whitespace followed by a single token
-  containing a digit (`Password X333#`).
+  containing a digit (`Password X333#`);
+- in a URL query (`otpauth://totp/ada?secret=X&issuer=Y`), the value ends at
+  the next `&` or `#`.
 
 Formula cells are skipped here; their text is a formula, handled by the
 formula pathways in the table below.
@@ -100,24 +103,35 @@ formula pathways in the table below.
 ## 6. Credential tables (`inference.rs`)
 
 Some workbooks list many accounts, one per row, under a header row such as
-`System | User ID | Password`. A password label heads a **credential table**
-when:
+`System | User ID | Password`; password-manager exports look the same. A
+password label heads a **credential table** when:
 
-- a username label (`User ID`, `Username`, `Login`, `Account`, ..., or for
-  tables only a bare `ID`, `UID`, `Login ID`, `Logon ID`;
-  `TABLE_USERNAME_LABELS`) sits in the **same row**, at most **3** columns away;
-- the cells below it, read down to the next label or until more than **1**
-  empty row (`TABLE_MAX_GAP`; accounts are often separated by a blank row),
-  number at least **2** (`TABLE_MIN_ROWS`), and at least **80%** of them are
-  single tokens (`TABLE_TOKEN_SHARE`): no whitespace, no trailing `:`, not a
-  label and not a formula.
+- an **account label** sits in the **same row**, at most **10** columns away
+  (`TABLE_HEADER_REACH`): a username label (`User ID`, `Username`, `Login`,
+  `Account`, ...) or, for tables only, a bare `ID`, `UID`, `Login ID` or
+  `Logon ID` (`TABLE_USERNAME_LABELS`). The nearest one is the **account
+  column**;
+- the table's rows run down while the account cell or the secret cell is
+  filled, and end at a new label row or after more than **1** row with both
+  empty (`TABLE_MAX_GAP`; accounts are often separated by a blank row). Rows
+  without a secret are allowed: an account with no password, or a TOTP column
+  that is mostly empty;
+- there are at least **2** rows (`TABLE_MIN_ROWS`) and at least one secret, and
+  at least **80%** of the secrets are single tokens (`TABLE_TOKEN_SHARE`): no
+  whitespace, no trailing `:`, not a label and not a formula.
 
 The whole column is judged at once, so a help-desk log whose `Password` column
 holds categories, a column of dates or notes, or a login form whose next rows
 are labels does not qualify. Every token of at least **3** characters
 (`TABLE_MIN_VALUE_LEN`) with a letter or digit is then reported, one finding
-per row; placeholders such as `****` are skipped. The header is not paired
+per row; placeholders from the labelling rubric (`N/A`, `TBD`, `none`, `?`,
+`xxxx`, `****`; `TABLE_PLACEHOLDERS`) are skipped. The header is not paired
 again by the steps below.
+
+A password label that occurs **3** or more times in its own column
+(`CATEGORY_REPEAT`) is a category value in a data column (a ticket log's
+`Category: Password`). It may still head a credential table, since stacked
+tables repeat their header row, but it is not paired by the steps below.
 
 ## 7. Split values (`inference.rs`)
 
@@ -128,6 +142,11 @@ cell with something beside it is a form row or a table row, not a fragment.
 The joined value must be at least 6 characters.
 
 ## 8. Pairing and scoring (`spatial.rs`, `scoring.rs`, `inference.rs`)
+
+A password label ending in `:` is a form field: its value is to the right.
+If none of the **2** cells to its right is filled (`FORM_FIELD_REACH`; two
+allow for a merged label cell), the field is empty and nothing is paired, so
+the label below it is never reported as its value.
 
 For each password label, every value cell within **3** rows and columns
 (`NEIGHBOR_RADIUS`, a 7×7 window) is scored, except formula cells and values
@@ -179,8 +198,8 @@ list is returned in reading order.
   in ways the rule above rejects, still yield at most one pairing. On the
   corpus this rule finds about half of the table credentials
   ([evaluation](evaluation.md)).
-- **An empty value cell does not stop pairing.** A form label whose value is
-  blank can pair with the next label below it.
+- **Unlabelled value columns are not modelled.** A form label without a colon
+  (`Password`) whose value cell is empty can still pair with a nearby cell.
 - **Scores are hand-set, not learned.** The constants above were chosen on
   synthetic fixtures and then corrected against the dev split of the Enron
   corpus; they are not fitted by a model.

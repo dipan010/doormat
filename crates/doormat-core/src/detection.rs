@@ -250,6 +250,20 @@ mod tests {
     }
 
     #[test]
+    fn inline_value_in_a_url_query_ends_at_the_next_parameter() {
+        let store = build_store(vec![raw(
+            1,
+            1,
+            "otpauth://totp/ada?secret=JBSWY3DPEHPK3PXP&issuer=Sample",
+            "",
+            "",
+        )]);
+        let rels = detect_inline_credentials(&store, &[0]);
+        assert_eq!(rels.len(), 1);
+        assert_eq!(rels[0].value, "JBSWY3DPEHPK3PXP");
+    }
+
+    #[test]
     fn inline_value_too_short() {
         let store = build_store(vec![raw(0, 0, "password = abc", "", "")]);
         let candidates = reduce_candidate_space(&store);

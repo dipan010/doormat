@@ -16,11 +16,14 @@ use crate::types::*;
 /// one side (`Password - X`), so prose like `pass through` does not match.
 /// Password-family keywords also accept a bare whitespace separator when the
 /// value is a single token containing a digit (`Password X333#`).
+/// In a URL query (`...?secret=X&issuer=Y`, as in `otpauth://` URIs) the value
+/// ends at the next `&` or `#`.
 ///
-/// The value is in capture group 1 or 2; read it with [`inline_value`].
+/// The value is in capture group 1, 2 or 3; read it with [`inline_value`].
 pub(crate) static INLINE_CREDENTIAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(concat!(
-        r"(?i)(?:^|[^\p{L}\p{N}])(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)\b",
+        r"(?i)[?&](?:password|pwd|pass|passwd|secret|pin)=([^&#\s]+)",
+        r"|(?:^|[^\p{L}\p{N}])(?:password|pwd|pass|passwd|passwort|contraseña|motdepasse|senha|пароль|secret|pin)\b",
         r"(?:\s*[:=]\s*|\s+[-–]\s*|\s*[-–]\s+)(.+)",
         r"|(?:^|[^\p{L}\p{N}])(?:password|passwd|pwd|passwort|contraseña|motdepasse|senha|пароль)\s+(\S*\d\S*)\s*$",
     ))
@@ -29,7 +32,7 @@ pub(crate) static INLINE_CREDENTIAL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Return the value matched by [`INLINE_CREDENTIAL_REGEX`], whichever branch matched.
 pub(crate) fn inline_value<'h>(caps: &regex::Captures<'h>) -> Option<regex::Match<'h>> {
-    caps.get(1).or_else(|| caps.get(2))
+    caps.get(1).or_else(|| caps.get(2)).or_else(|| caps.get(3))
 }
 
 /// A double-quoted string literal inside a formula.
