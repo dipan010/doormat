@@ -137,3 +137,31 @@ def test_ods_xml_entity_declarations_are_rejected(tmp_path):
 
     with pytest.raises(ValueError):
         doormat.load(evil)
+
+
+def test_merged_range_with_covered_cells_is_read(tmp_path):
+    """LibreOffice writes covered cells for every merged range; they must not fail the sheet."""
+    pytest.importorskip("odf")
+    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf.table import CoveredTableCell, Table, TableCell, TableRow
+    from odf.text import P
+
+    from doormat.extract.ods import extract_ods
+
+    doc = OpenDocumentSpreadsheet()
+    table = Table(name="S1")
+    row = TableRow()
+    label = TableCell(numbercolumnsspanned=2)
+    label.addElement(P(text="Password"))
+    row.addElement(label)
+    row.addElement(CoveredTableCell())
+    value = TableCell()
+    value.addElement(P(text="s3cRet!99"))
+    row.addElement(value)
+    table.addElement(row)
+    doc.spreadsheet.addElement(table)
+    path = tmp_path / "merged.ods"
+    doc.save(str(path))
+
+    cells = extract_ods(path)[0]
+    assert [(c[1], c[2], c[6]) for c in cells] == [(1, "Password", True), (3, "s3cRet!99", False)]
