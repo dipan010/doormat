@@ -135,3 +135,9 @@ Per split, and per family, variant and source grade within it:
    finding as a false positive. Prompted by the holdout baseline (75 such
    findings), so the holdout split is no longer clean for any change to how
    inline values are delimited; that change will be validated on test only.
+2. **2026-10-13, generator fix found while analysing design misses.** openpyxl
+   stored generated passwords beginning with `=` as formulas, so those `.xlsx`
+   cells were formulas while the answer key called them passwords (4 such
+   cells on design). The generator now stores them as text and the data and
+   manifest were regenerated. Results recorded before this fix are marked as
+   such in RESULTS.md.

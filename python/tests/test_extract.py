@@ -358,6 +358,20 @@ def test_extract_workbook_ignores_malformed_pivot_cache(tmp_xlsx):
     _assert_only_doormat_reads(path)
 
 
+def test_text_starting_with_equals_is_a_value_not_a_formula(tmp_xlsx):
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "Password"
+    wb.active["B1"] = "=k9Xq!fake"
+    wb.active["B1"].data_type = "s"
+    wb.active["C1"] = "=SUM(1,2)"
+    p = tmp_xlsx(wb)
+    wb.close()
+
+    cells = {c[1]: c[2:4] for c in extract_workbook(p)[0]}
+    assert cells[2] == ("=k9Xq!fake", "")
+    assert cells[3] == ("=SUM(1,2)", "=SUM(1,2)")
+
+
 def test_extract_array_formula_as_text(tmp_xlsx):
     from openpyxl.worksheet.formula import ArrayFormula
 

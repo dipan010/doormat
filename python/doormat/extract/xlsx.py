@@ -164,7 +164,9 @@ def extract_single_sheet(
         elif isinstance(raw_value, DataTableFormula):
             raw_value = None
         formula = ""
-        if isinstance(raw_value, str) and raw_value.startswith("="):
+        # Only a formula cell holds a formula; text that merely starts with "="
+        # (a password such as "=k9X...") is a value.
+        if cell.data_type == "f" and isinstance(raw_value, str):
             formula = raw_value
             value = raw_value
         elif raw_value is not None:

@@ -245,6 +245,12 @@ def write_xlsx(path: Path, sheets: list[tuple[str, Grid, bool]]) -> None:
         ws = wb.create_sheet(title)
         for row in grid:
             ws.append(row)
+        # openpyxl stores any string starting with "=" as a formula; a password
+        # such as "=x9..." is text in an export, so store it as a string.
+        for cells in ws.iter_rows():
+            for cell in cells:
+                if isinstance(cell.value, str) and cell.value.startswith("="):
+                    cell.data_type = "s"
         if hidden:
             ws.sheet_state = "hidden"
     deterministic_xlsx(wb, path)
