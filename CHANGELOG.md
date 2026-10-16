@@ -13,6 +13,7 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 
 - Credential tables: a `Password` column with one account per row is reported row by row (`reason` `table_column`, confidence 190). The column qualifies only when a username or ID label shares its header row and at least 80% of the cells below are single tokens, so help-desk logs, form templates and notes columns do not. On the Enron corpus it finds 44 of 46 table credentials on dev and 47 of 100 on test, with no false positives; see `bench/corpus/README.md` for which parts of that are independent
 - Credential tables follow their account column: the username or ID label may sit up to 10 columns from the password header, and empty passwords no longer end the table. Password-manager and browser exports with the password column further from the username (Dashlane) are now read row by row
+- `load(..., max_cells=2_000_000)`: a file is refused with `ValueError` once more cells than this have been read. Cells are counted while each sheet is parsed, so an oversized workbook fails early instead of filling memory; `None` removes the limit (#12)
 - TOTP secrets: `totp` and `otpsecret` are secret labels, so a TOTP column in an export is reported like a password column
 
 ### Fixed
@@ -21,8 +22,13 @@ Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from
 - An empty form field (`Password:` with nothing to its right) was paired with the label below it (`Date`, `Region`), the largest false-positive family on the Enron corpus (#7)
 - A `Password` category value repeated down a column (a help-desk ticket log) was paired with the cell beside it; such a label may still head a credential table
 - Inline values inside a URL query (`otpauth://...?secret=X&issuer=Y`) ran on past `&`
+- `.ods` sheets containing a merged range were skipped and listed in `GridDoc.errors`: LibreOffice writes covered cells for every merged range, and reading their span failed. Found by a randomised before/after test of the refactored reader
 - Table cells holding a placeholder (`N/A`, `TBD`, `none`, `?`, `xxxx`, `****`) are no longer reported
 - `docs/how-it-works.md` pointed to the wrong steps for the inline pattern and formula handling, and ended with a stray `EOF` line
+
+### Documentation
+
+- Design decision records under `docs/decisions/` (ten so far, from removing `arrow2` to the cell limit), each with its options and evidence (#13)
 
 ### Validation
 

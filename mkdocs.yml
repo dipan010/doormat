@@ -28,6 +28,18 @@ nav:
   - How detection works: how-it-works.md
   - Threat model: threat-model.md
   - Evaluation: evaluation.md
+  - Design decisions:
+      - decisions/index.md
+      - decisions/0001-remove-arrow2.md
+      - decisions/0002-deduplicate-per-cell.md
+      - decisions/0003-held-out-test-split.md
+      - decisions/0004-present-cells-only.md
+      - decisions/0005-zip-bomb-limits.md
+      - decisions/0006-abi3-python-310.md
+      - decisions/0007-cells-only-xlsx-reader.md
+      - decisions/0008-per-sheet-errors.md
+      - decisions/0009-pre-registered-evaluation.md
+      - decisions/0010-cell-limit.md
   - Security policy: security.md
   - Changelog: changelog.md
 
