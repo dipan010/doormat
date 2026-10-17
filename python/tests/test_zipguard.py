@@ -246,3 +246,32 @@ def test_cell_limit_applies_to_ods(tmp_path: Path) -> None:
     doc.save(str(path))
     with pytest.raises(ValueError, match="max_cells"):
         doormat.load(path, max_cells=100)
+
+
+def test_long_cell_tag_does_not_backtrack(tmp_path: Path) -> None:
+    """The style-only cell filter runs on untrusted bytes; a long tag of " r='" must stay linear."""
+    import time
+
+    from doormat.extract import xlsx
+
+    hostile = b'<row r="1"><c r="A1" s="' + b" r='" * 2_000_000 + b'"></c></row>'
+    start = time.perf_counter()
+    xlsx._EMPTY_CELL.sub(b"", hostile)
+    assert time.perf_counter() - start < 5
+
+
+def test_long_text_node_streams_through_the_filter() -> None:
+    """A text node with no tag inside is passed through, not re-scanned as it grows."""
+    import io
+    import time
+
+    from doormat.extract import xlsx
+
+    part = b"<t>" + b"x" * (64 << 20) + b"</t>"
+    reader = xlsx._EmptyCellFilter(io.BytesIO(part))
+    start = time.perf_counter()
+    total = 0
+    while chunk := reader.read(16384):
+        total += len(chunk)
+    assert time.perf_counter() - start < 5
+    assert total == len(part)

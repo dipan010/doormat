@@ -40,8 +40,12 @@ from openpyxl.xml.functions import fromstring
 from doormat._limits import CellBudget, sheet_failed
 from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
 
-_NAME_PREFIX = rb"(?:[A-Za-z_][\w.-]*:)?"
-_CELL_WITH_REF = rb"<" + _NAME_PREFIX + rb"c\s(?:[^<>]*\s)?r="
+# Every span is bounded: the regex runs on untrusted bytes, and unbounded spans
+# backtrack quadratically on a long tag full of " r='". The longest cell start
+# tag in the Enron corpus is 30 bytes; a longer cell is kept, which is safe.
+_NAME_PREFIX = rb"(?:[A-Za-z_][\w.-]{0,63}:)?"
+_ATTRS = rb"[^<>]{0,64}"
+_CELL_WITH_REF = rb"<" + _NAME_PREFIX + rb"c\s(?:" + _ATTRS + rb"\s)?r="
 # A self-closing cell with a reference holds no value, formula or text, only a
 # style. Most sheets have a few; some have millions (formatting applied to whole
 # rows or columns). It is dropped only when the next element is another cell
@@ -49,7 +53,9 @@ _CELL_WITH_REF = rb"<" + _NAME_PREFIX + rb"c\s(?:[^<>]*\s)?r="
 # without one in the column after the previous cell.
 _EMPTY_CELL = re.compile(
     _CELL_WITH_REF
-    + rb"""["'][^"'<>]*["'][^<>]*/>(?=\s*(?:"""
+    + rb"""["'][^"'<>]{0,64}["']"""
+    + _ATTRS
+    + rb"""/>(?=\s*(?:"""
     + _CELL_WITH_REF
     + rb"|</"
     + _NAME_PREFIX
@@ -85,8 +91,12 @@ class _EmptyCellFilter:
                 return
             cut = data.rfind(b"<")
             if cut <= 0:
-                self._tail = data
-                continue
+                # No tag starts after the first byte (a long text node). Pass it
+                # through rather than hold it: a removable cell is short, and
+                # re-scanning a growing buffer would be quadratic.
+                self._tail = b""
+                self._out = data
+                return
             self._tail = data[cut:]
             self._out = _EMPTY_CELL.sub(b"", data[:cut])
             if self._out:

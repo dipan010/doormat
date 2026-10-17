@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 
-- `.xlsx` sheets with many formatted empty cells read up to 5 times faster: cells holding only a style are removed from the sheet XML before openpyxl parses it. On the 10 slowest Enron workbooks, timed alternately in one session, 118.6 s fell to 44.6 s (the slowest from 51 s to 11 s); sheets without such cells are within 1%. Extraction output is identical on all 15,871 Enron `.xlsx` files (#8)
+- `.xlsx` sheets with many formatted empty cells read up to 5 times faster: cells holding only a style are removed from the sheet XML before openpyxl parses it. On the 10 slowest Enron workbooks, timed alternately in one session, 118.6 s fell to 44.6 s (the slowest from 51 s to 11 s); sheets without such cells are within 1%. Extraction output is identical on all 15,871 Enron `.xlsx` files. The filter runs on untrusted bytes before any XML parser, so every span of its pattern is bounded (the longest real cell tag is 30 bytes) and its cost stays linear on hostile input (#8)
 
 ### Documentation
 
