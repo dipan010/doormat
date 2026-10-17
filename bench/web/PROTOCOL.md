@@ -155,4 +155,12 @@ to test under the minimum-yield rule.
 
 ## Amendments
 
-None yet.
+1. **2026-10-17, after the download, before any file was read.** Counts only.
+   Volumes 20-34 decoded to 36,441 complete tar members: 34,817 `.xls`, 1,622
+   `.xlsx` and 2 that are not spreadsheets (excluded); none is a copy of an
+   Enron file. Members are named by UUID without an extension, so the format
+   is taken from the content (OLE2 is `.xls`; a zip is `.xlsx`, `.xlsm` or
+   `.ods` by its parts). Extracted size 3.2 GB. The block offset and LZMA2
+   settings were read from the archive index once and are constants in
+   `fetch_fuse.py`, so the script does not fetch volume 140; a dropped
+   transfer is resumed.
