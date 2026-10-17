@@ -28,18 +28,26 @@ At confidence >= 120, with 95% Wilson intervals:
 | Files read | 6,640 / 11,200 | **10,656 / 11,200** |
 | Findings | 74 in 10 files | 74 in 10 files |
 | Precision | 58/74 = 78% (68-86%) | same |
+| Precision by distinct value | 58/73 | same |
 | Recall | 58/60 = 97% (89-99%) | same |
 | Table with account column | 58/58 | same |
 | Inline | 0/1 | same |
 | Label beside value | 0/1 | same |
+| Table without an account column (#16) | none in the key | none in the key |
 | **Without the largest file** | precision 0/16, recall 0/2 | same |
+| Time per file | median 1.6 ms, p99 279 ms, max 12.6 s | median 2.0 ms, p99 241 ms, max 9.6 s |
 
-The two runs found exactly the same things: the 4,016 files that only `main`
+The 60 credentials sit in 3 files and 3 layout families; the largest file and the largest family are the same table (58 of 60). The two runs found exactly the same things: the 4,016 files that only `main`
 can read hold no credential and produced no finding. The headline numbers rest
 on one table; outside it, doormat found nothing and raised 16 false alarms in
 11,200 files.
 
 ## What it shows
+
+- **The open 0.4.0 detection cases did not occur.** No credential table without an
+  account column (#16), and no prefixed account label such as `login_username`
+  (the Bitwarden TOTP gap) among the pooled cells of the 11,200 test files. This
+  sample gives no data to design or check either change.
 
 - **Tables with an account column are found** (58/58), out of sample, in a layout
   nobody tuned for.
