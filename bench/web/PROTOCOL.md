@@ -208,4 +208,29 @@ to test under the minimum-yield rule.
    and shape. Both runs re-scored identically (58/74, 58/60). Earlier commits
    still contain the hashes; history was not rewritten, because the corpus
    itself is public.
+6. **2026-10-17, before any design-split file is pooled, labelled or scanned.
+   A second question: labels whose value is not in the next cell.** The test
+   run missed a password two cells right of `The password is:`, with an empty
+   cell between. That case was seen only in the spent test split, so it may
+   drive a change only if it also occurs in data not yet used.
+   - **Data.** The design split (10,932 files), halved by family: families in
+     `split.py` order fill **design-A** until it holds half the files, the rest
+     are **design-B**. Families over 1% of all files go to design-A.
+     `halves.py` writes the assignment, committed before pooling.
+   - **Answer key.** Both halves are pooled with `pool.py` and every pooled
+     file is reviewed, as for test, before any change. Each credential's kind
+     is recorded, and a **gap** credential is one whose value is two or more
+     cells from its label along a row or column, with only empty cells between.
+     Keys store locations and masked shapes only.
+   - **Stop rule.** If design-A holds fewer than 5 gap credentials, or they
+     come from fewer than 2 families, no rule is designed and the counts are
+     reported.
+   - **Design** on design-A only. Gates: no labelled Enron true positive lost
+     and every new Enron finding labelled (masked); sets A and A2 design and
+     holdout no worse; set B test re-run and reported as not independent; the
+     labelled reserve files beyond the cut-off (detector never run on them)
+     checked for new false positives.
+   - **Check.** Freeze; run design-B once with the frozen detector and with
+     `main` before the change. Report gap recall, precision and every false
+     positive, whatever they show.
 
