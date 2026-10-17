@@ -47,7 +47,7 @@ own order, which this protocol does not choose.
 
 **Sensitive content.** These are public documents, but some were posted by
 mistake and a credential in one may still work. Labels store only the
-SHA-256 of a value; values never appear in chat, commits, tests, docs or
+masked shape and length of a value (amendment 5); values never appear in chat, commits, tests, docs or
 issues (masked shapes only, e.g. `Aa9a****`); no credential is ever tried;
 `data/` and `results/` stay gitignored.
 
@@ -199,4 +199,13 @@ to test under the minimum-yield rule.
    were not masked (only form text in Thai was shown), and a value that is
    itself a keyword (`secret`) was shown because pool-hit cells are printed as
    labels.
+5. **2026-10-17, after both test runs, before any further work.** The answer
+   key stored the SHA-256 of each credential, as the Enron labels do. Unlike
+   Enron's, these passwords may still work, and many are weak (47 are six
+   capital letters): an unsalted hash beside a file name and cell lets anyone
+   test guesses offline. The key now holds each cell's location, the masked
+   shape of its value (`review.shape`) and its length; scoring matches on cell
+   and shape. Both runs re-scored identically (58/74, 58/60). Earlier commits
+   still contain the hashes; history was not rewritten, because the corpus
+   itself is public.
 

@@ -3,8 +3,9 @@
 The test files are the test split plus the reserve families moved under the
 minimum-yield rule. Each file goes through ``doormat.load()`` with its default
 limits, as a user would call it. A finding at confidence >= 120 is a true
-positive when its cell and the SHA-256 of its value match the key. Findings
-are stored with value digests and masked shapes only.
+positive when its cell and the masked shape of its value match the key (see
+``review.shape``). Findings and the key hold masked shapes only, never a value
+or a hash of one, so nothing published can be used to test password guesses.
 
 Usage:
     python bench/web/evaluate.py --out NAME [--workers N]
@@ -16,7 +17,6 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
-import hashlib
 import json
 import math
 import multiprocessing as mp
@@ -69,7 +69,6 @@ def run_file(name: str) -> dict:
                 "confidence": r.confidence,
                 "key_shape": shape(r.key, 40),
                 "value_shape": shape(r.value, 40),
-                "value_sha256": hashlib.sha256(r.value.encode()).hexdigest(),
             }
             for r in doc.credentials(MIN_CONFIDENCE)
         ]
@@ -103,7 +102,7 @@ def report(name: str) -> None:
     for row in rows:
         for f in row["findings"]:
             k = truth.get((row["file"], f["sheet"], *f["cell"]))
-            if k and k["value_sha256"] == f["value_sha256"]:
+            if k and k["value_shape"] == f["value_shape"]:
                 tp.append((row["file"], f))
                 found.add((row["file"], f["sheet"], *f["cell"]))
             else:
