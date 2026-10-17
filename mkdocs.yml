@@ -44,6 +44,7 @@ nav:
       - decisions/0010-cell-limit.md
       - decisions/0011-compound-labels.md
       - decisions/0012-zensical.md
+      - decisions/0013-forged-zip-sizes.md
   - Security policy: security.md
   - Changelog: changelog.md
 
