@@ -1,0 +1,37 @@
+{
+ "split": "design (both halves, amendment 6)",
+ "files_pooled": 351,
+ "credentials": [
+  {
+   "file": "04b11adc-7a4b-4b90-a14e-ed479b343375.xls",
+   "half": "B",
+   "sheet": "worksheet",
+   "cell": [
+    1,
+    13
+   ],
+   "kind": "inline",
+   "label": "credential",
+   "value_shape": "aaa",
+   "value_length": 3
+  },
+  {
+   "file": "6896271f-4f52-4cd8-8b12-e5bbfb2ea8d9.xls",
+   "half": "B",
+   "sheet": "OCPSFCalc.drf970521.940520JRP",
+   "cell": [
+    2,
+    3
+   ],
+   "kind": "inline_prose",
+   "label": "credential",
+   "value_shape": "9",
+   "value_length": 1
+  }
+ ],
+ "gap_credentials": {
+  "A": 0,
+  "B": 0
+ },
+ "notes": "cell locations with masked value shapes and lengths only"
+}

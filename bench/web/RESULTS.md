@@ -86,3 +86,26 @@ on one table; outside it, doormat found nothing and raised 16 false alarms in
   passwords) are known.
 - Public web files are not internal business files; credentials appear mostly by
   accident.
+
+## Labels away from their value (amendment 6)
+
+Pre-registered after the test run, to see whether the missed case (a password
+two cells right of its label) occurs in data not yet used. The design split
+(10,932 files) was halved by family and its keyword pool (351 files) reviewed
+in full before any change.
+
+| | design-A (5,467 files) | design-B (5,465 files) |
+|---|---|---|
+| Credentials | 0 | 2 |
+| of which gap (value 2+ cells from its label) | **0** | 0 |
+
+**Stop rule met: no rule was designed.** Design-A has no gap credential, so
+there is nothing to design on. The two design-B credentials are both written
+inline: one `... password: x`, one in prose (`Password is 1`-style).
+
+Across the whole sample, the commonest miss is the prose form: `the password
+is "x"` in the test split, again in a reserve file, and `Password is x` in
+design-B. It was not the pre-registered question and is a known false-positive
+trap (0.2.0 dropped whitespace-separated forms after they misfired on Enron),
+so it is recorded here, not acted on.
+
