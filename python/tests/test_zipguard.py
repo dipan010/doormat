@@ -55,6 +55,48 @@ def test_zip_bomb_is_refused_for_ods(workbook: Path, tmp_path: Path) -> None:
         doormat.load(ods)
 
 
+def _with_forged_size(src: Path, dst: Path, part: str, size: int = 100) -> Path:
+    """Copy ``src`` with ``part``'s uncompressed size understated as ``size`` in both zip headers."""
+    data = bytearray(src.read_bytes())
+    name = part.encode()
+    start = data.find(name)
+    while start != -1:
+        if data[start - 30 : start - 26] == b"PK\x03\x04":  # local file header
+            data[start - 8 : start - 4] = size.to_bytes(4, "little")
+        if data[start - 46 : start - 42] == b"PK\x01\x02":  # central directory entry
+            data[start - 22 : start - 18] = size.to_bytes(4, "little")
+        start = data.find(name, start + 1)
+    dst.write_bytes(data)
+    return dst
+
+
+def _two_sheet_workbook(tmp_path: Path) -> Path:
+    wb = openpyxl.Workbook()
+    wb.active.title = "Big"
+    for r in range(1, 2001):
+        wb.active.cell(r, 1, f"row{r}")
+    wb.create_sheet("Small")["A1"] = "Password"
+    wb["Small"]["B1"] = "s3cret!!"
+    path = tmp_path / "two.xlsx"
+    wb.save(path)
+    wb.close()
+    return path
+
+
+def test_forged_worksheet_size_reads_no_more_than_declared(tmp_path: Path) -> None:
+    """zipfile stops at the declared size, so understating it fails that sheet instead of reading on."""
+    forged = _with_forged_size(_two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/worksheets/sheet1.xml")
+    doc = doormat.load(forged)
+    assert [(e.sheet, e.kind) for e in doc.errors] == [("Big", "BadZipFile")]
+    assert [c.coordinate for c in doc.credentials(120)] == ["B1"]
+
+
+def test_forged_workbook_part_size_refuses_the_file(tmp_path: Path) -> None:
+    forged = _with_forged_size(_two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/workbook.xml")
+    with pytest.raises(zipfile.BadZipFile):
+        doormat.load(forged)
+
+
 def test_too_many_parts_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "parts.xlsx"
     with zipfile.ZipFile(path, "w") as archive:

@@ -138,7 +138,7 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 
 ## Limitations
 
-- **Hostile files are checked, not sandboxed.** XML entity attacks are refused, and `.xlsx`/`.xlsm`/`.ods` files that would decompress beyond 512 MiB, or with a zip-bomb compression ratio, are rejected before parsing. Those checks trust the sizes declared inside the archive, which a determined attacker can forge; run doormat with a memory limit when scanning files from untrusted sources at scale.
+- **Hostile files are checked, not sandboxed.** XML entity attacks are refused, and `.xlsx`/`.xlsm`/`.ods` files that would decompress beyond 512 MiB, or with a zip-bomb compression ratio, are rejected before parsing. Understated sizes do not get past the check: parts are read through Python's `zipfile`, which stops at the declared size. Parsing is still done by pure-Python libraries in your process, so run doormat with a memory and time limit when scanning files from untrusted sources at scale.
 - **Some password tables are missed.** A `Password` column is read as a table of accounts only when a username or ID label shares its header row; about half of the table credentials in the evaluation are still missed.
 - **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
 - **Python only.** Bindings for other languages are planned, as is a command-line tool.
