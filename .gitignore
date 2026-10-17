@@ -35,3 +35,6 @@ bench/configs/data/
 
 # Built documentation site (zensical build)
 site/
+# Evaluation set B: Fuse spreadsheets and scan results (third-party data, never committed)
+bench/web/data/
+bench/web/results/
