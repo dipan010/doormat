@@ -24,10 +24,12 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import http.client
 import io
 import json
 import lzma
 import struct
+import sys
 import tarfile
 import urllib.request
 import zipfile
@@ -74,13 +76,22 @@ def sniff(data: bytes) -> str:
     return ""
 
 
-def fetch(start: int, end: int) -> bytes:
-    """Return bytes ``start..end`` (inclusive) of fuse.zip."""
-    request = urllib.request.Request(URL, headers={"Range": f"bytes={start}-{end}"})
-    with urllib.request.urlopen(request, timeout=600) as response:  # nosec B310  # nosemgrep: dynamic-urllib-use-detected
-        if response.status != 206:
-            raise SystemExit(f"range request not honoured (HTTP {response.status})")
-        return response.read()
+def fetch(start: int, end: int, attempts: int = 5) -> bytes:
+    """Return bytes ``start..end`` (inclusive) of fuse.zip, resuming a dropped transfer."""
+    data = bytearray()
+    for _ in range(attempts):
+        request = urllib.request.Request(URL, headers={"Range": f"bytes={start + len(data)}-{end}"})
+        try:
+            with urllib.request.urlopen(request, timeout=600) as response:  # nosec B310  # nosemgrep: dynamic-urllib-use-detected
+                if response.status != 206:
+                    raise SystemExit(f"range request not honoured (HTTP {response.status})")
+                while chunk := response.read(1 << 20):
+                    data += chunk
+        except (OSError, http.client.HTTPException):
+            continue  # resume from the bytes already received
+        if len(data) == end - start + 1:
+            return bytes(data)
+    raise SystemExit(f"could not fetch bytes {start}-{end} after {attempts} attempts")
 
 
 def zip_directory() -> dict[str, tuple[int, int, int, int]]:
@@ -132,7 +143,7 @@ def block_stream(members: dict[str, tuple[int, int, int, int]], last: int) -> It
     for number in range(FIRST_VOLUME, last + 1):
         data = volume(members, number)[skip:]
         skip = 0
-        print(f"volume {number} verified", flush=True)
+        print(f"volume {number} verified", file=sys.stderr, flush=True)
         for i in range(0, len(data), 1 << 20):
             yield decoder.decompress(data[i : i + (1 << 20)])
 
