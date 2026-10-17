@@ -164,3 +164,24 @@ to test under the minimum-yield rule.
    settings were read from the archive index once and are constants in
    `fetch_fuse.py`, so the script does not fetch volume 140; a dropped
    transfer is resumed.
+2. **2026-10-17, before any labelling or detector run.** `split.py` sorted
+   families by their key instead of by the SHA-256 of the key, as this
+   protocol says. Unreadable files, whose key is `file:<digest>`, all sorted
+   last and went to reserve, so the test split had none of them. The order is
+   now by SHA-256 and the splits were redrawn: test 7,289 files (2,918 of them
+   unreadable), design 10,932 (2,492), reserve 18,218 (7,441). A keyword pool
+   had been built on the first test split; only its counts were seen, and it
+   was deleted.
+3. **2026-10-17, before any detector run on test.** 12,851 of the 36,439
+   files yield no cells. On the **design** split, 2,433 of its 2,492 such
+   files fail in xlrd with `CompDocError` (a strict check of the OLE2
+   container), and 2,209 of those open with xlrd's
+   `ignore_workbook_corruption=True` and hold cells. The `.xls` extractor will
+   be changed on that evidence, with its own tests and the usual gates. The
+   test split is then run **twice**, each run once: with 0.3.0 as released
+   (the measurement this protocol pre-registered) and with the extractor
+   change, both reported. The answer key covers every test file the keyword
+   pool can read, which is decided by the more permissive extractor, so both
+   runs are scored against the same key; files 0.3.0 cannot read count as
+   missed.
+

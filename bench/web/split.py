@@ -76,7 +76,9 @@ def assign(rows: list[tuple[str, str, str]]) -> dict[str, str]:
     total = len(rows)
     splits = {f: "design" for f, n in sizes.items() if n > LARGE_FAMILY * total}
     filled = {"test": 0, "design": sum(sizes[f] for f in splits)}
-    for family in sorted(f for f in sizes if f not in splits):
+    # Order by the SHA-256 of the family key, as the protocol says; sorting the
+    # keys themselves put every unreadable file (key "file:...") last.
+    for family in sorted((f for f in sizes if f not in splits), key=lambda f: hashlib.sha256(f.encode()).hexdigest()):
         target = next((name for name, share in SHARES if filled[name] < share * total), "reserve")
         splits[family] = target
         if target != "reserve":
