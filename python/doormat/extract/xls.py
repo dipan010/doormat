@@ -1,11 +1,21 @@
 """Extract raw cell tuples from legacy .xls (BIFF) files via xlrd.
 
-xlrd >= 2.0 is an optional dependency. If not installed, a clear
+xlrd >= 2.0.1 is an optional dependency. If not installed, a clear
 ImportError is raised when this extractor is called.
+
+xlrd refuses an OLE2 file in which a sector of the workbook stream is also
+claimed by another stream. Many real files are written that way: about a
+third of the spreadsheets in a sample of the Fuse web corpus, and most of
+them hold readable cells. They are read with ``ignore_workbook_corruption=True``. That
+check was also what stopped a file from reusing its sectors in a cycle to
+build a workbook stream far larger than itself, so a declared stream larger
+than the file is refused first.
 """
 
 from __future__ import annotations
 
+import io
+import struct
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +30,7 @@ def extract_xls(
 ) -> list[Sheet]:
     """Extract cells from a legacy .xls file as raw cell tuples.
 
-    Requires ``xlrd >= 2.0``. Installs via ``pip install doormat[xls]``.
+    Requires ``xlrd >= 2.0.1``. Installs via ``pip install doormat[xls]``.
 
     Args:
         filepath: Path to the .xls file.
@@ -40,6 +50,7 @@ def extract_xls(
 
     Raises:
         ImportError: If xlrd is not installed.
+        ValueError: If the declared workbook stream is larger than the file.
     """
     try:
         import xlrd
@@ -50,9 +61,18 @@ def extract_xls(
         ) from None
 
     filepath = Path(filepath)
+    data = filepath.read_bytes()
+    _refuse_oversized_stream(data, filepath.name)
     # on_demand parses each sheet only when it is requested, so one malformed
-    # sheet does not stop the others from being read.
-    book = xlrd.open_workbook(filepath, formatting_info=False, on_demand=True)
+    # sheet does not stop the others from being read. xlrd writes warnings and
+    # debug dumps to its log, which would otherwise be the caller's stdout.
+    book = xlrd.open_workbook(
+        file_contents=data,
+        formatting_info=False,
+        on_demand=True,
+        logfile=io.StringIO(),
+        ignore_workbook_corruption=True,
+    )
     sheet_errors = (*SHEET_ERRORS, xlrd.XLRDError)
 
     try:
@@ -66,6 +86,25 @@ def extract_xls(
         book.release_resources()
 
     return sheets
+
+
+def _refuse_oversized_stream(data: bytes, name: str) -> None:
+    """Raise ValueError if the OLE2 directory declares a workbook stream larger than the file.
+
+    A file that is not a valid OLE2 container is left for xlrd to reject.
+    """
+    from xlrd.compdoc import CompDoc, CompDocError
+
+    try:
+        doc = CompDoc(data, logfile=io.StringIO(), ignore_workbook_corruption=True)
+    except (CompDocError, IndexError, ValueError, struct.error):
+        return
+    for node in doc.dirlist:
+        if node.name in ("Workbook", "Book") and node.tot_size > len(data):
+            raise ValueError(
+                f"Refusing {name}: its workbook stream is declared as {node.tot_size:,} bytes, "
+                f"larger than the file ({len(data):,} bytes)"
+            )
 
 
 def _extract_sheet(sheet: Any, budget: CellBudget | None = None) -> Sheet:

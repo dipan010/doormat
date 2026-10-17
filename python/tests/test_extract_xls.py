@@ -75,3 +75,48 @@ def test_numeric_password_keeps_its_digits(tmp_path):
     assert [(c.sheet, c.coordinate, c.value) for c in found] == [("Logins", "B1", "12345678")]
     cells = {(r, c): v for r, c, v, *_ in doormat.extract.extract_xls(path)[0]}
     assert cells[(2, 2)] == "2.5"
+
+
+def _dir_entry(data: bytes, name: str) -> int:
+    """Offset of the OLE2 directory entry called ``name``."""
+    offset = data.find(name.encode("utf-16-le") + b"\x00\x00")
+    assert offset != -1 and data[offset + 64 : offset + 66] == ((len(name) + 1) * 2).to_bytes(2, "little")
+    return offset
+
+
+def test_workbook_sharing_a_sector_with_another_stream_is_read(sample_xls):
+    """xlrd's strict check refuses it; about a third of web .xls files look like this."""
+    import struct
+
+    import xlrd
+
+    data = bytearray(sample_xls.read_bytes())
+    workbook_sid = struct.unpack("<i", data[_dir_entry(data, "Workbook") + 116 : _dir_entry(data, "Workbook") + 120])[0]
+    root = _dir_entry(data, "Root Entry")
+    data[root + 116 : root + 124] = struct.pack("<iI", workbook_sid, 64)  # mini stream over the workbook
+    sample_xls.write_bytes(bytes(data))
+    with pytest.raises(xlrd.compdoc.CompDocError):
+        xlrd.open_workbook(sample_xls, logfile=__import__("io").StringIO())
+    assert [c[2] for c in extract_xls(sample_xls)[0]] == ["Password", "s3cret!!", "Token", "abc123"]
+
+
+def test_xlrd_writes_nothing_to_stdout(sample_xls, capsys):
+    import struct
+
+    data = bytearray(sample_xls.read_bytes())
+    workbook_sid = struct.unpack("<i", data[_dir_entry(data, "Workbook") + 116 : _dir_entry(data, "Workbook") + 120])[0]
+    root = _dir_entry(data, "Root Entry")
+    data[root + 116 : root + 124] = struct.pack("<iI", workbook_sid, 64)
+    sample_xls.write_bytes(bytes(data) + b"\x00" * 7)  # also a size that is not a whole sector
+    extract_xls(sample_xls)
+    assert capsys.readouterr().out == ""
+
+
+def test_workbook_stream_larger_than_the_file_is_refused(sample_xls):
+    """Without the strict check, reused sectors could build a stream far larger than the file."""
+    data = bytearray(sample_xls.read_bytes())
+    entry = _dir_entry(data, "Workbook")
+    data[entry + 120 : entry + 124] = (len(data) * 100).to_bytes(4, "little")
+    sample_xls.write_bytes(bytes(data))
+    with pytest.raises(ValueError, match="larger than the file"):
+        extract_xls(sample_xls)

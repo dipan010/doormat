@@ -41,9 +41,9 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-xls = ["xlrd>=2.0"]
+xls = ["xlrd>=2.0.1"]
 ods = ["odfpy>=1.4"]
-all = ["xlrd>=2.0", "odfpy>=1.4"]
+all = ["xlrd>=2.0.1", "odfpy>=1.4"]
 
 [project.urls]
 Homepage = "https://github.com/dipan010/doormat"
@@ -65,5 +65,5 @@ files = ["python/doormat"]
 
 [[tool.mypy.overrides]]
 # Optional readers without type information.
-module = ["odf", "odf.*", "xlrd"]
+module = ["odf", "odf.*", "xlrd", "xlrd.*"]
 ignore_missing_imports = true
