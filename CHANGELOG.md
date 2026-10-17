@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `.xlsx` sheets with many formatted empty cells read up to 5 times faster: cells holding only a style are removed from the sheet XML before openpyxl parses it. On the 10 slowest Enron workbooks, timed alternately in one session, 118.6 s fell to 44.6 s (the slowest from 51 s to 11 s); sheets without such cells are within 1%. Extraction output is identical on all 15,871 Enron `.xlsx` files. The filter runs on untrusted bytes before any XML parser, so every span of its pattern is bounded (the longest real cell tag is 30 bytes) and its cost stays linear on hostile input (#8)
 
+### Validation
+
+- Evaluation set B (`bench/web/`): 36,439 spreadsheets from the public web (Fuse corpus), split by layout family, protocol committed before download and answer key before the run. On 11,200 test files with 60 credentials, 0.3.0 and this version both find 58 (all in one account table) with 58 of 74 findings correct; outside that table they miss a password written in prose and one two cells from its label, and raise 16 false alarms. This version reads 10,656 of the test files, against 6,640. See `bench/web/RESULTS.md`
+- The README's accuracy table now gives test and dev figures in separate columns; it had mixed dev precision with test recall
+
 ### Documentation
 
 - Design decision 0015 (reading `.xls` files with shared sectors, and the stream-size bound that replaces xlrd's check)

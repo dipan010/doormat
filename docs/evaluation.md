@@ -64,6 +64,19 @@ evidence because Bitwarden motivated the change, finds 592 of 605 Bitwarden
 and Chromium passwords. Details in
 [`bench/configs/RESULTS.md`](https://github.com/dipan010/doormat/blob/main/bench/configs/RESULTS.md).
 
+## Spreadsheets from the public web (set B)
+
+The first set of real files not used for any tuning: 36,439 spreadsheets from
+the Fuse corpus (Common Crawl), split by layout family, with a protocol
+committed before download and an answer key committed before the run. The
+test split, topped up from the reserve under a pre-registered minimum-yield
+rule, holds 11,200 files and 60 credentials. Both 0.3.0 and `main` found 58 of
+the 60 with 58 of 74 findings correct, but all 58 are one account table:
+outside it, doormat missed a password written in prose and one two cells from
+its label, and raised 16 false alarms. `main` reads 10,656 of the files
+against 0.3.0's 6,640, after the `.xls` fix (ADR 0015). Details in
+[`bench/web/RESULTS.md`](https://github.com/dipan010/doormat/blob/main/bench/web/RESULTS.md).
+
 ## Robustness
 
 0.2.0 reads all 15,929 files. The last 4 failures were malformed parts that

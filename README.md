@@ -106,13 +106,15 @@ The reader is chosen by file extension, and binary formats are checked against t
 
 On 15 synthetic fixtures, one per detection pathway, doormat scores 100% precision and recall. Real spreadsheets are harder. On the public [Enron spreadsheet corpus](bench/corpus/README.md) (15,929 files):
 
-| Version | Precision | Recall |
-|---|---|---|
-| 0.1.0 | 16.5% | 31.2% |
-| 0.2.0 | 59.3% | 34.7% |
-| current `main` | 93.5% | 61.4% |
+| Version | Test precision | Test recall | Dev precision |
+|---|---|---|---|
+| 0.1.0 | 16.5% | 31.2% | not measured |
+| 0.2.0 | 67.8% | 34.7% | 59.3% |
+| 0.3.0 | 90.0% | 61.4% | 93.5% |
 
-Precision is measured on the dev split and recall on the test split. `main` adds credential tables, which were designed on dev, so its dev precision is partly in sample, and most of its recall gain on test comes from copies of a workbook that also shaped the rule; treat both as optimistic; its later precision fixes target false-positive patterns first seen on dev. Inline credentials are found with few false positives. On spreadsheets laid out like password-manager and browser exports ([`bench/exports/`](bench/exports/RESULTS.md)), precision is 100% on every split. On spreadsheets that list configuration variables such as `MYSQL_ROOT_PASSWORD` ([`bench/configs/`](bench/configs/RESULTS.md)), recall is 100% and precision 98.8% on the test split. The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
+Only the 0.1.0 row is fully out of sample: later rules were designed from Enron's own errors (dev, and for 0.2.0 also test), so treat the rest as optimistic. The part of 0.3.0's recall gain that is held-out evidence is credential tables: designed on dev, then run once on test (47 of 100 table credentials).
+
+**Out of sample on real files (set B).** On 11,200 spreadsheets from the public web (the [Fuse corpus](bench/web/RESULTS.md)), never used for tuning, with the answer key built before the run: 58 of 60 credentials found, 58 of 74 findings correct. All 58 found are one account table; outside it doormat found neither of the other 2 credentials (a password in prose, a label with its value two cells away) and raised 16 false alarms in 11,200 files. Inline credentials are found with few false positives. On spreadsheets laid out like password-manager and browser exports ([`bench/exports/`](bench/exports/RESULTS.md)), precision is 100% on every split. On spreadsheets that list configuration variables such as `MYSQL_ROOT_PASSWORD` ([`bench/configs/`](bench/configs/RESULTS.md)), recall is 100% and precision 98.8% on the test split. The method, labelling rubric and caveats are in [`bench/corpus/README.md`](bench/corpus/README.md).
 
 ## Performance
 
@@ -161,7 +163,7 @@ Please report vulnerabilities privately, as described in [SECURITY.md](SECURITY.
 
 ## Acknowledgements
 
-Real-world evaluation uses the Enron spreadsheet corpus by Felienne Hermans and Emerson Murphy-Hill ("Enron's Spreadsheets and Related Emails: A Dataset and Analysis", ICSE 2015), licensed CC BY 4.0. The corpus is not redistributed in this repository.
+Real-world evaluation uses the Enron spreadsheet corpus by Felienne Hermans and Emerson Murphy-Hill ("Enron's Spreadsheets and Related Emails: A Dataset and Analysis", ICSE 2015) and the Fuse corpus by Titus Barik, Kevin Lubick, Justin Smith, John Slankas and Emerson Murphy-Hill ("Fuse: A Reproducible, Extendable, Internet-scale Corpus of Spreadsheets", MSR 2015), both licensed CC BY 4.0. Neither corpus is redistributed in this repository.
 
 ## License
 
