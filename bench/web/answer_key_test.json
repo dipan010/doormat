@@ -1,0 +1,668 @@
+{
+ "split": "test (with 3,110 reserve families moved under the minimum-yield rule)",
+ "files": 11200,
+ "credentials": [
+  {
+   "file": "51d361d9-9239-4f2b-9285-ffa68751d43c.xls",
+   "sheet": "Instructions",
+   "cell": [
+    20,
+    2
+   ],
+   "kind": "inline",
+   "label": "credential",
+   "value_sha256": "49548b34b1345d61313e166d6411cc7d3edc17574f72e43feb7e906740fe90c4"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    5,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "114ac2281b37dc85f032c201ba4e385ca9ab471c3fa2eff777e661d61a2304f9",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    6,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "4a2dd8d514cd7ac3e14f754278244ceca89131dfb7226a88e80c0cd3676b72b7",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    7,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "1f2a8f023613280672d6c2436b370906ecb635fe4ba43bcc7aa34ca4898ca081",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    8,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "29ce60366a4907d6d9243109e08e6e304faac101797a5d0083d2dbf814aa8346",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    9,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "0bb4a32fb84bff7d1fcb50fb828404567cc166b0b5e96f05efdd62a965543d6e",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    10,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "5b58d9f2dfd0133cf1f9442985aa8b575003395e65adc3bcf8b3514d3abc647c",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    11,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "51d052188e6c8122378a4a77e1e33c586ecb2a36d6a408be51928f7b2bd57659",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    12,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "ad47392f00ddd982cccc27950801367d719be01107bd8beafb90d87f8b95c4e9",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    13,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "fc9fc52b46f89542ea6f1a62d7d8a6517af821a7c5e860a1fa4b1a0232dda7f6",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    14,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "c4874752fa1f2b2c9518beefedb2d685037096a359349836f02c8913405f856b",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    15,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "8f25cdde6cb6473c951b6533d77b6b55ef07b1f29fac3fd9bc23590ac8406d44",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    16,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "310d1400e516700a7ca72c340be19b548ec3c70ca82f11bf53dbbf134c165971",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    17,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "c1ed97af69495f8b525cfd1c85823d4115f2fa4634e5c69653ec69fa3ecebe8b",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    18,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "f8a69800141a3930c313c2e08b21b35b59efc4cb08f1bc7020820caa8047d9dd",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    19,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "bdfdb97c9f43da1f5613ee15723c1df27ba405b9647e09bedf7e0cc647eaedfd",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    20,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "1d0bfadc6f20c1687eabbea2757e520341a8ca11d89f218f044361ad1d6047d9",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    21,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "c2bfb553c176a3aca7e4800be7e1a71c032144dbe8849edc7db612c2bd33a941",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    22,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "8b1767917fcfbdeda60cb2f51dd54fb33d5d2c92d6b6d0a0febc35d161f73a65",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    23,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "a7a0af50be7bad4b444ee75811886b11508beb0911642fb6d5fe8d7545ada097",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    24,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "743c96621183a2e9be04adbbe17b34537abeaa15a64738f806c9ae3a70aa015e",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    25,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "3b3d7c333a72d6a9ed4134c9a54ff669256c720481b258619625115a940b5112",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    26,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "86cd4e8212b1e3669a45f78efccdde5a17f10d959f286f747d4926c16c27ebbc",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    27,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "2ef6b4629c6245e5bde6d9c438434c1fe255ec522d7331d32fbd091c177f1997",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    28,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "7d14da75919cc4ab70d021d62beb078c5a3963dc44e2d1537e347e7617d9b249",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    29,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "6d576cafa601ba6efbd4d390fbf737ca4952ec57189546a98b62f7920eff7694",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    30,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "660755d0ea0fdfd196938e444accdc86d454b5d3c775b714a9b200186aa557a6",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    31,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "eed11ad2b134fe77ba6cb9ec758f0d78ee1250f8701270c49d4a7a9d5aa7d7b1",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    32,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "59125418010eaf483d0316434a171fc49ea137f67a9c57fc00fdf7addf4a585a",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    33,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "63b138ca20946d244db73d1fd748027ac72e4e68020ded152e1ce05e3e13efa7",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    34,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "812773fc6436b7c57f809ec566e3782524425022e6ca76d857cd76f595fd505a",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    35,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "d2b0c83a7441750ca25b4170db6da48586599d99167735b6bee22052969057f7",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    36,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "7022b02c075b10140bbc6fcd1822ad1b03ad8a8123e6a0878bb0c94b24fa88d2",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    37,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "ecec80bdb3902505ead8b2af2f2a06e799971ce243ab01e06f8b1a2d118db552",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    38,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "e0748dd763dbcceb471e326a1b7628ad17c1b45738ed928721f0253518b883aa",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    39,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "8dcbbdb0129736c24e5a8c4d1f80cd73ac3775a1a373b4237290a410d0b686d2",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    40,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "0086fa21b86615ba6aa65cf4b08f45490981e339c331bf45990508ea702dfdeb",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    41,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "11a91bed9626d0f8680e9d662f79164d14513991078b760ef9ed450b852623ae",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    42,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "be6bf2188d6441782c28223f297366cddceab4497cbf6643ebab2a9c0d5e3feb",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    43,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "6a25fe5b8be518d5e19521c21ae049f6308e3601d3c54505dc04fe4896ca5752",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    44,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "1bb108b73e8693e8b6bcfcca5f46b9927ba5a0f597528e0380855cd9996910c0",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    45,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "8d79271488b1d835c6e2e39e86e5261711c06cd05c8c1c35ef2d9b0968097fe1",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    46,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "16dac65e20d22ddffe2bfb6c29835643cd7e5934f1ade62b1b05f5ecbfa78933",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    47,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "49520809dff7684cd930844d395d6baeb6363b40af350cc839873261b5bb9945",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    48,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "2eeb7bb6567efe2f79d9cb136cb8c8ba16065dd62fe163d1076562d08f68deb2",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    49,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "9d12dd3b1057ddf5181ac4a57bd86cb99ea727186f05d3725f8cadf0a8b154b8",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    50,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "1cf8b48e5e97e22de1032bd4ce3caf230d408fc7cac9fc95a21238787cebf69e",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    51,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "6e0727a36b3c8e7f9c794faa82f41c3e910d71947877a601a7600ce38074507e",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    52,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "2ac1cc75077d7e1e7ff34d1d019caa4d384942748026f5787ddbb3bcbdd2813d",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    53,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "1f7b56ace87cb8ea64ca0327f1c3d911b9dbcddf459f04a514e9a3e20019d047",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    54,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "0e71a46e99059ad9a3a18709d51b7675cd102dbd4908dccc591b8cd931a5abbb",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    55,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "4625c867f8e16bee99238cb4af3ef7bf30af31882d5d8668da210b3daf026848",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    56,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "3464ea16099c077f6bb75ab2107cb3e5b084fda0fea63a56bc41395e27dfe558",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    57,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "db7085660c689418f8fa57ec564927341e810e0f93dcbcaa2081353048d4192f",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    58,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "b93677972c936ee2cae393430453a75a6a428f183851e0bc9cd6356d7d98ec50",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    59,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "188ee90ab76d91e0f56acf1e4360510facdd750da392006d8f678a3ea3fed7a0",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    60,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "341aeaccda83b841b182c7a75cafc07e61ac257e707d72cff04c1faab819b4ec",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    61,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "4e3e5e8b3dbad717415cb7aff596e736d060996a534465a89490e420508a1035",
+   "label": "credential"
+  },
+  {
+   "file": "5706a5b0-aba9-4c68-b04d-853649541e51.xlsx",
+   "sheet": "Data",
+   "cell": [
+    62,
+    2
+   ],
+   "kind": "table_account",
+   "value_sha256": "97ea0cd6e3560afb266a71721ff071ecf0b6fea7f6b96bc45b826f0ed34e1ae5",
+   "label": "credential"
+  },
+  {
+   "file": "33033325-b6d3-43dd-9221-663de9efcbac.xlsx",
+   "sheet": "Sheet1[HIDDEN]",
+   "cell": [
+    2,
+    4
+   ],
+   "kind": "adjacent",
+   "value_sha256": "2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b",
+   "label": "credential"
+  }
+ ],
+ "unsure": [],
+ "notes": "values stored as SHA-256 only"
+}

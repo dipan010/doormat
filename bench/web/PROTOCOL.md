@@ -184,4 +184,19 @@ to test under the minimum-yield rule.
    pool can read, which is decided by the more permissive extractor, so both
    runs are scored against the same key; files 0.3.0 cannot read count as
    missed.
+4. **2026-10-17, before any detector run on test.** The test answer key held
+   1 credential (one inline password in an instructions sheet) in 176 pooled
+   files, so the minimum-yield rule applied. Finding the cut-off needs the
+   labels of reserve files in split order, so **every pooled reserve file was
+   reviewed** (420 files), then families were moved in the order `split.py`
+   uses (`yield_rule.py`). Test reached 30 after 3,110 of 13,623 reserve
+   families (3,911 files) and now holds **60 credentials**: the inline password,
+   a password beside its label on a hidden sheet, and a 58-row student account
+   table. Labelled reserve files beyond the cut-off (a second inline password
+   and a school account table of about 166 shared low-entropy passwords) stay
+   in reserve; the reserve is no longer wholly unread. Review used masked
+   shapes; two gaps were found and fixed: letters outside the Latin alphabet
+   were not masked (only form text in Thai was shown), and a value that is
+   itself a keyword (`secret`) was shown because pool-hit cells are printed as
+   labels.
 
