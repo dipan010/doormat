@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- A default `load()` refused some real `.xlsx` workbooks as too large: the `max_cells` limit counted cells that hold only a style, and a sheet formatted across whole rows stores millions of them. 5 of the 15,871 Enron `.xlsx` files were refused, one with 55,000 cells of content and 14.8 million parsed. Cells holding only a style are now removed before parsing and not counted; none of the 15,871 is refused (#8)
+
+### Performance
+
+- `.xlsx` sheets with many formatted empty cells read up to 5 times faster: cells holding only a style are removed from the sheet XML before openpyxl parses it. On the 10 slowest Enron workbooks, timed alternately in one session, 118.6 s fell to 44.6 s (the slowest from 51 s to 11 s); sheets without such cells are within 1%. Extraction output is identical on all 15,871 Enron `.xlsx` files (#8)
+
+### Documentation
+
+- Design decisions 0013 (forged zip sizes fail closed: parts are read through `zipfile`, which stops at the declared size, so the zip-bomb limits hold without a byte-counting reader) and 0014 (removing style-only cells), each correcting an earlier record's evidence
+- The threat model and README no longer say forged zip sizes get past the zip-bomb check
+
 ## [0.3.0] - 2026-10-17
 
 Measured on the Enron corpus, precision rose from 59.3% to 93.5% on dev and from 67.8% to 90.0% on test, and test recall from 34.7% to 61.4%; see `bench/corpus/README.md` and `bench/exports/RESULTS.md` for which parts are independent evidence.

@@ -6,8 +6,9 @@ from doormat._types import SheetErrorHandler
 
 DEFAULT_MAX_CELLS = 2_000_000
 """Default ``load(max_cells=...)``. Extraction holds about 0.6 KB per cell, so
-this is roughly 1.1 GiB and under a minute; the largest of the 15,929 Enron
-workbooks has about 170,000 cells."""
+this is roughly 1.1 GiB and under a minute. Cells holding only a style are not
+counted; the largest of the 15,929 Enron workbooks has about 1.9 million cells
+with content."""
 
 
 class CellLimitError(ValueError):

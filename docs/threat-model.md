@@ -42,7 +42,7 @@ receives already-extracted cell text.
 | Attack | Mitigation | Status |
 |---|---|---|
 | XML entity expansion ("billion laughs"), external entities (XXE) | `defusedxml` refuses entity declarations in `.xlsx` and `.ods` XML. A worksheet that declares entities is skipped and listed in `GridDoc.errors`; anywhere else `load()` raises `ValueError` | Mitigated, tested |
-| Oversized workbook (millions of real cells) | Cells are counted while each sheet is parsed; past `max_cells` (default 2,000,000, about 1 GiB) `load()` raises `ValueError` | Mitigated, tested |
+| Oversized workbook (millions of real cells) | Cells with content are counted while each sheet is parsed (cells holding only a style are removed first); past `max_cells` (default 2,000,000, about 1 GiB) `load()` raises `ValueError` | Mitigated, tested |
 | Zip bomb (tiny file, huge decompressed parts) | Before parsing, the zip directory is checked: more than 10,000 parts, more than 512 MiB declared (configurable), or a part of 10 MiB or more compressed beyond 500:1 is refused. Parts are read through Python's `zipfile`, which never returns more than a part's declared size, so understated sizes fail instead of bypassing the check | Mitigated, tested with real bombs and forged sizes |
 | Range inflation (one formatted cell at `XFD1048576`, about 17 billion positions) | The `.xlsx` extractor visits only cells present in the file, never the declared range | Mitigated, tested |
 | Repeat inflation in `.ods` (a cell "repeated" a billion times) | Repeated empty cells are skipped; repeated values are capped at 16,384 columns and rows at 1,000 repetitions | Mitigated, tested |

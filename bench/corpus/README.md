@@ -106,6 +106,15 @@ default 60 s timeout under load. On the largest workbooks, openpyxl
 extraction takes over 99% of the time (27.5 s vs 0.1 s in the Rust core for
 170k cells).
 
+Since 2026-10-17 cells holding only a style are removed before a sheet is
+parsed (#8, ADR 0014). `extract_check.py` digests every `.xlsx` file's
+extracted cells and sheet errors: all 15,871 are identical before and after.
+The 42 MB workbook parsed 14.8 million cells to extract 55,000 and now takes
+about 11 s instead of 51 s; on the 10 slowest files, timed alternately in one
+session, 118.6 s fell to 44.6 s. The corpus scans had called the extractor
+without the default cell limit, which refused 5 files before this change and
+none after; the largest file has 1.92 million cells with content.
+
 | Split | Engine | Findings | Precision | Recall | Notes |
 |---|---|---|---|---|---|
 | test | v0.1.0 | 334 | **16.5%** (55) | **31.2%** (55/176) | Clean: labelled before any code change |

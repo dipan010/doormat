@@ -45,6 +45,7 @@ nav:
       - decisions/0011-compound-labels.md
       - decisions/0012-zensical.md
       - decisions/0013-forged-zip-sizes.md
+      - decisions/0014-style-only-cells.md
   - Security policy: security.md
   - Changelog: changelog.md
 

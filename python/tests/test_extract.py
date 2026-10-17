@@ -422,3 +422,102 @@ def test_xml_entity_declarations_in_workbook_structure_raise(tmp_xlsx):
     })
     with pytest.raises(ValueError):
         doormat.load(evil)
+
+
+# ---------- cells holding only a style ----------
+
+_MAIN_NS = b"http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+
+def _with_sheet_data(tmp_xlsx, rows: bytes, prefix: bytes = b"") -> Path:
+    """A workbook whose first sheet's XML is replaced by ``rows`` inside sheetData."""
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "x"
+    clean = tmp_xlsx(wb)
+    wb.close()
+    p = prefix + b":" if prefix else b""
+    xmlns = b"xmlns:" + prefix if prefix else b"xmlns"
+    xml = (
+        b"<" + p + b"worksheet " + xmlns + b'="' + _MAIN_NS + b'"><' + p + b"sheetData>"
+        + rows + b"</" + p + b"sheetData></" + p + b"worksheet>"
+    )
+    return _rewrite(clean, "styled.xlsx", {"xl/worksheets/sheet1.xml": xml})
+
+
+def _extract_counted(path: Path) -> tuple[list, int]:
+    from doormat._limits import CellBudget
+    from doormat.extract import extract_xlsx
+
+    budget = CellBudget(None, path.name)
+    sheets = extract_xlsx(path, None, budget)
+    return [(c[0], c[1], c[2]) for c in sheets[0]], budget.used
+
+
+def test_style_only_cells_are_neither_parsed_nor_counted(tmp_xlsx):
+    path = _with_sheet_data(tmp_xlsx, (
+        b'<row r="1"><c r="A1" s="0"/><c r="B1" t="inlineStr"><is><t>Password</t></is></c>'
+        b'<c r="C1" s="0"/></row><row r="2"><c r="A2" s="0"/>\n<c r="B2" s="0"/></row>'
+    ))
+    assert _extract_counted(path) == ([(1, 2, "Password")], 1)
+
+
+def test_cell_without_reference_after_a_removed_cell_keeps_its_column(tmp_xlsx):
+    """openpyxl places a cell without ``r`` after the previous cell, so that one stays."""
+    path = _with_sheet_data(tmp_xlsx, (
+        b'<row r="1"><c r="A1" s="0"/><c r="B1" s="0"/><c t="inlineStr"><is><t>v</t></is></c></row>'
+    ))
+    assert _extract_counted(path) == ([(1, 3, "v")], 2)
+
+
+def test_style_only_cells_with_prefixed_tags_are_removed(tmp_xlsx):
+    path = _with_sheet_data(tmp_xlsx, (
+        b'<x:row r="1"><x:c r="A1" s="0"/><x:c r="B1" t="inlineStr"><x:is><x:t>v</x:t></x:is></x:c>'
+        b"<x:c r='C1'/></x:row>"
+    ), prefix=b"x")
+    assert _extract_counted(path) == ([(1, 2, "v")], 1)
+
+
+@pytest.mark.parametrize("chunk", [5, 64, 4096])
+def test_removing_style_only_cells_does_not_change_extraction(tmp_xlsx, monkeypatch, chunk):
+    """Same output as parsing the sheet unfiltered, wherever the chunks are cut."""
+    from openpyxl.comments import Comment
+    from openpyxl.styles import Font
+
+    from doormat.extract import xlsx
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    bold = Font(bold=True)
+    for r in range(1, 40):
+        for c in range(1, 12):
+            ws.cell(r, c).font = bold
+    ws["B2"] = "Password"
+    ws["C2"] = "s3cRet!99"
+    ws["D5"] = 45000
+    ws["E7"] = "=SUM(D1:D9)"
+    ws["F9"].comment = Comment("note on an empty cell", "a")
+    ws.merge_cells("G3:H4")
+    path = tmp_xlsx(wb)
+    wb.close()
+
+    filtered = extract_workbook(path)
+    monkeypatch.setattr(xlsx, "_CHUNK", chunk)
+    assert extract_workbook(path) == filtered
+    monkeypatch.setattr(xlsx, "_EmptyCellFilter", lambda raw: raw)
+    assert extract_workbook(path) == filtered
+    assert [c[2] for c in filtered[0]] == ["Password", "s3cRet!99", "45000", "=SUM(D1:D9)", ""]
+
+
+def test_cell_limit_ignores_style_only_cells(tmp_xlsx):
+    import doormat
+    from openpyxl.styles import Font
+
+    wb = openpyxl.Workbook()
+    for r in range(1, 101):
+        for c in range(1, 21):
+            wb.active.cell(r, c).font = Font(bold=True)
+    wb.active["A1"] = "Password"
+    wb.active["B1"] = "s3cRet!99"
+    path = tmp_xlsx(wb)
+    wb.close()
+    assert [c.coordinate for c in doormat.load(path, max_cells=10).credentials(120)] == ["B1"]

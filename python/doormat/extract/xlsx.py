@@ -8,13 +8,19 @@ malformed one makes the whole file unreadable. ``_CellReader`` reads only what
 extraction needs, one sheet at a time, so a malformed sheet can be reported
 while the others are still read. It relies on openpyxl internals, so openpyxl
 is pinned below 4 and regression tests build each malformed part.
+
+Cells that hold only a style are removed from each worksheet's XML before
+openpyxl parses it (``_EmptyCellFilter``). A sheet formatted across whole rows
+can hold millions of them; openpyxl would build an object for each, and the
+cell limit would count them.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 from openpyxl.cell.cell import MergedCell
 from openpyxl.comments.comment_sheet import CommentSheet
@@ -33,6 +39,68 @@ from openpyxl.xml.functions import fromstring
 
 from doormat._limits import CellBudget, sheet_failed
 from doormat._types import SHEET_ERRORS, Sheet, SheetErrorHandler
+
+_NAME_PREFIX = rb"(?:[A-Za-z_][\w.-]*:)?"
+_CELL_WITH_REF = rb"<" + _NAME_PREFIX + rb"c\s(?:[^<>]*\s)?r="
+# A self-closing cell with a reference holds no value, formula or text, only a
+# style. Most sheets have a few; some have millions (formatting applied to whole
+# rows or columns). It is dropped only when the next element is another cell
+# with a reference or the end of the row, because openpyxl places a cell
+# without one in the column after the previous cell.
+_EMPTY_CELL = re.compile(
+    _CELL_WITH_REF
+    + rb"""["'][^"'<>]*["'][^<>]*/>(?=\s*(?:"""
+    + _CELL_WITH_REF
+    + rb"|</"
+    + _NAME_PREFIX
+    + rb"row>))"
+)
+_CHUNK = 1 << 20
+
+
+class _EmptyCellFilter:
+    """Read a worksheet part with its empty cells removed.
+
+    The part is filtered in chunks of ``_CHUNK`` bytes, each cut at its last
+    ``<``, which cannot occur inside a tag, so no removed cell spans two chunks.
+    A cell just before a cut keeps its place because the element after it is
+    not yet visible. Reads return at most the size asked for: openpyxl's parser
+    asks for 16 KiB, and feeding it whole chunks makes it about 45% slower.
+    """
+
+    def __init__(self, raw: IO[bytes]) -> None:
+        self._raw = raw
+        self._tail = b""
+        self._out = b""
+        self._pos = 0
+
+    def _fill(self) -> None:
+        """Filter the next chunk into ``_out``; leave it empty at the end of the part."""
+        while True:
+            chunk = self._raw.read(_CHUNK)
+            data = self._tail + chunk
+            if not chunk:
+                self._tail = b""
+                self._out = _EMPTY_CELL.sub(b"", data)
+                return
+            cut = data.rfind(b"<")
+            if cut <= 0:
+                self._tail = data
+                continue
+            self._tail = data[cut:]
+            self._out = _EMPTY_CELL.sub(b"", data[:cut])
+            if self._out:
+                return
+
+    def read(self, size: int = -1) -> bytes:
+        """Return up to ``size`` filtered bytes (a chunk if negative), ``b""`` at the end."""
+        if self._pos >= len(self._out):
+            self._pos = 0
+            self._fill()
+        end = len(self._out) if size < 0 else self._pos + size
+        data = self._out[self._pos : end]
+        self._pos += len(data)
+        return data
 
 
 class _CellReader(ExcelReader):
@@ -67,7 +135,8 @@ class _CellReader(ExcelReader):
         """Read one worksheet's cells, merged ranges, comments and visibility.
 
         With a budget, cells are counted row by row while the sheet is parsed,
-        so an oversized sheet is refused before it is fully in memory.
+        so an oversized sheet is refused before it is fully in memory. Cells
+        holding only a style are removed before parsing and not counted.
         """
         rels_path = get_rels_path(rel.target)  # type: ignore[no-untyped-call]
         rels = RelationshipList()
@@ -77,7 +146,9 @@ class _CellReader(ExcelReader):
         ws = Worksheet(self.wb, title=sheet.name)
         ws._rels = rels  # type: ignore[attr-defined]  # hyperlinks resolve through it
         with self.archive.open(rel.target) as fh:
-            ws_reader = WorksheetReader(ws, fh, self.shared_strings, self.data_only, self.rich_text)
+            ws_reader = WorksheetReader(
+                ws, _EmptyCellFilter(fh), self.shared_strings, self.data_only, self.rich_text
+            )
             if budget is not None:
                 parse = ws_reader.parser.parse
 

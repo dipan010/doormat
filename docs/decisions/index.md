@@ -20,3 +20,4 @@ says which one it replaces.
 | [0011](0011-compound-labels.md) | Compound credential labels by their final part | 2026-10-16 |
 | [0012](0012-zensical.md) | Build the documentation with Zensical | 2026-10-16 |
 | [0013](0013-forged-zip-sizes.md) | Forged zip sizes fail closed; no byte-counting reader needed | 2026-10-17 |
+| [0014](0014-style-only-cells.md) | Remove cells holding only a style before parsing a sheet | 2026-10-17 |
