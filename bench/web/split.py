@@ -5,7 +5,8 @@ its first non-empty row, lower-cased, whitespace collapsed and digits replaced
 by ``#``. A file that cannot be read is its own family. Families are ordered
 by their digest and fill test (20% of files), then design (30%), then
 reserve; a family holding more than 1% of all files goes to design. Only
-digests are stored or printed, never cell text.
+digests are stored or printed, never cell text; the manifest is a CSV of
+file name, file digest, family digest and split.
 
 Usage:
     python bench/web/split.py [--workers N]
@@ -15,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import multiprocessing as mp
 import re
 import signal
@@ -26,7 +26,7 @@ from doormat.api import _get_format_registry
 
 WEB_DIR = Path(__file__).resolve().parent
 DATA_DIR = WEB_DIR / "data" / "spreadsheets"
-MANIFEST = WEB_DIR / "split_manifest.json"
+MANIFEST = WEB_DIR / "split_manifest.csv"
 SHARES = (("test", 0.20), ("design", 0.30))
 LARGE_FAMILY = 0.01
 
@@ -93,16 +93,18 @@ def main() -> None:
     with mp.Pool(opts.workers, maxtasksperchild=200) as pool:
         rows = pool.map(fingerprint, files, chunksize=16)
     splits = assign(rows)
-    manifest = [
-        {"file": name, "sha256": digest, "family": family, "split": splits[family]}
+    # Digests are cut to 16 hex digits (64 bits): enough to identify a file or
+    # family here, and it keeps the committed manifest small.
+    lines = ["file,sha256,family,split"] + [
+        f"{name},{digest[:16]},{family.removeprefix('file:')[:16]},{splits[family]}"
         for name, digest, family in sorted(rows)
     ]
-    MANIFEST.write_text(json.dumps(manifest, indent=0) + "\n")
+    MANIFEST.write_text("\n".join(lines) + "\n")
     counts: dict[str, int] = {}
-    for row in manifest:
-        counts[row["split"]] = counts.get(row["split"], 0) + 1
-    unreadable = sum(row["family"].startswith("file:") for row in manifest)
-    print(f"{len(manifest)} files, {len(splits)} families ({unreadable} unreadable files), by split: {counts}")
+    for _, _, family in rows:
+        counts[splits[family]] = counts.get(splits[family], 0) + 1
+    unreadable = sum(family.startswith("file:") for _, _, family in rows)
+    print(f"{len(rows)} files, {len(splits)} families ({unreadable} unreadable files), by split: {counts}")
 
 
 if __name__ == "__main__":
