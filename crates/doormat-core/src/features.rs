@@ -36,6 +36,24 @@ static PASSWORD_PATTERNS: &[&str] = &[
     "otpsecret",
 ];
 
+/// Word fragments that name a password in a label, for `keyword_class`.
+static PASSWORD_FAMILY: &[&str] = &[
+    "password",
+    "passwd",
+    "pwd",
+    "passwort",
+    "contraseña",
+    "motdepasse",
+    "senha",
+    "пароль",
+    "パスワード",
+    "密码",
+    "비밀번호",
+    "wachtwoord",
+    "hasło",
+    "lösenord",
+];
+
 static USERNAME_PATTERNS: &[&str] = &[
     "username",
     "user",
@@ -216,6 +234,119 @@ pub fn is_numeric_amount(value: &str) -> bool {
 /// never a credential.
 pub fn is_boolean_literal(normalized: &str) -> bool {
     BOOLEAN_LITERALS.contains(&normalized)
+}
+
+// ---------- Research features ----------
+
+/// Lowercase words of a label: split at any character that is not a letter or
+/// digit, then at camelCase boundaries (`Login Password:` -> `login`, `password`).
+fn label_words(label: &str) -> Vec<String> {
+    label
+        .split(|c: char| !c.is_alphanumeric())
+        .flat_map(label_parts)
+        .collect()
+}
+
+/// Counts of upper-case, lower-case, digit, other visible and whitespace
+/// characters in `value`, in that order.
+pub fn char_class_counts(value: &str) -> [u32; 5] {
+    value.chars().fold([0; 5], |mut counts, c| {
+        let class = if c.is_uppercase() {
+            0
+        } else if c.is_lowercase() {
+            1
+        } else if c.is_numeric() {
+            2
+        } else if c.is_whitespace() {
+            4
+        } else {
+            3
+        };
+        counts[class] += 1;
+        counts
+    })
+}
+
+/// True when `value` starts with a numeric date: three groups of 1 to 4
+/// digits separated by `/`, `-` or `.` (`2001-05-03 00:00:00`, `3/5/01`).
+pub fn is_date_like(value: &str) -> bool {
+    let first = value.split_whitespace().next().unwrap_or("");
+    let groups: Vec<&str> = first.split(['/', '-', '.']).collect();
+    groups.len() == 3
+        && groups
+            .iter()
+            .all(|g| (1..=4).contains(&g.len()) && g.chars().all(|c| c.is_ascii_digit()))
+}
+
+/// True when `value` is a URL (`://` or a leading `www.`) or an e-mail address.
+pub fn is_url_or_email(value: &str) -> bool {
+    let v = value.trim().to_lowercase();
+    if v.contains("://") || v.starts_with("www.") {
+        return true;
+    }
+    match v.split_once('@') {
+        Some((user, domain)) => {
+            !user.is_empty() && domain.contains('.') && !v.chars().any(char::is_whitespace)
+        }
+        None => false,
+    }
+}
+
+/// True when `value` is a password label by the rule behind
+/// `FLAG_IS_PASSWORD_HEADER`: a password keyword, or a compound label that
+/// holds one.
+pub fn is_password_label(value: &str) -> bool {
+    let (exact, credential_word) = ac_scan(&PASSWORD_AC, &normalize(value));
+    exact || (credential_word && is_compound_credential_label(value))
+}
+
+/// True when the whole of `text` (normalized) is a password keyword
+/// (`Password:`, `PWD`), not a label that only contains one.
+pub fn is_exact_keyword(text: &str) -> bool {
+    ac_exact_match(&PASSWORD_AC, &normalize(text))
+}
+
+/// The kind of credential a label names: 0 none, 1 password, 2 PIN, 3 secret,
+/// 4 key or token, 5 passphrase or passcode, 6 one-time code.
+pub fn keyword_class(label: &str) -> u8 {
+    let words = label_words(label);
+    let has = |fragment: &str| words.iter().any(|w| w.contains(fragment));
+    let word = |w: &str| words.iter().any(|x| x == w);
+    if has("passphrase") || has("passcode") {
+        5
+    } else if PASSWORD_FAMILY.iter().any(|f| has(f)) || word("pass") {
+        1
+    } else if has("totp") || ["otp", "2fa", "mfa"].iter().any(|w| word(w)) {
+        6
+    } else if word("pin") {
+        2
+    } else if has("secret") {
+        3
+    } else if has("token") || has("apikey") || word("key") {
+        4
+    } else {
+        0
+    }
+}
+
+/// True when a label's only credential words are ones with everyday meanings
+/// (`AMBIGUOUS_KEYWORDS`) and none of `STRONG_KEYWORDS` occurs in it.
+pub fn is_ambiguous_label(label: &str) -> bool {
+    let words = label_words(label);
+    words
+        .iter()
+        .any(|w| AMBIGUOUS_KEYWORDS.contains(&w.as_str()))
+        && !words
+            .iter()
+            .any(|w| STRONG_KEYWORDS.iter().any(|s| w.contains(s)))
+}
+
+/// True when a label names a setting about a secret (`NON_SECRET_LABEL_PARTS`:
+/// `DB_PASSWORD_FILE`, `ALLOW_EMPTY_PASSWORD`).
+pub fn has_non_secret_part(label: &str) -> bool {
+    label_words(label)
+        .iter()
+        .any(|w| NON_SECRET_LABEL_PARTS.contains(&w.as_str()))
 }
 
 // ---------- Normalize ----------
@@ -743,5 +874,74 @@ mod tests {
         let store = make_store(vec![("", "")]);
         assert_ne!(store.feature_flags[0] & FLAG_IS_EMPTY, 0);
         assert_eq!(store.entropy[0], 0.0);
+    }
+
+    // ---------- research features ----------
+
+    #[test]
+    fn char_class_counts_by_class() {
+        assert_eq!(char_class_counts("Ab1 !"), [1, 1, 1, 1, 1]);
+        assert_eq!(char_class_counts(""), [0; 5]);
+    }
+
+    #[test]
+    fn date_like_values() {
+        assert!(is_date_like("2001-05-03 00:00:00"));
+        assert!(is_date_like("3/5/01"));
+        assert!(!is_date_like("12345"));
+        assert!(!is_date_like("a1-b2-c3"));
+    }
+
+    #[test]
+    fn url_or_email_values() {
+        assert!(is_url_or_email("https://example.test/x"));
+        assert!(is_url_or_email("www.example.test"));
+        assert!(is_url_or_email("someone@example.test"));
+        assert!(!is_url_or_email("not an@address here.x"));
+        assert!(!is_url_or_email("plain"));
+    }
+
+    #[test]
+    fn password_label_matches_flag_rule() {
+        assert!(is_password_label("Password"));
+        assert!(is_password_label("MYSQL_ROOT_PASSWORD"));
+        assert!(!is_password_label("Passport number"));
+    }
+
+    #[test]
+    fn exact_keywords() {
+        assert!(is_exact_keyword("Password:"));
+        assert!(is_exact_keyword("PWD"));
+        assert!(!is_exact_keyword("Login Password"));
+    }
+
+    #[test]
+    fn keyword_classes() {
+        assert_eq!(keyword_class("Login Password:"), 1);
+        assert_eq!(keyword_class("Pass"), 1);
+        assert_eq!(keyword_class("PIN"), 2);
+        assert_eq!(keyword_class("Client Secret"), 3);
+        assert_eq!(keyword_class("API_KEY"), 4);
+        assert_eq!(keyword_class("Passphrase"), 5);
+        assert_eq!(keyword_class("login_totp"), 6);
+        assert_eq!(keyword_class("Passport"), 0);
+        assert_eq!(keyword_class("Spin speed"), 0);
+    }
+
+    #[test]
+    fn ambiguous_labels() {
+        assert!(is_ambiguous_label("Pwd"));
+        assert!(is_ambiguous_label("Swim Pass"));
+        assert!(is_ambiguous_label("PIN"));
+        assert!(!is_ambiguous_label("Login Password"));
+        assert!(!is_ambiguous_label("Passport"));
+    }
+
+    #[test]
+    fn non_secret_parts() {
+        assert!(has_non_secret_part("POSTGRES_PASSWORD_FILE"));
+        assert!(has_non_secret_part("MYSQL_RANDOM_ROOT_PASSWORD"));
+        assert!(has_non_secret_part("ALLOW_EMPTY_PASSWORD"));
+        assert!(!has_non_secret_part("POSTGRES_PASSWORD"));
     }
 }

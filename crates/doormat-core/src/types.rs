@@ -93,6 +93,147 @@ pub struct Region {
     pub value_ids: Vec<usize>,
 }
 
+// ---------- Research candidate export ----------
+
+/// The rule that proposed a research candidate (see `research.rs`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u8)]
+pub enum Pathway {
+    /// A value near a password label, at any score.
+    Spatial = 0,
+    /// A cell in the column below a password label, whether or not the column
+    /// qualifies as a credential table.
+    Table = 1,
+    /// `key: value`, `key=value` or `key - value` inside one cell.
+    Inline = 2,
+    /// `the password is x` or `pwd x` inside one cell.
+    Prose = 3,
+    /// The value of a configuration variable (`MYSQL_ROOT_PASSWORD`).
+    Variable = 4,
+    /// A string literal inside a formula.
+    Formula = 5,
+    /// A credential in a cell comment, or a comment on a label.
+    Comment = 6,
+    /// A password split over the cells below its label.
+    Split = 7,
+    /// A value after 1 to `GAP_MAX_EMPTY` empty cells to the right of or
+    /// below its label.
+    Gap = 8,
+}
+
+impl Pathway {
+    /// The pathway's name, as used in research exports.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Pathway::Spatial => "spatial",
+            Pathway::Table => "table",
+            Pathway::Inline => "inline",
+            Pathway::Prose => "prose",
+            Pathway::Variable => "variable",
+            Pathway::Formula => "formula",
+            Pathway::Comment => "comment",
+            Pathway::Split => "split",
+            Pathway::Gap => "gap",
+        }
+    }
+}
+
+/// Number of features on each research candidate.
+pub const FEATURE_COUNT: usize = 36;
+
+/// Names of the research candidate features, in vector order.
+pub const FEATURE_NAMES: [&str; FEATURE_COUNT] = [
+    // value
+    "value_len",
+    "value_upper",
+    "value_lower",
+    "value_digit",
+    "value_special",
+    "value_space",
+    "value_entropy",
+    "value_is_amount",
+    "value_is_date",
+    "value_is_url_or_email",
+    "value_is_placeholder",
+    "value_is_keyword",
+    "value_is_formula",
+    // label
+    "label_keyword_class",
+    "label_compound",
+    "label_exact",
+    "label_ambiguous",
+    "label_len",
+    "label_assignment_end",
+    "label_in_header_row",
+    "label_non_secret",
+    // geometry
+    "row_offset",
+    "col_offset",
+    "empty_between",
+    "same_region",
+    "distance_score",
+    "in_table_column",
+    // context
+    "username_nearby",
+    "url_nearby",
+    "column_len",
+    "column_distinct_share",
+    "column_shape_share",
+    "sheet_hidden",
+    "sheet_labels",
+    // pathway
+    "pathway",
+    "baseline_confidence",
+];
+
+/// A credential candidate for the learned-scorer experiment.
+///
+/// It locates the value and its label and carries features, never the text
+/// of the value.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Candidate {
+    /// Name of the sheet holding the value cell, as supplied by the caller.
+    pub sheet: String,
+    /// Row of the label cell (the value cell for single-cell pathways).
+    pub label_row: u32,
+    /// Column of the label cell.
+    pub label_col: u32,
+    /// Row of the value cell.
+    pub value_row: u32,
+    /// Column of the value cell.
+    pub value_col: u32,
+    /// The rule that proposed the candidate.
+    pub pathway: Pathway,
+    /// Character range of the value within the value cell's text, when the
+    /// value is a part of that text (inline and prose); `None` otherwise.
+    pub span: Option<(u32, u32)>,
+    /// Feature vector, named by `FEATURE_NAMES`.
+    pub features: [f32; FEATURE_COUNT],
+}
+
+/// Most empty cells allowed between a label and its value for the gap pathway.
+pub const GAP_MAX_EMPTY: u32 = 3;
+/// Label words that also have common meanings outside credentials (`Pwd` for
+/// powder, a swim `Pass`, a machine `PIN`, a `Secret` title, a `Login` topic).
+pub const AMBIGUOUS_KEYWORDS: &[&str] = &["pass", "pwd", "pin", "secret", "login", "key"];
+/// Label word fragments that name a credential without ambiguity.
+pub const STRONG_KEYWORDS: &[&str] = &[
+    "password",
+    "passwd",
+    "passphrase",
+    "passcode",
+    "passwort",
+    "token",
+    "totp",
+];
+/// Label words that mark a setting about a secret rather than the secret
+/// (`*_PASSWORD_FILE`, `..._PATH`, `..._HASH`, `RANDOM_ROOT_PASSWORD`,
+/// `ALLOW_EMPTY_PASSWORD`).
+pub const NON_SECRET_LABEL_PARTS: &[&str] = &["file", "path", "hash", "random", "allow"];
+/// Suffix the Python package adds to the name of a hidden sheet
+/// (`python/doormat/api.py`, `_HIDDEN_SUFFIX`).
+pub const HIDDEN_SHEET_SUFFIX: &str = "[HIDDEN]";
+
 // ---------- Spatial / scoring constants ----------
 
 /// Maximum distance (in cells) for neighbor queries and BFS expansion.
@@ -252,6 +393,31 @@ mod tests {
     #[test]
     fn cell_type_default_is_empty() {
         assert_eq!(CellType::default(), CellType::Empty);
+    }
+
+    #[test]
+    fn pathway_names_are_distinct() {
+        let all = [
+            Pathway::Spatial,
+            Pathway::Table,
+            Pathway::Inline,
+            Pathway::Prose,
+            Pathway::Variable,
+            Pathway::Formula,
+            Pathway::Comment,
+            Pathway::Split,
+            Pathway::Gap,
+        ];
+        let names: std::collections::BTreeSet<&str> = all.iter().map(|p| p.as_str()).collect();
+        assert_eq!(names.len(), all.len());
+        assert_eq!(Pathway::Gap as u8, 8);
+    }
+
+    #[test]
+    fn feature_names_are_distinct() {
+        let names: std::collections::BTreeSet<&str> = FEATURE_NAMES.iter().copied().collect();
+        assert_eq!(names.len(), FEATURE_COUNT);
+        assert_eq!(FEATURE_NAMES[FEATURE_COUNT - 1], "baseline_confidence");
     }
 
     #[test]

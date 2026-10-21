@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `doormat-core` gains a research export (`research::export_sheet`, `export_workbook`) for an experiment with a learned scorer. It lists every candidate the detection pathways could propose, plus prose, everyday-keyword and label-gap forms, each with 36 numeric features and no value text. The Python package, its one call per workbook and every finding are unchanged (design decision 0016)
+
 ### Fixed
 
 - A default `load()` refused some real `.xlsx` workbooks as too large: the `max_cells` limit counted cells that hold only a style, and a sheet formatted across whole rows stores millions of them. 5 of the 15,871 Enron `.xlsx` files were refused, one with 55,000 cells of content and 14.8 million parsed. Cells holding only a style are now removed before parsing and not counted; none of the 15,871 is refused (#8)

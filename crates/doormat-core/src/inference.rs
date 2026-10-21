@@ -41,12 +41,12 @@ fn is_account_label(store: &CellStore, id: usize) -> bool {
 }
 
 /// True when a cell is a credential or account label, which starts a new table.
-fn is_table_label(store: &CellStore, id: usize) -> bool {
+pub(crate) fn is_table_label(store: &CellStore, id: usize) -> bool {
     store.feature_flags[id] & FLAG_IS_PASSWORD_HEADER != 0 || is_account_label(store, id)
 }
 
 /// The id of the non-empty cell at `(row, col)`, if any.
-fn filled(store: &CellStore, row: u32, col: u32) -> Option<u32> {
+pub(crate) fn filled(store: &CellStore, row: u32, col: u32) -> Option<u32> {
     store
         .coord_to_id
         .get(&(row, col))
@@ -70,7 +70,7 @@ fn filled(store: &CellStore, row: u32, col: u32) -> Option<u32> {
 /// token secrets with at least `TABLE_MIN_VALUE_LEN` characters and a letter or
 /// digit that are not a placeholder (`TABLE_PLACEHOLDERS`), or an empty vector
 /// if the column does not qualify.
-fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
+pub(crate) fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32> {
     let h = header_id as usize;
     let (row, col) = (store.get_row(h), store.get_col(h));
 
@@ -159,7 +159,7 @@ fn variable_name_at(store: &CellStore, row: u32, col: u32) -> bool {
 /// Cells that are not credential values (`yes`, a placeholder, prose) are not
 /// reported, and a label never takes another variable's value: an empty
 /// result means the label has no value.
-fn detect_variable_values(store: &CellStore, header_id: u32) -> Option<Vec<u32>> {
+pub(crate) fn detect_variable_values(store: &CellStore, header_id: u32) -> Option<Vec<u32>> {
     let h = header_id as usize;
     let label = store.get_value(h);
     let key_label = store.feature_flags[h] & FLAG_IS_KEY_LABEL != 0;
@@ -216,7 +216,7 @@ fn detect_variable_values(store: &CellStore, header_id: u32) -> Option<Vec<u32>>
 /// header, not end in `:`, and have no horizontal neighbour. If >= 2 parts
 /// found, each < 30 chars, and the combined string >= 6 chars, returns
 /// `(combined_value, first_below_cell_id)`.
-fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u32)> {
+pub(crate) fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u32)> {
     let h = header_id as usize;
     let header_row = store.get_row(h);
     let header_col = store.get_col(h);
