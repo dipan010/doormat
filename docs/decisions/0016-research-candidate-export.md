@@ -24,8 +24,10 @@ cells, the proposing `Pathway` and a feature vector named by
 - every pathway's candidates before its threshold or accept rule;
 - prose forms (`the password is x`);
 - inline matches on everyday keywords (`pass`, `pin`, `login`, `key`);
-- values 1 to `GAP_MAX_EMPTY` empty cells right of or below any cell
-  holding a credential word.
+- the first value right of or below any cell holding a credential word, up
+  to `GAP_MAX_EMPTY` empty cells away;
+- the column below every password label and below short headers naming a
+  secret (`login_totp`), over up to `GAP_MAX_EMPTY` empty rows.
 
 Every `process_sheet` finding is a candidate, with its confidence as a
 feature. `doormat-py` and the published wheels are unchanged. The lab
@@ -43,14 +45,18 @@ in one session, show no difference: `process_sheet` on 1k cells 138.5 /
 136.3 / 136.4 µs, on 5k 707.9 / 707.8 / 709.6 µs, and a 10 × 5k workbook
 2.63 / 2.63 / 2.68 ms.
 
-On the fixtures and on samples of the training corpora (counts only, no
-cell text), every doormat finding is among the candidates:
+Over the training corpora, every doormat finding is a candidate. Counts
+only, no cell text:
 
-| Input | Doormat findings | Candidates | Per file |
+| Corpus | Files read | Candidates | Labelled credentials listed |
 |---|---|---|---|
-| 15 test fixtures | 19 | 59 | at most 15 |
-| Sets A and A2 (294 files) | 2,939 | 14,440 | at most 550 |
-| 500 Enron files | 13 | 360 | at most 109 |
-| 500 Fuse files | 0 | 35 | at most 16 |
+| Enron | 15,929 | 39,983 | 366 / 366 |
+| Fuse sample (set B) | 34,934 | 49,803 | 229 / 229 |
+| Set A | 96 | 7,732 | 2,276 / 2,362 |
+| Set A2 | 198 | 7,580 | 707 / 707 |
 
-That keeps the volume small enough to label.
+The rules for gaps and table heads were widened on these misses, so these
+ceilings are in sample. A first version that let any short cell holding a
+credential word head a column listed 3.1 million candidates, almost all
+from data cells. It was replaced by the header-shaped rule above. The Enron
+rescan is identical at each step.
