@@ -116,8 +116,9 @@ pub enum Pathway {
     Comment = 6,
     /// A password split over the cells below its label.
     Split = 7,
-    /// A value after 1 to `GAP_MAX_EMPTY` empty cells to the right of or
-    /// below its label.
+    /// The first value right of or below a cell holding a credential word, up
+    /// to `GAP_MAX_EMPTY` empty cells away (from two cells away for a
+    /// password label, whose neighbours are spatial candidates).
     Gap = 8,
 }
 
@@ -211,7 +212,8 @@ pub struct Candidate {
     pub features: [f32; FEATURE_COUNT],
 }
 
-/// Most empty cells allowed between a label and its value for the gap pathway.
+/// Most empty cells allowed between a label and its value for the gap
+/// pathway, and empty rows within a research table column.
 pub const GAP_MAX_EMPTY: u32 = 3;
 /// Label words that also have common meanings outside credentials (`Pwd` for
 /// powder, a swim `Pass`, a machine `PIN`, a `Secret` title, a `Login` topic).

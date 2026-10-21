@@ -89,7 +89,7 @@ fn loose_inline(store: &CellStore, id: usize) -> Vec<Proposal> {
 }
 
 /// Filled cells in the column below a label, down to a new label or more
-/// than `TABLE_MAX_GAP` empty rows, whether or not they form a table.
+/// than `GAP_MAX_EMPTY` empty rows, whether or not they form a table.
 fn column_below(store: &CellStore, label: usize) -> Vec<u32> {
     let (row, col) = (store.get_row(label), store.get_col(label));
     let mut gap = 0;
@@ -103,7 +103,7 @@ fn column_below(store: &CellStore, label: usize) -> Vec<u32> {
             }
             None => {
                 gap += 1;
-                if gap > TABLE_MAX_GAP {
+                if gap > GAP_MAX_EMPTY {
                     break;
                 }
             }
@@ -112,10 +112,16 @@ fn column_below(store: &CellStore, label: usize) -> Vec<u32> {
     cells
 }
 
-/// The first filled cell right of and below a label, when 1 to
-/// `GAP_MAX_EMPTY` empty cells separate them and it is not a password label.
+/// The first filled cell right of and below a label, at most `GAP_MAX_EMPTY`
+/// empty cells away. A password label's neighbours are spatial candidates, so
+/// its gap values start two cells away; any other label's start next to it.
 fn gap_values(store: &CellStore, label: usize) -> Vec<u32> {
     let (row, col) = (store.get_row(label), store.get_col(label));
+    let nearest = if store.feature_flags[label] & FLAG_IS_PASSWORD_HEADER != 0 {
+        2
+    } else {
+        1
+    };
     [(0, 1), (1, 0)]
         .into_iter()
         .filter_map(|(dr, dc)| {
@@ -128,12 +134,16 @@ fn gap_values(store: &CellStore, label: usize) -> Vec<u32> {
                     )
                     .map(|id| (d, id))
                 })
-                .filter(|&(d, id)| {
-                    d >= 2 && store.feature_flags[id as usize] & FLAG_IS_PASSWORD_HEADER == 0
-                })
+                .filter(|&(d, _)| d >= nearest)
                 .map(|(_, id)| id)
         })
         .collect()
+}
+
+/// True when a cell holding a credential word is short enough to head a
+/// column (`login_totp`, `Password (temp)`): at most three words.
+fn is_short_label(store: &CellStore, id: usize) -> bool {
+    store.get_value(id).split_whitespace().count() <= 3
 }
 
 /// Every candidate the research generator proposes for one sheet, in the
@@ -201,7 +211,7 @@ fn propose(store: &CellStore, candidate_ids: &[u32]) -> Vec<Proposal> {
     }
 
     // A label written as prose (`The password is:`) is not a password label,
-    // so gaps start from any cell holding a credential word.
+    // so gaps start from any cell holding a credential word, and next to it.
     let gap_labels = (0..store.len()).filter(|&i| {
         store.feature_flags[i] & (FLAG_IS_PASSWORD_HEADER | FLAG_HAS_CREDENTIAL_WORD) != 0
             && store.get_formula(i).is_empty()
@@ -212,6 +222,15 @@ fn propose(store: &CellStore, candidate_ids: &[u32]) -> Vec<Proposal> {
                 .into_iter()
                 .map(|v| proposal(store, h, v as usize, Pathway::Gap)),
         );
+        // A short label that is not a password label (`login_totp`) may still
+        // head a column of secrets.
+        if store.feature_flags[h] & FLAG_IS_PASSWORD_HEADER == 0 && is_short_label(store, h) {
+            out.extend(
+                column_below(store, h)
+                    .into_iter()
+                    .map(|v| proposal(store, h, v as usize, Pathway::Table)),
+            );
+        }
     }
     out
 }
@@ -355,8 +374,10 @@ fn span(cell: &str, text: &str) -> Option<(u32, u32)> {
 /// the column below every password label, variable values and split
 /// passwords whatever came first), plus loosened rules the pipeline does not
 /// have: prose and whitespace forms (`the password is x`), every inline
-/// keyword including everyday words, and values 1 to `GAP_MAX_EMPTY` empty
-/// cells right of or below any cell holding a credential word. Every `process_sheet` finding appears as a
+/// keyword including everyday words, the first value right of or below any
+/// cell holding a credential word (up to `GAP_MAX_EMPTY` empty cells away), and
+/// the column below any such cell of at most three words. Columns allow up to
+/// `GAP_MAX_EMPTY` empty rows. Every `process_sheet` finding appears as a
 /// candidate with the same label and value cells, and its confidence is the
 /// `baseline_confidence` feature.
 ///
@@ -545,6 +566,64 @@ mod tests {
         assert_eq!(table.len(), 3);
         assert!(table.iter().all(|c| feature(c, "in_table_column") == 0.0));
         assert!(table.iter().all(|c| feature(c, "column_len") == 4.0));
+    }
+
+    #[test]
+    fn column_continues_over_empty_rows() {
+        let cells = vec![
+            raw(1, 1, "Password"),
+            raw(4, 1, "Fake-col-1"),
+            raw(5, 1, "Fake-col-2"),
+            raw(10, 1, "Fake-col-3"),
+        ];
+        let rows: Vec<u32> = export_sheet(cells)
+            .into_iter()
+            .filter(|c| c.pathway == Pathway::Table)
+            .map(|c| c.value_row)
+            .collect();
+        assert_eq!(rows, vec![4, 5]);
+    }
+
+    #[test]
+    fn short_credential_word_heads_a_column() {
+        let cells = vec![
+            raw(1, 1, "login_username"),
+            raw(1, 2, "login_totp"),
+            raw(2, 1, "user.one"),
+            raw(2, 2, "FAKETOTPSEEDONE"),
+            raw(3, 1, "user.two"),
+            raw(3, 2, "FAKETOTPSEEDTWO"),
+        ];
+        let table: Vec<(u32, u32)> = export_sheet(cells)
+            .into_iter()
+            .filter(|c| c.pathway == Pathway::Table && (c.label_row, c.label_col) == (1, 2))
+            .map(|c| (c.value_row, c.value_col))
+            .collect();
+        assert_eq!(table, vec![(2, 2), (3, 2)]);
+    }
+
+    #[test]
+    fn prose_label_takes_the_next_cell() {
+        let candidates = export_sheet(vec![
+            raw(1, 1, "System user password:"),
+            raw(1, 2, "Fake-next-1"),
+        ]);
+        let gap = candidates
+            .iter()
+            .find(|c| c.pathway == Pathway::Gap)
+            .expect("gap candidate");
+        assert_eq!((gap.value_row, gap.value_col), (1, 2));
+        assert_eq!(feature(gap, "empty_between"), 0.0);
+    }
+
+    #[test]
+    fn gap_value_that_looks_like_a_label_is_listed() {
+        let candidates = export_sheet(vec![raw(1, 1, "The password is:"), raw(1, 3, "Passwd")]);
+        let gap = candidates
+            .iter()
+            .find(|c| c.pathway == Pathway::Gap)
+            .expect("gap candidate");
+        assert_eq!(feature(gap, "value_is_keyword"), 1.0);
     }
 
     #[test]
