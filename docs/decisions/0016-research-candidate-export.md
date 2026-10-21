@@ -43,14 +43,14 @@ in one session, show no difference: `process_sheet` on 1k cells 138.5 /
 136.3 / 136.4 µs, on 5k 707.9 / 707.8 / 709.6 µs, and a 10 × 5k workbook
 2.63 / 2.63 / 2.68 ms.
 
-On training data only (counts, no cell text), every doormat finding is
-among the candidates:
+On the fixtures and on samples of the training corpora (counts only, no
+cell text), every doormat finding is among the candidates:
 
 | Input | Doormat findings | Candidates | Per file |
 |---|---|---|---|
-| 15 fixtures | 19 | 59 | — |
-| Sets A and A2 (294 files) | 2,939 | 14,440 | — |
+| 15 test fixtures | 19 | 59 | at most 15 |
+| Sets A and A2 (294 files) | 2,939 | 14,440 | at most 550 |
 | 500 Enron files | 13 | 360 | at most 109 |
-| 500 Fuse files | — | 35 | — |
+| 500 Fuse files | 0 | 35 | at most 16 |
 
 That keeps the volume small enough to label.
