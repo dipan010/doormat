@@ -6,8 +6,8 @@ use crate::detection::{analyze_comments, analyze_formulas, detect_inline_credent
 use crate::features::{
     char_class_counts, compute_entropy, has_non_secret_part, is_ambiguous_label,
     is_boolean_literal, is_compound_credential_label, is_date_like, is_exact_keyword,
-    is_numeric_amount, is_password_label, is_url_or_email, keyword_class, normalize,
-    precompute_features,
+    is_numeric_amount, is_password_label, is_url_or_email, keyword_class, label_has_word,
+    normalize, precompute_features,
 };
 use crate::inference::{
     detect_split_password, detect_table_column, detect_variable_values, filled, is_table_label,
@@ -140,10 +140,17 @@ fn gap_values(store: &CellStore, label: usize) -> Vec<u32> {
         .collect()
 }
 
-/// True when a cell holding a credential word is short enough to head a
-/// column (`login_totp`, `Password (temp)`): at most three words.
-fn is_short_label(store: &CellStore, id: usize) -> bool {
-    store.get_value(id).split_whitespace().count() <= 3
+/// True when a cell that is not a password label can head a column of
+/// secrets: at most three words, one of them a whole `COLUMN_HEAD_WORDS` word
+/// (`login_totp`), and nothing filled directly above it (a header position).
+fn is_column_head(store: &CellStore, id: usize) -> bool {
+    let (row, col) = (store.get_row(id), store.get_col(id));
+    let value = store.get_value(id);
+    value.split_whitespace().count() <= 3
+        && label_has_word(value, COLUMN_HEAD_WORDS)
+        && row
+            .checked_sub(1)
+            .is_none_or(|above| filled(store, above, col).is_none())
 }
 
 /// Every candidate the research generator proposes for one sheet, in the
@@ -222,9 +229,9 @@ fn propose(store: &CellStore, candidate_ids: &[u32]) -> Vec<Proposal> {
                 .into_iter()
                 .map(|v| proposal(store, h, v as usize, Pathway::Gap)),
         );
-        // A short label that is not a password label (`login_totp`) may still
-        // head a column of secrets.
-        if store.feature_flags[h] & FLAG_IS_PASSWORD_HEADER == 0 && is_short_label(store, h) {
+        // A header that is not a password label (`login_totp`) may still head
+        // a column of secrets.
+        if store.feature_flags[h] & FLAG_IS_PASSWORD_HEADER == 0 && is_column_head(store, h) {
             out.extend(
                 column_below(store, h)
                     .into_iter()
@@ -376,8 +383,8 @@ fn span(cell: &str, text: &str) -> Option<(u32, u32)> {
 /// have: prose and whitespace forms (`the password is x`), every inline
 /// keyword including everyday words, the first value right of or below any
 /// cell holding a credential word (up to `GAP_MAX_EMPTY` empty cells away), and
-/// the column below any such cell of at most three words. Columns allow up to
-/// `GAP_MAX_EMPTY` empty rows. Every `process_sheet` finding appears as a
+/// the column below a short header naming a secret (`login_totp`). Columns
+/// allow up to `GAP_MAX_EMPTY` empty rows. Every `process_sheet` finding appears as a
 /// candidate with the same label and value cells, and its confidence is the
 /// `baseline_confidence` feature.
 ///
@@ -600,6 +607,19 @@ mod tests {
             .map(|c| (c.value_row, c.value_col))
             .collect();
         assert_eq!(table, vec![(2, 2), (3, 2)]);
+    }
+
+    #[test]
+    fn data_cell_with_a_credential_word_heads_no_column() {
+        let cells = vec![
+            raw(1, 1, "Role"),
+            raw(2, 1, "Secretary"),
+            raw(3, 1, "Fake-col-1"),
+            raw(4, 1, "Fake-col-2"),
+        ];
+        assert!(export_sheet(cells)
+            .iter()
+            .all(|c| c.pathway != Pathway::Table));
     }
 
     #[test]

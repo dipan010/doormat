@@ -232,6 +232,22 @@ pub const STRONG_KEYWORDS: &[&str] = &[
 /// (`*_PASSWORD_FILE`, `..._PATH`, `..._HASH`, `RANDOM_ROOT_PASSWORD`,
 /// `ALLOW_EMPTY_PASSWORD`).
 pub const NON_SECRET_LABEL_PARTS: &[&str] = &["file", "path", "hash", "random", "allow"];
+/// Whole label words that let a short cell which is not a password label head
+/// a research table column (`login_totp`, `Admin PIN`).
+pub const COLUMN_HEAD_WORDS: &[&str] = &[
+    "password",
+    "passwd",
+    "pwd",
+    "pass",
+    "passcode",
+    "passphrase",
+    "pin",
+    "secret",
+    "token",
+    "totp",
+    "otp",
+    "key",
+];
 /// Suffix the Python package adds to the name of a hidden sheet
 /// (`python/doormat/api.py`, `_HIDDEN_SUFFIX`).
 pub const HIDDEN_SHEET_SUFFIX: &str = "[HIDDEN]";

@@ -341,6 +341,14 @@ pub fn is_ambiguous_label(label: &str) -> bool {
             .any(|w| STRONG_KEYWORDS.iter().any(|s| w.contains(s)))
 }
 
+/// True when one of the label's words (split as for compound labels and at
+/// spaces and punctuation) is exactly one of `words`.
+pub fn label_has_word(label: &str, words: &[&str]) -> bool {
+    label_words(label)
+        .iter()
+        .any(|w| words.contains(&w.as_str()))
+}
+
 /// True when a label names a setting about a secret (`NON_SECRET_LABEL_PARTS`:
 /// `DB_PASSWORD_FILE`, `ALLOW_EMPTY_PASSWORD`).
 pub fn has_non_secret_part(label: &str) -> bool {
@@ -935,6 +943,14 @@ mod tests {
         assert!(is_ambiguous_label("PIN"));
         assert!(!is_ambiguous_label("Login Password"));
         assert!(!is_ambiguous_label("Passport"));
+    }
+
+    #[test]
+    fn label_words_match_whole_words() {
+        assert!(label_has_word("login_totp", COLUMN_HEAD_WORDS));
+        assert!(label_has_word("Admin PIN", COLUMN_HEAD_WORDS));
+        assert!(!label_has_word("Secretary", COLUMN_HEAD_WORDS));
+        assert!(!label_has_word("Turkey", COLUMN_HEAD_WORDS));
     }
 
     #[test]
