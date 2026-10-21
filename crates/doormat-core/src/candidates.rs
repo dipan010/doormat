@@ -36,6 +36,21 @@ pub(crate) fn inline_value<'h>(caps: &regex::Captures<'h>) -> Option<regex::Matc
     caps.get(1).or_else(|| caps.get(2)).or_else(|| caps.get(3))
 }
 
+/// Loosened single-cell pattern for the research export: any credential
+/// keyword, including everyday words (`pass`, `pin`, `login`, `key`), then a
+/// separator and one token. Group 1 is an assignment separator (`:`, `=`, a
+/// dash), group 2 a prose one (`is`, `was` or whitespace), group 3 the token,
+/// without surrounding quotes.
+pub(crate) static LOOSE_INLINE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(concat!(
+        r#"(?i)(?:^|[^\p{L}\p{N}])"#,
+        r#"(?:password|passwd|passwort|passphrase|passcode|pwd|pass|secret|pin|token|login|otp|key)"#,
+        r#"(?:(\s*[:=]\s*|\s+[-–]\s*|\s*[-–]\s+)|(\s+(?:is|was)\s*:?\s*|\s+))"#,
+        r#"["'“‘]?([^\s"'”’]+)"#,
+    ))
+    .expect("loose inline regex is valid")
+});
+
 /// A double-quoted string literal inside a formula.
 pub(crate) static FORMULA_STRING_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#""([^"]+)""#).expect("formula string regex is valid"));
