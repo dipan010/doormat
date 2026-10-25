@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-10-25
+
+Reads more real files: about a third more `.xls` files from the public web, large `.xlsx` workbooks up to 5 times faster with none wrongly refused, and credential columns past 1,000 rows. Findings on the Enron corpus and on evaluation set B are the same as 0.3.0's.
 
 ### Added
 
