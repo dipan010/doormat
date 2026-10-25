@@ -25,6 +25,7 @@ theme:
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - Command line: cli.md
   - API reference: api.md
   - File formats: formats.md
   - How detection works: how-it-works.md
@@ -49,6 +50,7 @@ nav:
       - decisions/0015-tolerant-xls.md
       - decisions/0016-research-candidate-export.md
       - decisions/0017-learned-scorer-not-adopted.md
+      - decisions/0019-command-line-scanner.md
   - Security policy: security.md
   - Changelog: changelog.md
 

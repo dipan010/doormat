@@ -24,3 +24,4 @@ says which one it replaces.
 | [0015](0015-tolerant-xls.md) | Read `.xls` files whose workbook stream shares a sector | 2026-10-17 |
 | [0016](0016-research-candidate-export.md) | A research export of candidates and features in the core | 2026-10-21 |
 | [0017](0017-learned-scorer-not-adopted.md) | Keep the hand-set confidences; the learned scorer is not adopted | 2026-10-25 |
+| [0019](0019-command-line-scanner.md) | A command-line scanner that never prints a value by default | 2026-10-25 |

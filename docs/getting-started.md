@@ -42,6 +42,15 @@ Notes!A1  'VPN password' -> 'hunter2!'  score=250
   `"B3"`), the label's `header_coordinate`, and `hidden` for hidden sheets.
 - `reason` explains the score, for example `distance=100;length>=8;upper;lower`.
 
+## From the command line
+
+```bash
+doormat scan it_handover.xlsx shares/
+```
+
+prints each finding with its value masked and exits 1 if anything was found.
+See [Command line](cli.md) for JSON and SARIF output, CI and pre-commit.
+
 ## Handle findings as secrets
 
 A finding's `value` is a live credential. `repr()` of a finding never includes
