@@ -62,7 +62,9 @@ pub(crate) fn filled(store: &CellStore, row: u32, col: u32) -> Option<u32> {
 /// `TABLE_HEADER_REACH` columns away; the nearest one names the account
 /// column. The table's rows run down from the header while the account cell or
 /// the secret cell is filled, ending at a new label row or after more than
-/// `TABLE_MAX_GAP` consecutive rows with both empty. Rows without a secret are
+/// `TABLE_MAX_GAP` consecutive rows with both empty, however long the table
+/// is (the walk never passes the column's last filled cell by more than
+/// `TABLE_MAX_GAP` rows). Rows without a secret are
 /// allowed (an account with no password, or a TOTP column that is mostly
 /// empty). The table qualifies with at least `TABLE_MIN_ROWS` rows and at least
 /// one secret, and at least `TABLE_TOKEN_SHARE` of its secrets must be single
@@ -83,7 +85,7 @@ pub(crate) fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32>
     };
 
     let mut gap = 0;
-    let rows: Vec<(Option<u32>, Option<u32>)> = (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
+    let rows: Vec<(Option<u32>, Option<u32>)> = (row + 1..=u32::MAX)
         .map(|r| (filled(store, r, col), filled(store, r, account_col)))
         .take_while(|&(secret, account)| {
             gap = if secret.is_some() || account.is_some() {
@@ -184,7 +186,7 @@ pub(crate) fn detect_variable_values(store: &CellStore, header_id: u32) -> Optio
 
     let values: Vec<u32> = if horizontal > vertical {
         let mut gap = 0;
-        (row + 1..=row.saturating_add(TABLE_MAX_ROWS))
+        (row + 1..=u32::MAX)
             .map(|r| filled(store, r, col))
             .take_while(|cell| {
                 gap = if cell.is_some() { 0 } else { gap + 1 };
@@ -490,6 +492,44 @@ mod tests {
         assert!(rels.iter().all(|r| r.reason == "table_column"
             && r.confidence == TABLE_COLUMN_CONFIDENCE
             && r.header_cell_id == 2));
+    }
+
+    #[test]
+    fn table_column_reads_past_a_thousand_rows() {
+        let mut cells = vec![raw(1, 1, "User ID"), raw(1, 2, "Password")];
+        for r in 2..=1501 {
+            cells.push(raw(r, 1, &format!("user{r}")));
+            cells.push(raw(r, 2, &format!("fake{r}x")));
+        }
+        let store = pipeline_store(cells);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        let table: Vec<&Relationship> =
+            rels.iter().filter(|r| r.reason == "table_column").collect();
+        assert_eq!(table.len(), 1500);
+        assert_eq!(table.last().map(|r| r.value.as_str()), Some("fake1501x"));
+    }
+
+    #[test]
+    fn variable_values_read_past_a_thousand_rows() {
+        let mut cells = vec![
+            raw(1, 1, "MYSQL_USER"),
+            raw(1, 2, "MYSQL_ROOT_PASSWORD"),
+            raw(1, 3, "MYSQL_HOST"),
+        ];
+        for r in 2..=1501 {
+            cells.push(raw(r, 2, &format!("fakeroot{r}")));
+        }
+        let store = pipeline_store(cells);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        let values: Vec<&Relationship> = rels
+            .iter()
+            .filter(|r| r.reason == "variable_value")
+            .collect();
+        assert_eq!(values.len(), 1500);
+        assert_eq!(
+            values.last().map(|r| r.value.as_str()),
+            Some("fakeroot1501")
+        );
     }
 
     #[test]

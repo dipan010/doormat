@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A credential table column, or a column of configuration-variable values, longer than 1,000 rows was cut off silently at row 1,001: a 1,088-row password column in a public-web spreadsheet lost its last 88 rows. Both columns are now read to their end (the walk already stops at a new label or after more than one empty row, so its length is bounded by the column itself). The research export keeps its documented 1,000-row bound. No Enron, set A, A2 or set B file has such a column: all four report identically, and the pipeline benchmarks are unchanged
 - A default `load()` refused some real `.xlsx` workbooks as too large: the `max_cells` limit counted cells that hold only a style, and a sheet formatted across whole rows stores millions of them. 5 of the 15,871 Enron `.xlsx` files were refused, one with 55,000 cells of content and 14.8 million parsed. Cells holding only a style are now removed before parsing and not counted; none of the 15,871 is refused (#8)
 - `.xls` files whose workbook stream shares a sector with another stream were refused (`CompDocError: Workbook corruption`). In a sample of spreadsheets from the public web (Fuse corpus) that was about a third of all `.xls` files; on the sample's design split, 2,209 of them now yield cells, and no file that read before changes. A workbook stream declared larger than the file is refused with `ValueError`, since the relaxed check no longer stops a file reusing its sectors to build one. `doormat[xls]` now needs `xlrd>=2.0.1`
 - Reading some `.xls` files printed xlrd's warnings and sector dumps (`WARNING *** file size ... not 512 + multiple of sector size`) to stdout; they are now discarded
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Design decision 0017: the learned scorer tested against the research export is not adopted, and doormat keeps its hand-set confidences
 - Design decision 0015 (reading `.xls` files with shared sectors, and the stream-size bound that replaces xlrd's check)
 - Design decisions 0013 (forged zip sizes fail closed: parts are read through `zipfile`, which stops at the declared size, so the zip-bomb limits hold without a byte-counting reader) and 0014 (removing style-only cells), each correcting an earlier record's evidence
 - The threat model and README no longer say forged zip sizes get past the zip-bomb check

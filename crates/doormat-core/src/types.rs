@@ -298,7 +298,8 @@ pub const VARIABLE_VALUE_CONFIDENCE: f32 = 190.0;
 pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
 /// A credential table needs at least this many rows below its header.
 pub const TABLE_MIN_ROWS: usize = 2;
-/// Longest run of rows read below a credential table header.
+/// Longest run of rows the research export (`research.rs`, ADR 0016) reads
+/// below a label. The detection pipeline reads a table column to its end.
 pub const TABLE_MAX_ROWS: u32 = 1000;
 /// Extra labels (normalized) that name the account column of a credential
 /// table, beside the general username labels. A bare `ID` is too common to
