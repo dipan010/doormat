@@ -23,3 +23,4 @@ says which one it replaces.
 | [0014](0014-style-only-cells.md) | Remove cells holding only a style before parsing a sheet | 2026-10-17 |
 | [0015](0015-tolerant-xls.md) | Read `.xls` files whose workbook stream shares a sector | 2026-10-17 |
 | [0016](0016-research-candidate-export.md) | A research export of candidates and features in the core | 2026-10-21 |
+| [0017](0017-learned-scorer-not-adopted.md) | Keep the hand-set confidences; the learned scorer is not adopted | 2026-10-25 |

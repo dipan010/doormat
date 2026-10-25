@@ -48,6 +48,7 @@ nav:
       - decisions/0014-style-only-cells.md
       - decisions/0015-tolerant-xls.md
       - decisions/0016-research-candidate-export.md
+      - decisions/0017-learned-scorer-not-adopted.md
   - Security policy: security.md
   - Changelog: changelog.md
 
