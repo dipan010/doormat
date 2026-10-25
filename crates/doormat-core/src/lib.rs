@@ -16,6 +16,8 @@ pub mod inference;
 pub mod pipeline;
 /// BFS region detection for spatially adjacent candidates.
 pub mod regions;
+/// Candidate and feature export for the learned-scorer experiment (ADR 0016).
+pub mod research;
 /// Candidate scoring with distance, content, and context bonuses.
 pub mod scoring;
 /// Spatial distance table and neighbor queries.
