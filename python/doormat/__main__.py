@@ -6,4 +6,6 @@ import sys
 
 from doormat.cli import main
 
-sys.exit(main())
+# Guarded so that importing this module never starts a scan.
+if __name__ == "__main__":
+    sys.exit(main())

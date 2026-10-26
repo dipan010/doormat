@@ -17,7 +17,10 @@ masked (first and last character), or fully masked.
 **Decision.** `doormat scan` is a thin `argparse` layer in the Python package:
 no detection logic and no new runtime dependency. Each file is loaded with
 `load()` (one FFI call per workbook) in a process pool; results keep the
-input order, so the number of workers never changes the output.
+input order, so the number of workers never changes the output. Workers are
+always spawned, never forked: a child forked after the Rust core's thread pool
+has started can deadlock, and `fork` is the default on Linux before Python
+3.14 (CI hung on 3.10 on Linux until this was fixed).
 
 - **Masking.** Values are replaced with a fixed-width mask, so the length is
   not shown either. Labels over 40 characters are cut, because for inline,

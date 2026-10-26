@@ -219,6 +219,20 @@ def test_non_ascii_sheet_name_on_ascii_console(tmp_path):
     assert b"\\u041f" in proc.stdout
 
 
+def test_module_entry_point_with_workers():
+    """``python -m doormat`` must not rerun the scan in each spawned worker."""
+    files = [str(FIXTURES / n) for n in sorted(GROUND_TRUTH)[:3]]
+    proc = subprocess.run(
+        [sys.executable, "-m", "doormat", "scan", "-j2", "-f", "json", *files],
+        capture_output=True,
+        timeout=120,
+        check=False,
+    )
+    assert proc.returncode == EXIT_FINDINGS
+    assert len(proc.stdout.splitlines()) == 3
+    assert proc.stderr.count(b"finding(s)") == 1
+
+
 # ---------- formats ----------
 
 
@@ -275,6 +289,22 @@ def test_jobs_output_identical(capsys):
     _, one, _ = _run(capsys, "scan", "-j1", "-f", "json", str(FIXTURES))
     _, many, _ = _run(capsys, "scan", "-j3", "-f", "json", str(FIXTURES))
     assert one == many
+
+
+def test_pool_never_forks(monkeypatch):
+    """Workers forked after the core's thread pool started can deadlock (Linux, Python < 3.14)."""
+    contexts = []
+    real = cli.ProcessPoolExecutor
+
+    def spy(**kw):
+        contexts.append(kw["mp_context"].get_start_method())
+        return real(**kw)
+
+    monkeypatch.setattr(cli, "ProcessPoolExecutor", spy)
+    cli.load(FIXTURES / "08_multi_sheet.xlsx")
+    jobs = [cli._Job(str(FIXTURES / n), None, None) for n in sorted(GROUND_TRUTH)[:4]]
+    assert len(list(cli.run_scan(jobs, workers=2))) == 4
+    assert contexts == ["spawn"]
 
 
 def test_broken_pool_reports_remaining_files(monkeypatch):

@@ -17,6 +17,7 @@ import fnmatch
 import hashlib
 import io
 import json
+import multiprocessing
 import os
 import struct
 import sys
@@ -200,7 +201,10 @@ def run_scan(jobs: list[_Job], workers: int) -> Iterator[FileResult]:
         return
     done = 0
     try:
-        with ProcessPoolExecutor(max_workers=workers) as pool:
+        # Never fork: a child forked after the Rust core's thread pool has
+        # started can deadlock (the default on Linux before Python 3.14).
+        context = multiprocessing.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
             for result in pool.map(scan_file, jobs):
                 done += 1
                 yield result
