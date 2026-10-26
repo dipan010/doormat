@@ -68,6 +68,19 @@ Findings come back in reading order: sheet by sheet, then row and column. A find
 Relationship(key='Password', sheet='Servers', cell='B3', confidence=210)
 ```
 
+## Command line
+
+```bash
+doormat scan shares/finance/ handover.xlsx
+```
+
+```text
+shares/finance/it.xlsx: Servers!B3: Password = ******** (confidence 210)
+doormat: 1 finding(s) in 1 of 14 file(s)
+```
+
+`doormat scan` walks files and directories in parallel and prints a table, JSON lines (`--format json`) or SARIF 2.1.0 for code scanning (`--format sarif`). Values are masked unless you pass `--reveal`, and SARIF never contains them. Exit status: 0 nothing found, 1 findings at or above `--min-confidence` (default 120), 2 a file or sheet not fully read (findings are still reported). See the [command-line guide](https://dipan010.github.io/doormat/cli/) for filters, CI and pre-commit.
+
 ## API
 
 | Name | Description |
@@ -143,7 +156,7 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 - **Hostile files are checked, not sandboxed.** XML entity attacks are refused, and `.xlsx`/`.xlsm`/`.ods` files that would decompress beyond 512 MiB, or with a zip-bomb compression ratio, are rejected before parsing. Understated sizes do not get past the check: parts are read through Python's `zipfile`, which stops at the declared size. Parsing is still done by pure-Python libraries in your process, so run doormat with a memory and time limit when scanning files from untrusted sources at scale.
 - **Some password tables are missed.** A `Password` column is read as a table of accounts only when a username or ID label shares its header row; about half of the table credentials in the evaluation are still missed.
 - **Legacy `.xls` files** expose no formulas or comments through xlrd, so those pathways only apply to `.xlsx`, `.xlsm` and `.ods`.
-- **Python only.** Bindings for other languages are planned, as is a command-line tool.
+- **Python only.** Bindings for other languages are planned.
 
 ## Roadmap
 

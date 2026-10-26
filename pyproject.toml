@@ -40,6 +40,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.scripts]
+doormat = "doormat.cli:main"
+
 [project.optional-dependencies]
 xls = ["xlrd>=2.0.1"]
 ods = ["odfpy>=1.4"]

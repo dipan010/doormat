@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `doormat scan PATH...`, a command-line scanner (also `python -m doormat`). It walks files and directories in a pool of worker processes, with `--include`/`--exclude` globs, and prints a table, JSON lines or SARIF 2.1.0. Values are shown as a fixed-width mask, long labels are cut, and reasons and error messages are left out unless `--reveal` is given; SARIF output never contains values and its fingerprints are location-only. Exit status 0 clean, 1 findings at or above `--min-confidence` (default 120), 2 any file or sheet not fully read, with findings still reported. It is a thin layer over `load()` with no detection logic of its own; on the Enron corpus it reports the same findings as a direct scan. Documented with CI and pre-commit examples (design decision 0019, #10)
+
 ## [0.4.0] - 2026-10-25
 
 Reads more real files: about a third more `.xls` files from the public web, large `.xlsx` workbooks up to 5 times faster with none wrongly refused, and credential columns past 1,000 rows. Findings on the Enron corpus and on evaluation set B are the same as 0.3.0's.
