@@ -51,6 +51,7 @@ nav:
       - decisions/0016-research-candidate-export.md
       - decisions/0017-learned-scorer-not-adopted.md
       - decisions/0019-command-line-scanner.md
+      - decisions/0020-allowlists-and-baselines.md
   - Security policy: security.md
   - Changelog: changelog.md
 
