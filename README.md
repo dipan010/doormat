@@ -79,7 +79,7 @@ shares/finance/it.xlsx: Servers!B3: Password = ******** (confidence 210)
 doormat: 1 finding(s) in 1 of 14 file(s)
 ```
 
-`doormat scan` walks files and directories in parallel and prints a table, JSON lines (`--format json`) or SARIF 2.1.0 for code scanning (`--format sarif`). Values are masked unless you pass `--reveal`, and SARIF never contains them. Exit status: 0 nothing found, 1 findings at or above `--min-confidence` (default 120), 2 a file or sheet not fully read (findings are still reported). See the [command-line guide](https://dipan010.github.io/doormat/cli/) for filters, CI and pre-commit.
+`doormat scan` walks files and directories in parallel and prints a table, JSON lines (`--format json`) or SARIF 2.1.0 for code scanning (`--format sarif`). Values are masked unless you pass `--reveal`, and SARIF never contains them. Exit status: 0 nothing found, 1 findings at or above `--min-confidence` (default 120), 2 a file or sheet not fully read (findings are still reported). An allowlist (`--allowlist`) ignores known false alarms, and a baseline (`--baseline`, `--write-baseline`) makes CI fail only on new findings; both record locations, never values. See the [command-line guide](https://dipan010.github.io/doormat/cli/) for filters, CI and pre-commit.
 
 ## API
 

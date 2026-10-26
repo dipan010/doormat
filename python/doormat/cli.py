@@ -7,7 +7,8 @@ as a table, JSON lines or SARIF 2.1.0. It adds no detection logic.
 Values are masked unless ``--reveal`` is given, and SARIF output never carries
 them. Exit status: 0 no findings, 1 findings at or above ``--min-confidence``,
 2 a file or sheet was not fully read or the command line was invalid. Findings
-are still reported when the status is 2.
+are still reported when the status is 2. Allowlists and baselines (see
+``doormat._suppress``) drop known findings before output.
 """
 
 from __future__ import annotations
@@ -29,6 +30,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TextIO
 
+from doormat._suppress import (
+    Allowlist,
+    Baseline,
+    SuppressionError,
+    baseline_key,
+    label,
+    relative_path,
+)
 from doormat._types import SHEET_ERRORS
 from doormat.api import Relationship, _get_format_registry, load
 
@@ -38,11 +47,6 @@ EXIT_INCOMPLETE = 2
 
 MASK = "********"
 """Shown in place of every value: fixed width, so it does not give away the length."""
-
-KEY_LIMIT = 40
-"""Labels longer than this are cut in masked and SARIF output. For inline,
-formula and comment findings the label is all the text before the value, which
-can hold a user name or another secret."""
 
 DEFAULT_MIN_CONFIDENCE = 120.0
 
@@ -104,6 +108,9 @@ class _Report:
     """Results in input order, plus the totals used for the summary and exit status."""
 
     results: list[FileResult] = field(default_factory=list)
+    allowlisted: int = 0
+    baselined: int = 0
+    stale: int = 0
 
     @property
     def findings(self) -> int:
@@ -225,9 +232,7 @@ def _safe(text: str) -> str:
 
 
 def _key(rel: Relationship, reveal: bool) -> str:
-    if reveal or len(rel.key) <= KEY_LIMIT:
-        return rel.key
-    return rel.key[:KEY_LIMIT] + "..."
+    return rel.key if reveal else label(rel)
 
 
 def _error_message(err: FileError, reveal: bool) -> str | None:
@@ -405,12 +410,24 @@ def write_summary(report: _Report, err: TextIO, reveal: bool) -> None:
     hidden = any(_error_message(e, reveal) is None for r in report.results for e in r.errors)
     files = len(report.results)
     with_findings = sum(1 for r in report.results if r.findings)
+    suppressed = report.allowlisted + report.baselined
     err.write(
         f"doormat: {report.findings} finding(s) in {with_findings} of {files} file(s)"
+        + (
+            f"; {suppressed} suppressed ({report.allowlisted} allowlist, "
+            f"{report.baselined} baseline)"
+            if suppressed
+            else ""
+        )
         + (f"; {report.incomplete} not fully read" if report.incomplete else "")
         + (" (--reveal shows error messages)" if hidden else "")
         + "\n"
     )
+    if report.stale:
+        err.write(
+            f"doormat: {report.stale} baseline entry(ies) no longer found in the files "
+            "scanned; refresh it with --write-baseline\n"
+        )
 
 
 # ---------- Command line ----------
@@ -505,6 +522,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="refuse a zip-based file larger than this unpacked; 0 for no limit "
         "(default: 536870912)",
     )
+    scan.add_argument(
+        "--allowlist",
+        type=Path,
+        metavar="FILE",
+        help="ignore findings matching this JSON allowlist",
+    )
+    baseline = scan.add_mutually_exclusive_group()
+    baseline.add_argument(
+        "--baseline",
+        type=Path,
+        metavar="FILE",
+        help="report only findings not in this baseline file",
+    )
+    baseline.add_argument(
+        "--write-baseline",
+        type=Path,
+        metavar="FILE",
+        help="record the findings in this baseline file (entries for files not scanned "
+        "are kept) and exit 0, or 2 if a file was not fully read",
+    )
     return parser
 
 
@@ -516,14 +553,82 @@ def _collect(results: Iterable[FileResult], min_confidence: float) -> _Report:
     return report
 
 
+def apply_allowlist(report: _Report, allowlist: Allowlist) -> None:
+    """Drop findings the allowlist matches, counting them."""
+    for i, r in enumerate(report.results):
+        path = relative_path(r.path, allowlist.base)
+        if path is None:
+            continue
+        kept = tuple(f for f in r.findings if not allowlist.allows(path, f))
+        report.allowlisted += len(r.findings) - len(kept)
+        report.results[i] = FileResult(r.path, kept, r.errors)
+
+
+def apply_baseline(report: _Report, baseline: Baseline, key: bytes | None) -> None:
+    """Drop findings the baseline records; count entries not found in fully read files."""
+    for i, r in enumerate(report.results):
+        path = relative_path(r.path, baseline.base)
+        known = baseline.entries.get(path, set()) if path is not None else set()
+        if path is None or not known:
+            continue
+        entries = [baseline.entry(path, f, key) for f in r.findings]
+        kept = tuple(f for f, e in zip(r.findings, entries, strict=True) if e not in known)
+        report.baselined += len(r.findings) - len(kept)
+        if not r.errors:
+            report.stale += len(known - set(entries))
+        report.results[i] = FileResult(r.path, kept, r.errors)
+
+
+def update_baseline(report: _Report, baseline: Baseline, key: bytes | None) -> tuple[int, int]:
+    """Replace the entries of each file scanned with its findings, keep the others, write.
+
+    A file not fully read keeps its old entries as well, since its unread
+    sheets may hold them. Returns the entries written and the findings outside
+    the baseline's directory, which cannot be recorded.
+    """
+    outside = 0
+    for r in report.results:
+        path = relative_path(r.path, baseline.base)
+        if path is None:
+            outside += len(r.findings)
+            continue
+        entries = {baseline.entry(path, f, key) for f in r.findings}
+        if r.errors:
+            entries |= baseline.entries.get(path, set())
+        if entries:
+            baseline.entries[path] = entries
+        else:
+            baseline.entries.pop(path, None)
+    return baseline.write(), outside
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``doormat`` command and return its exit status."""
     from doormat import __version__
 
     args = build_parser().parse_args(argv)
+    try:
+        key = baseline_key()
+        allowlist = Allowlist.load(args.allowlist) if args.allowlist else None
+        baseline = Baseline.load(args.baseline, key) if args.baseline else None
+        if args.write_baseline:
+            baseline = Baseline.load(args.write_baseline, key, missing_ok=True)
+            if key is not None and not baseline.keyed:
+                raise SuppressionError(
+                    f"baseline {args.write_baseline} has no value tags; "
+                    "delete it to write a keyed baseline"
+                )
+    except SuppressionError as exc:
+        sys.stderr.write(f"doormat: {exc}\n")
+        return EXIT_INCOMPLETE
+
     files, problems = discover(args.paths, args.include, args.exclude)
     jobs = [_Job(str(p), args.max_cells, args.max_uncompressed_bytes) for p in files]
     report = _collect([*problems, *run_scan(jobs, args.jobs)], args.min_confidence)
+    if allowlist is not None:
+        apply_allowlist(report, allowlist)
+    if baseline is not None and not args.write_baseline:
+        apply_baseline(report, baseline, key)
 
     out: TextIO
     if args.output is not None:
@@ -547,6 +652,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             out.close()
     write_summary(report, sys.stderr, args.reveal)
 
+    if args.write_baseline and baseline is not None:
+        try:
+            written, outside = update_baseline(report, baseline, key)
+        except OSError as exc:
+            sys.stderr.write(f"doormat: cannot write {args.write_baseline}: {exc}\n")
+            return EXIT_INCOMPLETE
+        sys.stderr.write(f"doormat: wrote {written} baseline entry(ies) to {args.write_baseline}\n")
+        if outside:
+            sys.stderr.write(
+                f"doormat: {outside} finding(s) outside {baseline.base} were not recorded\n"
+            )
     if report.incomplete:
         return EXIT_INCOMPLETE
+    if args.write_baseline:
+        return EXIT_CLEAN
     return EXIT_FINDINGS if report.findings else EXIT_CLEAN
