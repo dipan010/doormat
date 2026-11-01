@@ -140,7 +140,7 @@ impl Pathway {
 }
 
 /// Number of features on each research candidate.
-pub const FEATURE_COUNT: usize = 36;
+pub const FEATURE_COUNT: usize = 42;
 
 /// Names of the research candidate features, in vector order.
 pub const FEATURE_NAMES: [&str; FEATURE_COUNT] = [
@@ -185,6 +185,13 @@ pub const FEATURE_NAMES: [&str; FEATURE_COUNT] = [
     // pathway
     "pathway",
     "baseline_confidence",
+    // second test (ADR 0018), appended so the first 36 keep their positions
+    "label_cell_commas",
+    "value_row_labels",
+    "label_text_repeats",
+    "value_formula_kind",
+    "column_value_share",
+    "rows_to_column_end",
 ];
 
 /// A credential candidate for the learned-scorer experiment.
@@ -298,9 +305,6 @@ pub const VARIABLE_VALUE_CONFIDENCE: f32 = 190.0;
 pub const TABLE_COLUMN_CONFIDENCE: f32 = 190.0;
 /// A credential table needs at least this many rows below its header.
 pub const TABLE_MIN_ROWS: usize = 2;
-/// Longest run of rows the research export (`research.rs`, ADR 0016) reads
-/// below a label. The detection pipeline reads a table column to its end.
-pub const TABLE_MAX_ROWS: u32 = 1000;
 /// Extra labels (normalized) that name the account column of a credential
 /// table, beside the general username labels. A bare `ID` is too common to
 /// count as a username anywhere else.
@@ -436,7 +440,15 @@ mod tests {
     fn feature_names_are_distinct() {
         let names: std::collections::BTreeSet<&str> = FEATURE_NAMES.iter().copied().collect();
         assert_eq!(names.len(), FEATURE_COUNT);
-        assert_eq!(FEATURE_NAMES[FEATURE_COUNT - 1], "baseline_confidence");
+    }
+
+    #[test]
+    fn first_test_features_keep_their_positions() {
+        // ADR 0016's 36 features, which ADR 0017's model was trained on.
+        assert_eq!(FEATURE_NAMES[0], "value_len");
+        assert_eq!(FEATURE_NAMES[19], "label_in_header_row");
+        assert_eq!(FEATURE_NAMES[29], "column_len");
+        assert_eq!(FEATURE_NAMES[35], "baseline_confidence");
     }
 
     #[test]
