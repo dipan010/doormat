@@ -1,0 +1,16 @@
+[package]
+name = "doormat-xlsx"
+version = "0.4.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Cells-only .xlsx/.xlsm reader for the doormat spreadsheet credential detection engine"
+authors = ["Dipan Ghosh"]
+keywords = ["xlsx", "spreadsheet", "dlp", "credentials"]
+categories = ["parser-implementations"]
+repository = "https://github.com/dipan010/doormat"
+readme = "../../README.md"
+
+[dependencies]
+doormat-core = { path = "../doormat-core", version = "=0.4.0" }
+quick-xml = "0.42"
+zip = { version = "9.2", default-features = false, features = ["deflate-flate2-zlib-rs"] }

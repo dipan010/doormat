@@ -8,6 +8,7 @@ every file whose digest or status differs between two runs, and the timings.
 
 Usage:
     python bench/corpus/extract_check.py run --out NAME [--workers N] [--files LIST] [--dir DIR]
+                                             [--reader python|rust]
     python bench/corpus/extract_check.py compare OLD NEW
 """
 
@@ -22,6 +23,7 @@ import time
 import warnings
 from pathlib import Path
 
+from doormat import _core
 from doormat._limits import CellBudget
 from doormat.extract import extract_xlsx
 
@@ -37,13 +39,17 @@ class FileTimeout(Exception):
     """Raised by SIGALRM when a single file exceeds the per-file budget."""
 
 
+class _RustError(Exception):
+    """A file the Rust reader could not read; the message is the Python exception name."""
+
+
 def _on_alarm(_signum: int, _frame: object) -> None:
     raise FileTimeout
 
 
 def check_file(args: tuple[str, int]) -> dict:
     """Extract one file and digest the result. Never raises; failures become a status."""
-    path_str, timeout, root = args
+    path_str, timeout, root, reader = args
     path = Path(path_str)
     row: dict = {
         "file": path.relative_to(root).as_posix(),
@@ -56,13 +62,22 @@ def check_file(args: tuple[str, int]) -> dict:
     signal.alarm(timeout)
     start = time.perf_counter()
     try:
-        sheets = extract_xlsx(
-            path, lambda sheet, exc: errors.append((sheet, type(exc).__name__)), budget
-        )
+        if reader == "rust":
+            sheets, sheet_errors, parsed, failure = _core._read_xlsx(path, None)
+            if failure is not None:
+                raise _RustError(failure[0])
+            errors = [(sheet, kind) for sheet, kind, _message in sheet_errors]
+        else:
+            sheets = extract_xlsx(
+                path, lambda sheet, exc: errors.append((sheet, type(exc).__name__)), budget
+            )
+            parsed = budget.used
         digest = hashlib.sha256(repr((sheets, errors)).encode()).hexdigest()
-        row.update(digest=digest, cells=sum(len(s) for s in sheets), parsed=budget.used)
+        row.update(digest=digest, cells=sum(len(s) for s in sheets), parsed=parsed)
     except FileTimeout:
         row["status"] = "timeout"
+    except _RustError as exc:
+        row["status"] = f"error:{exc}"
     except Exception as exc:  # noqa: BLE001 - every failure is a reportable result
         row["status"] = f"error:{type(exc).__name__}"
     finally:
@@ -82,7 +97,7 @@ def run(opts: argparse.Namespace) -> None:
     out_path = RESULTS_DIR / opts.out
     start = time.perf_counter()
     with mp.Pool(opts.workers, maxtasksperchild=200) as pool, out_path.open("w") as out:
-        jobs = ((str(p), opts.timeout, str(root)) for p in files)
+        jobs = ((str(p), opts.timeout, str(root), opts.reader) for p in files)
         for done, row in enumerate(pool.imap_unordered(check_file, jobs, chunksize=8), 1):
             out.write(json.dumps(row) + "\n")
             if done % 2000 == 0:
@@ -138,6 +153,7 @@ def main() -> None:
     run_p.add_argument("--timeout", type=int, default=600)
     run_p.add_argument("--files", type=Path, help="newline-separated file names to check")
     run_p.add_argument("--dir", type=Path, help="directory to walk (default: the Enron corpus)")
+    run_p.add_argument("--reader", choices=("python", "rust"), default="python")
     cmp_p = sub.add_parser("compare")
     cmp_p.add_argument("old")
     cmp_p.add_argument("new")
