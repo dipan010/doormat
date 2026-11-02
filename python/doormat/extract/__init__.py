@@ -10,23 +10,6 @@ from __future__ import annotations
 from doormat.extract.csv_tsv import extract_csv
 from doormat.extract.ods import extract_ods
 from doormat.extract.xls import extract_xls
-from doormat.extract.xlsx import (
-    clean_comment,
-    collect_merge_origins,
-    extract_single_sheet,
-    extract_xlsx,
-)
+from doormat.extract.xlsx import extract_xlsx
 
-# Backward-compatible alias used by existing code
-extract_workbook = extract_xlsx
-
-__all__ = [
-    "clean_comment",
-    "collect_merge_origins",
-    "extract_csv",
-    "extract_ods",
-    "extract_single_sheet",
-    "extract_workbook",
-    "extract_xls",
-    "extract_xlsx",
-]
+__all__ = ["extract_csv", "extract_ods", "extract_xls", "extract_xlsx"]

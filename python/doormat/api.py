@@ -10,7 +10,7 @@ from doormat import _core
 from doormat._limits import DEFAULT_MAX_CELLS, CellBudget
 from doormat._types import Sheet
 from doormat._zipguard import DEFAULT_MAX_UNCOMPRESSED_BYTES, ZIP_MAGIC, check_zip
-from doormat.extract.xlsx_native import extract_xlsx_native, read_error
+from doormat.extract.xlsx import extract_xlsx, read_error
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
 # Lazy imports for optional deps are handled inside the extractor functions.
@@ -28,8 +28,8 @@ def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list
     from doormat.extract.xls import extract_xls
 
     return {
-        ".xlsx": (b"PK\x03\x04", extract_xlsx_native),
-        ".xlsm": (b"PK\x03\x04", extract_xlsx_native),
+        ".xlsx": (b"PK\x03\x04", extract_xlsx),
+        ".xlsm": (b"PK\x03\x04", extract_xlsx),
         ".xls": (b"\xd0\xcf\x11\xe0", extract_xls),
         ".csv": (None, extract_csv),
         ".tsv": (None, extract_csv),
@@ -253,7 +253,7 @@ def load(
 
     errors: list[SheetError] = []
 
-    if extractor is extract_xlsx_native:
+    if extractor is extract_xlsx:
         # Read and scan in Rust: one call, no cell tuples built in Python.
         raw_results, sheet_count, cell_count, sheet_errors, failure = _core.process_xlsx(
             filepath, max_cells

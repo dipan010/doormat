@@ -29,7 +29,7 @@ supply-chain risks covered by the project's dependency policy instead.
 
 | Format | Parsed by | Container | Notes |
 |---|---|---|---|
-| `.xlsx`, `.xlsm` | openpyxl | zip | XML parsed through `defusedxml` |
+| `.xlsx`, `.xlsm` | doormat's Rust reader (`doormat-xlsx`: `zip`, `quick-xml`) | zip | entity declarations refused; no DTD is processed |
 | `.ods` | odfpy | zip | odfpy parses XML through `defusedxml` itself |
 | `.xls` | xlrd | OLE2 compound file | binary, no XML |
 | `.csv`, `.tsv` | Python `csv` | plain text | no container, no XML |
@@ -41,11 +41,11 @@ receives already-extracted cell text.
 
 | Attack | Mitigation | Status |
 |---|---|---|
-| XML entity expansion ("billion laughs"), external entities (XXE) | `defusedxml` refuses entity declarations in `.xlsx` and `.ods` XML. A worksheet that declares entities is skipped and listed in `GridDoc.errors`; anywhere else `load()` raises `ValueError` | Mitigated, tested |
+| XML entity expansion ("billion laughs"), external entities (XXE) | doormat's `.xlsx` reader refuses entity declarations and never resolves external entities; odfpy refuses them in `.ods` XML through `defusedxml`. A worksheet that declares entities is skipped and listed in `GridDoc.errors`; anywhere else `load()` raises `ValueError` | Mitigated, tested |
 | Oversized workbook (millions of real cells) | Cells with content are counted while each sheet is parsed (cells holding only a style are removed first); past `max_cells` (default 2,000,000, about 1 GiB) `load()` raises `ValueError` | Mitigated, tested |
-| Zip bomb (tiny file, huge decompressed parts) | Before parsing, the zip directory is checked: more than 10,000 parts, more than 512 MiB declared (configurable), or a part of 10 MiB or more compressed beyond 500:1 is refused. Parts are read through Python's `zipfile`, which never returns more than a part's declared size, so understated sizes fail instead of bypassing the check | Mitigated, tested with real bombs and forged sizes |
+| Zip bomb (tiny file, huge decompressed parts) | Before parsing, the zip directory is checked: more than 10,000 parts, more than 512 MiB declared (configurable), or a part of 10 MiB or more compressed beyond 500:1 is refused. Parts are read no further than their declared size (doormat's reader for `.xlsx`, Python's `zipfile` for `.ods`), so understated sizes fail instead of bypassing the check | Mitigated, tested with real bombs and forged sizes |
 | Range inflation (one formatted cell at `XFD1048576`, about 17 billion positions) | The `.xlsx` extractor visits only cells present in the file, never the declared range | Mitigated, tested |
-| Slow pre-parse filtering (a cell tag packed with ` r='`, or a huge text node) | The `.xlsx` filter that removes style-only cells bounds every span of its pattern at 64 bytes and passes long text through, so its cost is linear in the sheet size | Mitigated, tested |
+| Slow parsing of hostile markup (a cell tag packed with ` r='`, or a huge text node) | The `.xlsx` reader streams each worksheet; its cost is linear in the sheet size | Mitigated, tested |
 | Stream amplification in `.xls` (sectors reused to build a workbook stream larger than the file) | xlrd's strict sector check is relaxed so real files with shared sectors can be read; a workbook stream declared larger than the file is refused before parsing | Mitigated, tested |
 | Repeat inflation in `.ods` (a cell "repeated" a billion times) | Repeated empty cells are skipped; repeated values are capped at 16,384 columns and rows at 1,000 repetitions | Mitigated, tested |
 | Secret leaking into logs | `repr(Relationship)` omits the value; doormat logs nothing | Mitigated |
@@ -60,8 +60,8 @@ receives already-extracted cell text.
   the work per file (about a minute at the default), but a file within it can
   still be slow, and the `.ods` reader parses its whole XML before counting.
   Run large-scale scans with a process-level timeout and memory limit.
-- **Third-party parsers.** openpyxl, odfpy and xlrd parse untrusted input in
-  pure Python. A bug in them is a bug in doormat's attack surface; Dependabot
+- **Third-party parsers.** The `zip` and `quick-xml` crates parse `.xlsx`
+  input in Rust; odfpy and xlrd parse `.ods` and `.xls` in pure Python. A bug in them is a bug in doormat's attack surface; Dependabot
   and `pip-audit` watch for published advisories.
 - **A sheet that cannot be parsed is not scanned.** `load()` reports it in
   `GridDoc.errors` and scans the other sheets, so its secrets are missed.
