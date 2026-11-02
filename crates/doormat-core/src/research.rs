@@ -319,17 +319,61 @@ fn column_stats<'a>(
         Column::build(store, by_col.get(&col).map_or(&[][..], |c| c.as_slice()))
     });
     let to_end = column.last_row.saturating_sub(row) as f32;
-    let Some(run) = column.run_of.get(&row).map(|&i| &column.runs[i]) else {
-        return (1.0, 1.0, 1.0, 1.0, to_end);
+    let shape = store.feature_flags[value] & SHAPE_FLAGS;
+    let text = store.normalized_values[value].as_str();
+    if let Some(run) = column.run_of.get(&row).map(|&i| &column.runs[i]) {
+        let count = |n: Option<&u32>| n.copied().unwrap_or(0) as f32 / run.len;
+        return (
+            run.len,
+            run.distinct / run.len,
+            count(run.shapes.get(&shape)),
+            count(run.values.get(text)),
+            to_end,
+        );
+    }
+    // A value the column does not hold (blank, or a blank cell shares its
+    // coordinates) joins the runs right above and below it, as ADR 0016's
+    // walk did.
+    let near = |r: Option<u32>| {
+        r.and_then(|r| column.run_of.get(&r))
+            .map(|&i| &column.runs[i])
     };
-    let count = |n: Option<&u32>| n.copied().unwrap_or(0) as f32 / run.len;
+    let joined: Vec<&Run> = [near(row.checked_sub(1)), near(row.checked_add(1))]
+        .into_iter()
+        .flatten()
+        .collect();
+    let len = 1.0 + joined.iter().map(|r| r.len).sum::<f32>();
+    let mut distinct: AHashSet<&str> = joined
+        .iter()
+        .flat_map(|r| r.values.keys().copied())
+        .collect();
+    distinct.insert(text);
+    let same = |count: &dyn Fn(&Run) -> u32| {
+        (1 + joined.iter().map(|r| count(r)).sum::<u32>()) as f32 / len
+    };
     (
-        run.len,
-        run.distinct / run.len,
-        count(run.shapes.get(&(store.feature_flags[value] & SHAPE_FLAGS))),
-        count(run.values.get(store.normalized_values[value].as_str())),
+        len,
+        distinct.len() as f32 / len,
+        same(&|r| r.shapes.get(&shape).copied().unwrap_or(0)),
+        same(&|r| r.values.get(text).copied().unwrap_or(0)),
         to_end,
     )
+}
+
+/// The filled cells of each column (as `filled` sees them) as (row, id), in
+/// row order.
+fn filled_by_column(store: &CellStore) -> AHashMap<u32, Vec<(u32, usize)>> {
+    let mut by_col: AHashMap<u32, Vec<(u32, usize)>> = AHashMap::new();
+    for i in 0..store.len() {
+        let (row, col) = (store.get_row(i), store.get_col(i));
+        if filled(store, row, col) == Some(i as u32) {
+            by_col.entry(col).or_default().push((row, i));
+        }
+    }
+    for cells in by_col.values_mut() {
+        cells.sort_unstable();
+    }
+    by_col
 }
 
 /// The kind of formula in the value cell, read from the whole formula rather
@@ -544,16 +588,7 @@ pub fn export_sheet(cells: Vec<RawCell>) -> Vec<Candidate> {
             .or_default()
             .insert(p.label);
     }
-    let mut by_col: AHashMap<u32, Vec<(u32, usize)>> = AHashMap::new();
-    for i in 0..store.len() {
-        let (row, col) = (store.get_row(i), store.get_col(i));
-        if filled(&store, row, col) == Some(i as u32) {
-            by_col.entry(col).or_default().push((row, i));
-        }
-    }
-    for cells in by_col.values_mut() {
-        cells.sort_unstable();
-    }
+    let by_col = filled_by_column(&store);
     let mut ctx = SheetContext {
         baseline,
         row_labels,
@@ -911,6 +946,35 @@ mod tests {
                 assert_eq!(feature(c, "column_shape_share"), shape);
             }
         }
+    }
+
+    #[test]
+    fn value_outside_the_index_joins_the_runs_beside_it() {
+        let cells = vec![
+            raw(1, 1, "Password"),
+            raw(2, 1, "Fake-a-1"),
+            raw(3, 1, "Fake-a-1"),
+            raw(4, 1, " "),
+            raw(5, 1, "fakeb"),
+            raw(6, 1, "Fake-c-3"),
+        ];
+        let mut store = CellStore::from_raw(cells);
+        precompute_features(&mut store);
+        let mut ctx = SheetContext {
+            baseline: AHashMap::new(),
+            row_labels: AHashMap::new(),
+            sheet_labels: 0,
+            tables: AHashMap::new(),
+            label_repeats: AHashMap::new(),
+            by_col: filled_by_column(&store),
+            columns: AHashMap::new(),
+        };
+        let blank = store.coord_to_id[&(4, 1)] as usize;
+        let (len, distinct, shape) = reference_column_stats(&store, blank);
+        let (new_len, new_distinct, new_shape, _, to_end) = column_stats(&store, blank, &mut ctx);
+        assert_eq!((new_len, new_distinct, new_shape), (len, distinct, shape));
+        assert_eq!(new_len, 6.0);
+        assert_eq!(to_end, 2.0);
     }
 
     #[test]
