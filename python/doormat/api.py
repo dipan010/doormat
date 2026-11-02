@@ -10,7 +10,7 @@ from doormat import _core
 from doormat._limits import DEFAULT_MAX_CELLS, CellBudget
 from doormat._types import Sheet
 from doormat._zipguard import DEFAULT_MAX_UNCOMPRESSED_BYTES, ZIP_MAGIC, check_zip
-from doormat.extract import extract_xlsx
+from doormat.extract.xlsx_native import extract_xlsx_native, read_error
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
 # Lazy imports for optional deps are handled inside the extractor functions.
@@ -28,8 +28,8 @@ def _build_format_registry() -> dict[str, tuple[bytes | None, Callable[..., list
     from doormat.extract.xls import extract_xls
 
     return {
-        ".xlsx": (b"PK\x03\x04", extract_xlsx),
-        ".xlsm": (b"PK\x03\x04", extract_xlsx),
+        ".xlsx": (b"PK\x03\x04", extract_xlsx_native),
+        ".xlsm": (b"PK\x03\x04", extract_xlsx_native),
         ".xls": (b"\xd0\xcf\x11\xe0", extract_xls),
         ".csv": (None, extract_csv),
         ".tsv": (None, extract_csv),
@@ -236,10 +236,7 @@ def load(
 
     if ext not in registry:
         supported = ", ".join(sorted(registry.keys()))
-        raise ValueError(
-            f"Unsupported file extension: {ext}. "
-            f"Supported formats: {supported}"
-        )
+        raise ValueError(f"Unsupported file extension: {ext}. Supported formats: {supported}")
 
     magic_bytes, extractor = registry[ext]
 
@@ -256,15 +253,23 @@ def load(
 
     errors: list[SheetError] = []
 
-    def record(sheet: str, exc: Exception) -> None:
-        errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
+    if extractor is extract_xlsx_native:
+        # Read and scan in Rust: one call, no cell tuples built in Python.
+        raw_results, sheet_count, cell_count, sheet_errors, failure = _core.process_xlsx(
+            filepath, max_cells
+        )
+        if failure is not None:
+            raise read_error(*failure)
+        errors = [SheetError(sheet=s, kind=k, message=m) for s, k, m in sheet_errors]
+    else:
 
-    sheets = extractor(filepath, record, CellBudget(max_cells, filepath.name))
+        def record(sheet: str, exc: Exception) -> None:
+            errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
 
-    sheet_count = len(sheets)
-    cell_count = sum(len(s) for s in sheets)
-
-    raw_results = _core.process_workbook(sheets)
+        sheets = extractor(filepath, record, CellBudget(max_cells, filepath.name))
+        sheet_count = len(sheets)
+        cell_count = sum(len(s) for s in sheets)
+        raw_results = _core.process_workbook(sheets)
 
     rels = [
         Relationship(

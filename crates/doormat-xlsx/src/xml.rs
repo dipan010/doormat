@@ -121,6 +121,15 @@ fn parse_error(e: impl std::fmt::Display) -> XlsxError {
     XlsxError::new("ParseError", e.to_string())
 }
 
+/// A reader error: a failed read of the zip part (`BadZipFile`, as Python's
+/// `zipfile` reports a part larger than declared or a bad CRC), else malformed XML.
+fn read_error(e: quick_xml::Error) -> XlsxError {
+    match e {
+        quick_xml::Error::Io(io) => XlsxError::new("BadZipFile", io.to_string()),
+        other => parse_error(other),
+    }
+}
+
 impl<R: BufRead> Parser<R> {
     /// Start parsing `source`.
     pub fn new(source: R) -> Self {
@@ -172,7 +181,7 @@ impl<R: BufRead> Parser<R> {
             let event = self
                 .reader
                 .read_event_into(&mut self.buf)
-                .map_err(parse_error)?;
+                .map_err(read_error)?;
             match event {
                 Event::Start(e) => {
                     let start = e.into_owned();
@@ -203,7 +212,7 @@ impl<R: BufRead> Parser<R> {
             let event = self
                 .reader
                 .read_event_into(&mut self.buf)
-                .map_err(parse_error)?;
+                .map_err(read_error)?;
             match event {
                 Event::Start(e) => {
                     let start = e.into_owned();
@@ -252,7 +261,7 @@ impl<R: BufRead> Parser<R> {
             let event = self
                 .reader
                 .read_event_into(&mut self.buf)
-                .map_err(parse_error)?
+                .map_err(read_error)?
                 .into_owned();
             let next_has_ref = match &event {
                 Event::Start(e) | Event::Empty(e) => Some(is_referenced_cell(e)),
