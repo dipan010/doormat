@@ -401,14 +401,20 @@ fn formula_kind(formula: &str) -> u8 {
 }
 
 /// Empty cells strictly between a label and a value on one row or column.
-fn empty_between(store: &CellStore, label: usize, value: usize) -> u32 {
+/// Down a column the filled rows in between come from the column index, so a
+/// long column stays linear.
+fn empty_between(store: &CellStore, label: usize, value: usize, ctx: &SheetContext) -> u32 {
     let (lr, lc) = (store.get_row(label), store.get_col(label));
     let (vr, vc) = (store.get_row(value), store.get_col(value));
-    let empty = |r: u32, c: u32| u32::from(filled(store, r, c).is_none());
     if lr == vr && vc > lc {
-        (lc + 1..vc).map(|c| empty(lr, c)).sum()
+        (lc + 1..vc)
+            .map(|c| u32::from(filled(store, lr, c).is_none()))
+            .sum()
     } else if lc == vc && vr > lr {
-        (lr + 1..vr).map(|r| empty(r, lc)).sum()
+        let cells = ctx.by_col.get(&lc).map_or(&[][..], |c| c.as_slice());
+        let filled_between =
+            cells.partition_point(|&(r, _)| r < vr) - cells.partition_point(|&(r, _)| r <= lr);
+        vr - lr - 1 - filled_between as u32
     } else {
         0
     }
@@ -491,7 +497,7 @@ fn features<'a>(
         flag(has_non_secret_part(label)),
         dr as f32,
         dc as f32,
-        empty_between(store, h, v) as f32,
+        empty_between(store, h, v, ctx) as f32,
         flag(same_region),
         DISTANCE_TABLE.score(dr, dc),
         flag(in_table),
@@ -975,6 +981,22 @@ mod tests {
         assert_eq!((new_len, new_distinct, new_shape), (len, distinct, shape));
         assert_eq!(new_len, 6.0);
         assert_eq!(to_end, 2.0);
+    }
+
+    #[test]
+    fn empty_rows_between_a_label_and_a_value_below() {
+        let cells = vec![
+            raw(1, 1, "Password"),
+            raw(4, 1, "Fake-col-1"),
+            raw(5, 1, "Fake-col-2"),
+            raw(7, 1, "Fake-col-3"),
+        ];
+        let empty: Vec<(u32, f32)> = export_sheet(cells)
+            .iter()
+            .filter(|c| c.pathway == Pathway::Table)
+            .map(|c| (c.value_row, feature(c, "empty_between")))
+            .collect();
+        assert_eq!(empty, vec![(4, 2.0), (5, 2.0), (7, 3.0)]);
     }
 
     #[test]
