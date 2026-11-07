@@ -27,3 +27,4 @@ says which one it replaces.
 | [0018](0018-research-export-second-test.md) | The research export reads columns to their end and adds six features | 2026-11-02 |
 | [0019](0019-command-line-scanner.md) | A command-line scanner that never prints a value by default | 2026-10-25 |
 | [0020](0020-allowlists-and-baselines.md) | Allowlists and baselines keyed by location, with an optional keyed value tag | 2026-10-27 |
+| [0021](0021-rust-xlsx-reader.md) | Read `.xlsx` in Rust, with output identical to the openpyxl reader | 2026-11-07 |

@@ -7,7 +7,7 @@ and the time taken. Nothing else from the file is stored. ``compare`` reports
 every file whose digest or status differs between two runs, and the timings.
 
 Usage:
-    python bench/corpus/extract_check.py run --out NAME [--workers N] [--files LIST]
+    python bench/corpus/extract_check.py run --out NAME [--workers N] [--files LIST] [--dir DIR]
     python bench/corpus/extract_check.py compare OLD NEW
 """
 
@@ -43,9 +43,13 @@ def _on_alarm(_signum: int, _frame: object) -> None:
 
 def check_file(args: tuple[str, int]) -> dict:
     """Extract one file and digest the result. Never raises; failures become a status."""
-    path_str, timeout = args
+    path_str, timeout, root = args
     path = Path(path_str)
-    row: dict = {"file": path.name, "bytes": path.stat().st_size, "status": "ok"}
+    row: dict = {
+        "file": path.relative_to(root).as_posix(),
+        "bytes": path.stat().st_size,
+        "status": "ok",
+    }
     errors: list[tuple[str, str]] = []
     budget = CellBudget(None, path.name)
     signal.signal(signal.SIGALRM, _on_alarm)
@@ -55,8 +59,9 @@ def check_file(args: tuple[str, int]) -> dict:
         sheets = extract_xlsx(
             path, lambda sheet, exc: errors.append((sheet, type(exc).__name__)), budget
         )
+        parsed = budget.used
         digest = hashlib.sha256(repr((sheets, errors)).encode()).hexdigest()
-        row.update(digest=digest, cells=sum(len(s) for s in sheets), parsed=budget.used)
+        row.update(digest=digest, cells=sum(len(s) for s in sheets), parsed=parsed)
     except FileTimeout:
         row["status"] = "timeout"
     except Exception as exc:  # noqa: BLE001 - every failure is a reportable result
@@ -69,15 +74,16 @@ def check_file(args: tuple[str, int]) -> dict:
 
 def run(opts: argparse.Namespace) -> None:
     """Extract every .xlsx/.xlsm file in parallel and write results/NAME."""
-    files = sorted(p for p in DATA_DIR.iterdir() if p.suffix.lower() in (".xlsx", ".xlsm"))
+    root = opts.dir.resolve() if opts.dir else DATA_DIR
+    files = sorted(p for p in root.rglob("*") if p.suffix.lower() in (".xlsx", ".xlsm"))
     if opts.files:
         wanted = set(opts.files.read_text().split("\n")) - {""}
-        files = [p for p in files if p.name in wanted]
+        files = [p for p in files if p.relative_to(root).as_posix() in wanted]
     RESULTS_DIR.mkdir(exist_ok=True)
     out_path = RESULTS_DIR / opts.out
     start = time.perf_counter()
     with mp.Pool(opts.workers, maxtasksperchild=200) as pool, out_path.open("w") as out:
-        jobs = ((str(p), opts.timeout) for p in files)
+        jobs = ((str(p), opts.timeout, str(root)) for p in files)
         for done, row in enumerate(pool.imap_unordered(check_file, jobs, chunksize=8), 1):
             out.write(json.dumps(row) + "\n")
             if done % 2000 == 0:
@@ -132,6 +138,7 @@ def main() -> None:
     run_p.add_argument("--workers", type=int, default=4)
     run_p.add_argument("--timeout", type=int, default=600)
     run_p.add_argument("--files", type=Path, help="newline-separated file names to check")
+    run_p.add_argument("--dir", type=Path, help="directory to walk (default: the Enron corpus)")
     cmp_p = sub.add_parser("compare")
     cmp_p.add_argument("old")
     cmp_p.add_argument("new")

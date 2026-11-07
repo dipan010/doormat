@@ -19,5 +19,6 @@
   trailing `.0`.
 - From `.xlsx` and `.xlsm` files doormat reads cell values, formulas
   (including array formulas), comments, merged ranges and sheet visibility.
-  It does not read defined names, print settings, pivot caches or
-  external-link caches, so a malformed part of that kind does not stop a scan.
+  It does not read defined names, print settings, column widths, pivot caches
+  or external-link caches, so a malformed part of that kind does not stop a
+  scan. The reader is part of doormat's Rust code; no other package is needed.

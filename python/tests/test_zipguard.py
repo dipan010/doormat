@@ -85,14 +85,18 @@ def _two_sheet_workbook(tmp_path: Path) -> Path:
 
 def test_forged_worksheet_size_reads_no_more_than_declared(tmp_path: Path) -> None:
     """zipfile stops at the declared size, so understating it fails that sheet instead of reading on."""
-    forged = _with_forged_size(_two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/worksheets/sheet1.xml")
+    forged = _with_forged_size(
+        _two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/worksheets/sheet1.xml"
+    )
     doc = doormat.load(forged)
     assert [(e.sheet, e.kind) for e in doc.errors] == [("Big", "BadZipFile")]
     assert [c.coordinate for c in doc.credentials(120)] == ["B1"]
 
 
 def test_forged_workbook_part_size_refuses_the_file(tmp_path: Path) -> None:
-    forged = _with_forged_size(_two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/workbook.xml")
+    forged = _with_forged_size(
+        _two_sheet_workbook(tmp_path), tmp_path / "forged.xlsx", "xl/workbook.xml"
+    )
     with pytest.raises(zipfile.BadZipFile):
         doormat.load(forged)
 
@@ -200,22 +204,16 @@ def test_cell_limit_can_be_disabled(tmp_path: Path) -> None:
     assert doormat.load(path, max_cells=300).cell_count == 300
 
 
-def test_cell_limit_stops_parsing_part_way_through_a_sheet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The count runs while the sheet is parsed, not after it is in memory."""
-    from doormat.extract import xlsx
+def test_cell_limit_refuses_while_parsing(tmp_path: Path) -> None:
+    """The count runs row by row inside the reader; the file is refused without returning cells."""
+    from doormat._limits import CellBudget, CellLimitError
+    from doormat.extract import extract_xlsx
 
     path = _grid_workbook(tmp_path, rows=200, cols=10)
-    rows_seen = []
-    real = xlsx.extract_single_sheet
-
-    def spy(ws, *args):  # type: ignore[no-untyped-def]
-        rows_seen.append(ws.max_row)
-        return real(ws, *args)
-
-    monkeypatch.setattr(xlsx, "extract_single_sheet", spy)
-    with pytest.raises(ValueError, match="max_cells"):
-        doormat.load(path, max_cells=100)
-    assert rows_seen == []
+    budget = CellBudget(100, path.name)
+    with pytest.raises(CellLimitError, match="max_cells"):
+        extract_xlsx(path, None, budget)
+    assert budget.used == 0
 
 
 def test_cell_limit_applies_to_csv(tmp_path: Path) -> None:
@@ -248,30 +246,62 @@ def test_cell_limit_applies_to_ods(tmp_path: Path) -> None:
         doormat.load(path, max_cells=100)
 
 
-def test_long_cell_tag_does_not_backtrack(tmp_path: Path) -> None:
-    """The style-only cell filter runs on untrusted bytes; a long tag of " r='" must stay linear."""
+def _sheet_xml_workbook(tmp_path: Path, sheet_xml: bytes) -> Path:
+    wb = openpyxl.Workbook()
+    wb.active["A1"] = "x"
+    clean = tmp_path / "clean.xlsx"
+    wb.save(clean)
+    wb.close()
+    path = tmp_path / "hostile.xlsx"
+    with zipfile.ZipFile(clean) as zin, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = (
+                sheet_xml
+                if item.filename == "xl/worksheets/sheet1.xml"
+                else zin.read(item.filename)
+            )
+            zout.writestr(item.filename, data)
+    return path
+
+
+_MAIN = b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+
+
+def test_long_cell_tag_stays_linear(tmp_path: Path) -> None:
+    """A long attribute full of " r='" is read in linear time and refused as a bad style index."""
     import time
 
-    from doormat.extract import xlsx
+    from doormat import _core
 
-    hostile = b'<row r="1"><c r="A1" s="' + b" r='" * 2_000_000 + b'"></c></row>'
+    hostile = (
+        _MAIN
+        + b'<row r="1"><c r="A1" s="'
+        + b" r='" * 2_000_000
+        + b'"/></row></sheetData></worksheet>'
+    )
+    path = _sheet_xml_workbook(tmp_path, hostile)
     start = time.perf_counter()
-    xlsx._EMPTY_CELL.sub(b"", hostile)
+    _sheets, _errors, _parsed, failure = _core._read_xlsx(path, None)
     assert time.perf_counter() - start < 5
+    assert failure is None
 
 
-def test_long_text_node_streams_through_the_filter() -> None:
-    """A text node with no tag inside is passed through, not re-scanned as it grows."""
-    import io
+def test_long_text_node_streams(tmp_path: Path) -> None:
+    """A 16 MiB text node is streamed through the reader in bounded time."""
     import time
 
-    from doormat.extract import xlsx
+    from doormat import _core
 
-    part = b"<t>" + b"x" * (64 << 20) + b"</t>"
-    reader = xlsx._EmptyCellFilter(io.BytesIO(part))
+    text = b"x" * (16 << 20)
+    xml = (
+        _MAIN
+        + b'<row r="1"><c r="A1" t="inlineStr"><is><t>'
+        + text
+        + b"</t></is></c></row></sheetData></worksheet>"
+    )
+    path = _sheet_xml_workbook(tmp_path, xml)
     start = time.perf_counter()
-    total = 0
-    while chunk := reader.read(16384):
-        total += len(chunk)
+    sheets, errors, _parsed, failure = _core._read_xlsx(path, None)
     assert time.perf_counter() - start < 5
-    assert total == len(part)
+    assert failure is None and errors == []
+    assert len(sheets[0][0][2]) == len(text)

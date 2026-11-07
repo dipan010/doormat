@@ -14,7 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `.xlsx` and `.xlsm` files are read by doormat's own Rust reader (new crate `doormat-xlsx`), in the same call as detection. Its output is identical to the openpyxl-based reader's on all 15,871 Enron `.xlsx` files, the fixtures and sets A and A2; on set B's 1,622 `.xlsx` files one sheet that openpyxl refused over an empty column width is now read. Findings are unchanged on Enron (322) and sets A, A2 and B. File and sheet errors keep the Python exception names they had (design decision 0021, #20)
+- **Breaking:** `openpyxl` and `defusedxml` are no longer dependencies; doormat installs nothing else (`xlrd` and `odfpy` stay optional extras). `doormat.extract.extract_xlsx` keeps its signature; the openpyxl helpers `clean_comment`, `collect_merge_origins`, `extract_single_sheet` and the `extract_workbook` alias are removed
 - The research export (`doormat-core` only) reads a column below a label to its end, as the detection pipeline does since 0.4.0, with column statistics from one pass per column, and appends six features after the first 36 (42 in all, still no value text). `TABLE_MAX_ROWS`, which only the export used, is removed. The Python package and every finding are unchanged (design decision 0018)
+
+### Performance
+
+- Large `.xlsx` workbooks load up to 5.5 times faster: the 10 slowest Enron workbooks take 11.0 s instead of 61 s (alternating with 0.4.0 in one session), and a workbook with 1.9 million cells about 3.4 s instead of 11 s
 
 ## [0.4.0] - 2026-10-25
 

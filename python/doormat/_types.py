@@ -23,7 +23,7 @@ SHEET_ERRORS: tuple[type[Exception], ...] = (
     OverflowError,
     SyntaxError,  # xml.etree.ElementTree.ParseError
     TypeError,
-    ValueError,  # includes defusedxml's refusals and UnicodeDecodeError
+    ValueError,  # includes odfpy's XML entity refusals and UnicodeDecodeError
     zipfile.BadZipFile,
     zlib.error,
 )

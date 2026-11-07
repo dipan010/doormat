@@ -19,6 +19,8 @@ allow = [
     "BSD-2-Clause",
     "MIT",
     "Unicode-3.0",
+    # zlib-rs (flate2's backend, used by zip to inflate .xlsx parts; design decision 0021)
+    "Zlib",
 ]
 confidence-threshold = 0.9
 

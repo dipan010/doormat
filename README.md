@@ -23,7 +23,7 @@ People hide the spare key under the doormat. They hide passwords the same way: i
 - **Finds what grep misses.** Credentials split across cells, built with `CONCAT` in formulas, or tucked into cell comments.
 - **Fast.** Rust core with sheet-level parallelism: under 1 ms for a 5,000-cell sheet. Python bindings via PyO3, one FFI call per workbook.
 - **Measured on real data.** Precision and recall are reported on the public Enron spreadsheet corpus, not just synthetic fixtures. See [Accuracy](#accuracy).
-- **Offline and dependency-light.** Two small runtime dependencies (`openpyxl`, and `defusedxml` to refuse malicious XML inside spreadsheet files). No network calls, no model downloads.
+- **Offline and dependency-free.** `.xlsx` files are read by doormat's own Rust reader, which refuses malicious XML; nothing else is installed with the wheel (`.xls` and `.ods` support are optional extras). No network calls, no model downloads.
 
 **Documentation:** https://dipan010.github.io/doormat/ (API reference, how detection works, threat model, evaluation).
 
@@ -139,11 +139,11 @@ Rust core only, Apple Silicon, criterion.rs on synthetic workbooks (measured 202
 | 1 sheet, 5,000 cells | 718 µs |
 | 10 sheets, 5,000 cells each | 2.7 ms |
 
-On large real workbooks, reading the file with openpyxl dominates: about 11 s to read a workbook with 1.9 million cells against 0.35 s of detection.
+On large real workbooks, reading the file dominates. doormat's Rust `.xlsx` reader reads a workbook with 1.9 million cells in about 3.4 s (openpyxl, used before 0.5.0, took about 11 s), against 0.35 s of detection; the 10 slowest Enron workbooks load in 11 s, against 61 s with 0.4.0.
 
 ## How it works
 
-1. **Extract.** Python reads every cell, formula and comment in a single pass and sends the workbook to Rust in one call.
+1. **Extract.** `.xlsx` and `.xlsm` files are read in Rust in the same call as detection; for `.xls`, `.ods`, `.csv` and `.tsv`, Python reads every cell, formula and comment in a single pass and sends the workbook to Rust in one call.
 2. **Featurize.** Each cell is normalized once and tagged with bitmask flags (character classes, header keywords via Aho-Corasick) and Shannon entropy.
 3. **Select candidates.** Cells with header keywords, high entropy, formulas, comments or inline patterns are kept and classified as headers or values.
 4. **Group.** Adjacent candidates are clustered into regions with a breadth-first search over a 7x7 neighbourhood.

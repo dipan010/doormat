@@ -130,7 +130,7 @@ def scan_file(job: _Job) -> FileResult:
     ``FileError``; the scan goes on with the next file.
     """
     with warnings.catch_warnings():
-        # openpyxl warns about workbook features it ignores; they do not affect cells.
+        # The optional readers warn about workbook features they ignore; they do not affect cells.
         warnings.simplefilter("ignore")
         try:
             doc = load(

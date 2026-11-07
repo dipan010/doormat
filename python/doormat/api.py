@@ -10,7 +10,7 @@ from doormat import _core
 from doormat._limits import DEFAULT_MAX_CELLS, CellBudget
 from doormat._types import Sheet
 from doormat._zipguard import DEFAULT_MAX_UNCOMPRESSED_BYTES, ZIP_MAGIC, check_zip
-from doormat.extract import extract_xlsx
+from doormat.extract.xlsx import extract_xlsx, read_error
 
 # Format registry: extension -> (magic_bytes or None, extractor function)
 # Lazy imports for optional deps are handled inside the extractor functions.
@@ -236,10 +236,7 @@ def load(
 
     if ext not in registry:
         supported = ", ".join(sorted(registry.keys()))
-        raise ValueError(
-            f"Unsupported file extension: {ext}. "
-            f"Supported formats: {supported}"
-        )
+        raise ValueError(f"Unsupported file extension: {ext}. Supported formats: {supported}")
 
     magic_bytes, extractor = registry[ext]
 
@@ -256,15 +253,23 @@ def load(
 
     errors: list[SheetError] = []
 
-    def record(sheet: str, exc: Exception) -> None:
-        errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
+    if extractor is extract_xlsx:
+        # Read and scan in Rust: one call, no cell tuples built in Python.
+        raw_results, sheet_count, cell_count, sheet_errors, failure = _core.process_xlsx(
+            filepath, max_cells
+        )
+        if failure is not None:
+            raise read_error(*failure)
+        errors = [SheetError(sheet=s, kind=k, message=m) for s, k, m in sheet_errors]
+    else:
 
-    sheets = extractor(filepath, record, CellBudget(max_cells, filepath.name))
+        def record(sheet: str, exc: Exception) -> None:
+            errors.append(SheetError(sheet=sheet, kind=type(exc).__name__, message=str(exc)))
 
-    sheet_count = len(sheets)
-    cell_count = sum(len(s) for s in sheets)
-
-    raw_results = _core.process_workbook(sheets)
+        sheets = extractor(filepath, record, CellBudget(max_cells, filepath.name))
+        sheet_count = len(sheets)
+        cell_count = sum(len(s) for s in sheets)
+        raw_results = _core.process_workbook(sheets)
 
     rels = [
         Relationship(

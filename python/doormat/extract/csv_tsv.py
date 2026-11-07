@@ -23,7 +23,7 @@ def extract_csv(
 
     The delimiter is inferred from the file extension: ``.csv`` uses
     comma, ``.tsv`` uses tab. Row and column indices are 1-based to
-    match the openpyxl convention used by the rest of the pipeline.
+    match the convention used by the rest of the pipeline.
 
     The sheet name is set to the filename stem (e.g., ``"data"`` for
     ``data.csv``).
