@@ -163,3 +163,197 @@ pub fn process_xlsx(path: &Path, max_cells: Option<u64>) -> Result<Processed, Xl
         errors: extracted.errors,
     })
 }
+
+#[cfg(test)]
+pub(crate) mod testutil {
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    use zip::write::SimpleFileOptions;
+
+    pub const MAIN: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+    pub const REL: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    const PKG_REL: &str = "http://schemas.openxmlformats.org/package/2006/relationships";
+    const XLSX: &str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml";
+    const SST: &str =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml";
+
+    /// Write a zip holding `parts` (stored, uncompressed) under a fresh temp directory.
+    pub fn zip_file(name: &str, parts: &[(&str, String)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("doormat-xlsx-{}-{name}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("book.xlsx");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        for (part, data) in parts {
+            zip.start_file(*part, options).unwrap();
+            zip.write_all(data.as_bytes()).unwrap();
+        }
+        zip.finish().unwrap();
+        path
+    }
+
+    /// A worksheet part holding `rows` (the XML inside `<sheetData>`) and `tail` after it.
+    pub fn worksheet(rows: &str, tail: &str) -> String {
+        format!(
+            r#"<worksheet xmlns="{MAIN}" xmlns:r="{REL}"><sheetData>{rows}</sheetData>{tail}</worksheet>"#
+        )
+    }
+
+    /// A workbook listing `sheets` as (name, state attribute, worksheet XML), plus `extra` parts.
+    pub fn workbook(
+        name: &str,
+        sheets: &[(&str, &str, String)],
+        extra: &[(&str, String)],
+    ) -> PathBuf {
+        let listed: String = sheets
+            .iter()
+            .enumerate()
+            .map(|(i, (n, state, _))| {
+                format!(
+                    r#"<sheet name="{n}" sheetId="{}" {state} r:id="rId{}"/>"#,
+                    i + 1,
+                    i + 1
+                )
+            })
+            .collect();
+        let rels: String = (1..=sheets.len())
+            .map(|i| format!(r#"<Relationship Id="rId{i}" Type="{REL}/worksheet" Target="worksheets/sheet{i}.xml"/>"#))
+            .collect();
+        let sst = if extra.iter().any(|(p, _)| *p == "xl/sharedStrings.xml") {
+            format!(r#"<Override PartName="/xl/sharedStrings.xml" ContentType="{SST}"/>"#)
+        } else {
+            String::new()
+        };
+        let mut parts = vec![
+            (
+                "[Content_Types].xml",
+                format!(
+                    r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/xl/workbook.xml" ContentType="{XLSX}"/>{sst}</Types>"#
+                ),
+            ),
+            (
+                "xl/workbook.xml",
+                format!(
+                    r#"<workbook xmlns="{MAIN}" xmlns:r="{REL}"><sheets>{listed}</sheets></workbook>"#
+                ),
+            ),
+            (
+                "xl/_rels/workbook.xml.rels",
+                format!(r#"<Relationships xmlns="{PKG_REL}">{rels}</Relationships>"#),
+            ),
+        ];
+        let names: Vec<String> = (1..=sheets.len())
+            .map(|i| format!("xl/worksheets/sheet{i}.xml"))
+            .collect();
+        for (part, (_, _, xml)) in names.iter().zip(sheets) {
+            parts.push((part.as_str(), xml.clone()));
+        }
+        parts.extend(extra.iter().map(|(p, d)| (*p, d.clone())));
+        zip_file(name, &parts)
+    }
+
+    /// A relationships part for a worksheet's comments.
+    pub fn comments_rels() -> String {
+        format!(
+            r#"<Relationships xmlns="{PKG_REL}"><Relationship Id="rId1" Type="{REL}/comments" Target="../comments1.xml"/></Relationships>"#
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::testutil::{comments_rels, workbook, worksheet};
+    use super::*;
+
+    fn cell(r: &str, text: &str) -> String {
+        format!(r#"<c r="{r}" t="inlineStr"><is><t>{text}</t></is></c>"#)
+    }
+
+    #[test]
+    fn reads_sheets_strings_comments_and_errors() {
+        let first = worksheet(
+            &format!(
+                r#"<row r="1">{}<c r="B1" t="s"><v>0</v></c></row>"#,
+                cell("A1", "Password")
+            ),
+            "",
+        );
+        let hidden = worksheet(&format!(r#"<row r="2">{}</row>"#, cell("C2", "x")), "");
+        let broken = worksheet(r#"<row r="1"><c r="A1"><v>not a number</v></c></row>"#, "");
+        let path = workbook(
+            "read",
+            &[("Main", "", first), ("Secret", r#"state="hidden""#, hidden), ("Bad", "", broken)],
+            &[
+                ("xl/sharedStrings.xml", format!(r#"<sst xmlns="{}"><si><t>s3cRet!99</t></si></sst>"#, testutil::MAIN)),
+                ("xl/worksheets/_rels/sheet1.xml.rels", comments_rels()),
+                (
+                    "xl/comments1.xml",
+                    r#"<comments><authors><author>a</author></authors><commentList><comment ref="A1" authorId="0"><text><t>note</t></text></comment></commentList></comments>"#.into(),
+                ),
+            ],
+        );
+        let got = read_xlsx(&path, None).unwrap();
+        let cells: Vec<_> = got
+            .sheets
+            .iter()
+            .flatten()
+            .map(|c| {
+                (
+                    c.sheet_name.as_str(),
+                    c.row,
+                    c.col,
+                    c.value.as_str(),
+                    c.comment.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            cells,
+            vec![
+                ("Main", 1, 1, "Password", "note"),
+                ("Main", 1, 2, "s3cRet!99", ""),
+                ("Secret[HIDDEN]", 2, 3, "x", "")
+            ]
+        );
+        assert_eq!(got.errors.len(), 1);
+        assert_eq!(
+            (
+                got.errors[0].sheet.as_str(),
+                got.errors[0].error.kind.as_str()
+            ),
+            ("Bad", "ValueError")
+        );
+        // The bad sheet's row fails while its cells are parsed, before they are counted.
+        assert_eq!(got.parsed, 3);
+    }
+
+    #[test]
+    fn cell_limit_refuses_the_file() {
+        let rows: String = (1..=5)
+            .map(|r| format!(r#"<row r="{r}">{}</row>"#, cell(&format!("A{r}"), "v")))
+            .collect();
+        let path = workbook("limit", &[("S", "", worksheet(&rows, ""))], &[]);
+        let err = read_xlsx(&path, Some(3)).unwrap_err();
+        assert_eq!(err.kind, "CellLimitError");
+        assert!(read_xlsx(&path, Some(5)).is_ok());
+    }
+
+    #[test]
+    fn process_finds_a_credential() {
+        let rows = format!(
+            r#"<row r="1">{}{}</row>"#,
+            cell("A1", "Password"),
+            cell("B1", "s3cRet!99")
+        );
+        let path = workbook("process", &[("S", "", worksheet(&rows, ""))], &[]);
+        let done = process_xlsx(&path, None).unwrap();
+        assert_eq!((done.sheet_count, done.cell_count), (1, 2));
+        assert!(done
+            .findings
+            .iter()
+            .any(|f| f.value == "s3cRet!99" && f.value_col == 2));
+        assert_eq!(XlsxError::new("KeyError", "x").kind, "KeyError");
+    }
+}

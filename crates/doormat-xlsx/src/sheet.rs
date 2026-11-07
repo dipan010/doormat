@@ -454,9 +454,10 @@ impl<'a> Sheet<'a> {
         (rows.max().unwrap_or(1), cols.max().unwrap_or(1))
     }
 
-    /// openpyxl's hyperlink setter on one cell: an empty cell takes the link text
-    /// through the value setter (cut at 32,767 characters, control characters
-    /// refused, a leading `=` making it a formula).
+    /// openpyxl's hyperlink setter on one cell: an empty cell takes the link
+    /// text through the value setter (cut at 32,767 characters, a leading `=`
+    /// making it a formula). The setter's control-character check cannot fire:
+    /// the XML parser already refuses those characters.
     fn link_cell(&mut self, row: i64, col: i64, text: Option<&str>) -> Result<(), XlsxError> {
         let cell = self.cells.entry((row, col)).or_insert(Cell {
             value: Value::Empty,
@@ -467,15 +468,6 @@ impl<'a> Sheet<'a> {
         }
         let Some(text) = text else { return Ok(()) };
         let text: String = text.chars().take(32_767).collect();
-        if text
-            .chars()
-            .any(|c| matches!(c, '\u{0}'..='\u{8}' | '\u{b}' | '\u{c}' | '\u{e}'..='\u{1f}'))
-        {
-            return Err(XlsxError::new(
-                "IllegalCharacterError",
-                "cannot be used in worksheets",
-            ));
-        }
         cell.value = if text.chars().count() > 1 && text.starts_with('=') {
             Value::Formula(text)
         } else {
@@ -862,6 +854,98 @@ mod tests {
             .map(|c| (c.row, c.col, c.comment.as_str(), c.is_merged_origin))
             .collect();
         assert_eq!(got, vec![(1, 1, "note", true), (5, 3, "ab", false)]);
+    }
+
+    fn linked(tail: &str, rows: &str) -> Result<Vec<(u32, u32, String, String)>, XlsxError> {
+        let styles = Styles::default();
+        let ctx = Context {
+            strings: &[],
+            styles: &styles,
+            date1904: false,
+        };
+        let mut sheet = Sheet::new(&ctx);
+        let xml = format!(
+            r#"<worksheet {NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetData>{rows}</sheetData>{tail}</worksheet>"#
+        );
+        sheet.parse(xml.as_bytes(), &mut Budget::new(None, "t.xlsx"))?;
+        let rels = vec![crate::package::Relationship {
+            id: Some("rId1".into()),
+            kind: "hyperlink".into(),
+            target: "https://example.invalid/a".into(),
+        }];
+        sheet.bind_hyperlinks(&rels)?;
+        Ok(sheet
+            .into_cells("S")?
+            .into_iter()
+            .map(|c| (c.row, c.col, c.value, c.formula))
+            .collect())
+    }
+
+    #[test]
+    fn hyperlinks_fill_empty_cells() {
+        let rows = r#"<row r="1"><c r="A1" t="str"><v>kept</v></c></row>"#;
+        let got = linked(
+            r#"<mergeCells><mergeCell ref="C1:D1"/></mergeCells><hyperlinks><hyperlink ref="A1:B2" r:id="rId1"/><hyperlink ref="D1" location="Sheet2!A1"/><hyperlink ref="E5" location="=x"/></hyperlinks>"#,
+            rows,
+        )
+        .unwrap();
+        let url = "https://example.invalid/a".to_string();
+        assert_eq!(
+            got,
+            vec![
+                (1, 1, "kept".into(), String::new()),
+                (1, 2, url.clone(), String::new()),
+                (1, 3, "Sheet2!A1".into(), String::new()),
+                (2, 1, url.clone(), String::new()),
+                (2, 2, url, String::new()),
+                (5, 5, "=x".into(), "=x".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn hyperlink_errors_match_openpyxl() {
+        let kind = |tail: &str| linked(tail, "").unwrap_err().kind;
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink location="x"/></hyperlinks>"#),
+            "TypeError"
+        );
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink ref="A1" r:id="rId7"/></hyperlinks>"#),
+            "KeyError"
+        );
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink ref="A" location="x"/></hyperlinks>"#),
+            "AttributeError"
+        );
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink ref="A:A" location="x"/></hyperlinks>"#),
+            "TypeError"
+        );
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink ref="A0" location="x"/></hyperlinks>"#),
+            "ValueError"
+        );
+        assert_eq!(
+            kind("<hyperlinks><hyperlink ref=\"A1\" location=\"a&#1;b\"/></hyperlinks>"),
+            "ParseError"
+        );
+        assert_eq!(
+            kind(r#"<hyperlinks><hyperlink ref="A1:XFD1048576" location="x"/></hyperlinks>"#),
+            "MemoryError"
+        );
+        let wide = linked(
+            r#"<hyperlinks><hyperlink ref="A:B" location="y"/></hyperlinks>"#,
+            r#"<row r="2"><c r="C2" t="str"><v>z</v></c></row>"#,
+        )
+        .unwrap();
+        assert_eq!(wide.iter().filter(|c| c.2 == "y").count(), 4);
+        let tall = linked(
+            r#"<hyperlinks><hyperlink ref="1:2" location="y"/></hyperlinks>"#,
+            r#"<row r="1"><c r="B1" t="str"><v>z</v></c></row>"#,
+        )
+        .unwrap();
+        assert_eq!(tall.iter().filter(|c| c.2 == "y").count(), 3);
     }
 
     #[test]

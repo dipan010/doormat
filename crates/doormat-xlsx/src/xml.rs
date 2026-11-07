@@ -160,7 +160,7 @@ impl<R: BufRead> Parser<R> {
             attrs.push(Attr {
                 ns: resolved(ans)?,
                 local: alocal.as_ref().to_string(),
-                value: value.into_owned(),
+                value: legal(value.into_owned())?,
             });
         }
         Ok(Element {
@@ -195,6 +195,12 @@ impl<R: BufRead> Parser<R> {
                 Event::GeneralRef(r) => {
                     resolve_ref(&r)?;
                 }
+                Event::Text(t) => {
+                    legal(t.xml10_content().into_owned())?;
+                }
+                Event::CData(c) => {
+                    legal(c.into_inner().into_owned())?;
+                }
                 Event::Eof => return Ok(Node::End),
                 _ => {}
             }
@@ -225,11 +231,18 @@ impl<R: BufRead> Parser<R> {
                     let child = self.element(&start, true)?;
                     el.children.push(child);
                 }
-                Event::Text(t) if el.children.is_empty() => el.text.push_str(&t.xml10_content()),
-                Event::CData(c) if el.children.is_empty() => {
-                    let raw = c.into_inner();
-                    el.text
-                        .push_str(&raw.replace("\r\n", "\n").replace('\r', "\n"));
+                Event::Text(t) => {
+                    let text = legal(t.xml10_content().into_owned())?;
+                    if el.children.is_empty() {
+                        el.text.push_str(&text);
+                    }
+                }
+                Event::CData(c) => {
+                    let raw = legal(c.into_inner().into_owned())?;
+                    if el.children.is_empty() {
+                        el.text
+                            .push_str(&raw.replace("\r\n", "\n").replace('\r', "\n"));
+                    }
                 }
                 Event::GeneralRef(r) => {
                     let text = resolve_ref(&r)?;
@@ -295,6 +308,9 @@ impl<R: BufRead> Parser<R> {
                 Event::GeneralRef(r) => {
                     resolve_ref(&r)?;
                 }
+                Event::Text(t) => {
+                    legal(t.xml10_content().into_owned())?;
+                }
                 Event::End(_) => return Ok(row),
                 Event::Eof => return Err(parse_error("no element found")),
                 _ => {}
@@ -328,10 +344,22 @@ fn check_doctype(doctype: &quick_xml::events::BytesText<'_>) -> Result<(), XlsxE
     Ok(())
 }
 
+/// expat refuses characters XML 1.0 does not allow (controls other than
+/// tab, LF and CR, and U+FFFE/U+FFFF), written literally or as a reference.
+fn legal(text: String) -> Result<String, XlsxError> {
+    let bad = text.chars().any(|c| {
+        (c < ' ' && !matches!(c, '\t' | '\n' | '\r')) || matches!(c, '\u{fffe}' | '\u{ffff}')
+    });
+    if bad {
+        return Err(parse_error("not well-formed (invalid token)"));
+    }
+    Ok(text)
+}
+
 /// Expand a predefined entity or character reference; anything else is undefined.
 fn resolve_ref(r: &quick_xml::events::BytesRef<'_>) -> Result<String, XlsxError> {
     if let Some(c) = r.resolve_char_ref().map_err(parse_error)? {
-        return Ok(c.to_string());
+        return legal(c.to_string());
     }
     let text = match r.as_ref() {
         "amp" => "&",
@@ -378,6 +406,13 @@ mod tests {
         assert!(parse_tree(b"<!DOCTYPE a><a>x</a>").is_ok());
         assert_eq!(parse_tree(b"<a><b></a>").unwrap_err().kind, "ParseError");
         assert_eq!(parse_tree(b"").unwrap_err().kind, "ParseError");
+        assert_eq!(parse_tree(b"<a>x&#1;</a>").unwrap_err().kind, "ParseError");
+        assert_eq!(parse_tree(b"<a>x\x01</a>").unwrap_err().kind, "ParseError");
+        assert_eq!(
+            parse_tree(b"<a v=\"&#2;\"/>").unwrap_err().kind,
+            "ParseError"
+        );
+        assert!(parse_tree(b"<a>\t&#13;&#10;</a>").is_ok());
     }
 
     #[test]

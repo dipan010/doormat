@@ -365,6 +365,117 @@ pub fn resolve_sheets(
 mod tests {
     use super::*;
 
+    use crate::testutil::{workbook, worksheet, zip_file, REL};
+
+    #[test]
+    fn open_errors() {
+        let missing = std::env::temp_dir().join("doormat-xlsx-no-such-file.xlsx");
+        assert_eq!(
+            Package::open(&missing).err().unwrap().kind,
+            "FileNotFoundError"
+        );
+        let junk =
+            std::env::temp_dir().join(format!("doormat-xlsx-junk-{}.xlsx", std::process::id()));
+        std::fs::write(&junk, b"PK\x03\x04 not a zip").unwrap();
+        assert_eq!(Package::open(&junk).err().unwrap().kind, "BadZipFile");
+    }
+
+    #[test]
+    fn manifest_workbook_and_sheets() {
+        let path = workbook(
+            "pkg",
+            &[
+                ("A", "", worksheet("", "")),
+                ("B", r#"state="veryHidden""#, worksheet("", "")),
+            ],
+            &[],
+        );
+        let mut pkg = Package::open(&path).unwrap();
+        assert!(pkg.has("xl/workbook.xml"));
+        assert_eq!(pkg.read("nope.xml").unwrap_err().kind, "KeyError");
+        let manifest = read_manifest(&mut pkg).unwrap();
+        assert_eq!(
+            manifest,
+            Manifest {
+                shared_strings: None,
+                workbook: "xl/workbook.xml".into()
+            }
+        );
+        let wb = read_workbook(&mut pkg, &manifest.workbook).unwrap();
+        assert!(!wb.date1904);
+        assert!(wb.sheets[1].hidden);
+        let entries = resolve_sheets(&mut pkg, &manifest.workbook, &wb.sheets).unwrap();
+        let parts: Vec<_> = entries.iter().map(|e| e.part.as_str()).collect();
+        assert_eq!(
+            parts,
+            ["xl/worksheets/sheet1.xml", "xl/worksheets/sheet2.xml"]
+        );
+        let rels = read_rels(&mut pkg, "xl/_rels/workbook.xml.rels").unwrap();
+        assert_eq!(rels[0].target, "xl/worksheets/sheet1.xml");
+    }
+
+    #[test]
+    fn package_failures() {
+        let no_workbook = zip_file("noworkbook", &[("[Content_Types].xml", "<Types/>".into())]);
+        let mut pkg = Package::open(&no_workbook).unwrap();
+        assert_eq!(read_manifest(&mut pkg).unwrap_err().kind, "OSError");
+
+        let by_default = zip_file(
+            "default",
+            &[(
+                "[Content_Types].xml",
+                r#"<Types><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>"#.into(),
+            )],
+        );
+        let mut pkg = Package::open(&by_default).unwrap();
+        assert_eq!(read_manifest(&mut pkg).unwrap().workbook, "xl/workbook.xml");
+
+        let listed = |state: &str, id: &str| {
+            format!(
+                r#"<workbook xmlns:r="{REL}"><workbookPr date1904="1"/><sheets><sheet name="S" {state} r:id="{id}"/></sheets></workbook>"#
+            )
+        };
+        let bad_state = zip_file(
+            "state",
+            &[("xl/workbook.xml", listed(r#"state="odd""#, "rId1"))],
+        );
+        let mut pkg = Package::open(&bad_state).unwrap();
+        assert_eq!(
+            read_workbook(&mut pkg, "xl/workbook.xml").unwrap_err().kind,
+            "ValueError"
+        );
+
+        let dangling = zip_file(
+            "dangling",
+            &[
+                ("xl/workbook.xml", listed("", "rId9")),
+                (
+                    "xl/_rels/workbook.xml.rels",
+                    format!(
+                        r#"<Relationships><Relationship Id="rId1" Type="{REL}/chartsheet" Target="charts/c.xml"/></Relationships>"#
+                    ),
+                ),
+            ],
+        );
+        let mut pkg = Package::open(&dangling).unwrap();
+        let wb = read_workbook(&mut pkg, "xl/workbook.xml").unwrap();
+        assert!(wb.date1904);
+        assert_eq!(
+            resolve_sheets(&mut pkg, "xl/workbook.xml", &wb.sheets)
+                .unwrap_err()
+                .kind,
+            "KeyError"
+        );
+        let skipped = ListedSheet {
+            name: "C".into(),
+            hidden: false,
+            id: Some("rId1".into()),
+        };
+        assert!(resolve_sheets(&mut pkg, "xl/workbook.xml", &[skipped])
+            .unwrap()
+            .is_empty());
+    }
+
     #[test]
     fn paths_like_posixpath() {
         assert_eq!(rels_path("xl/workbook.xml"), "xl/_rels/workbook.xml.rels");

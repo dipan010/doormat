@@ -33,7 +33,8 @@ def read_error(kind: str, message: str) -> Exception:
     """The exception the openpyxl reader raised for a failure the Rust reader reports as ``kind``.
 
     Kinds without a Python counterpart here (``EntitiesForbidden``,
-    ``TokenizerError``, ``TranslatorError``, ``IllegalCharacterError``)
+    ``TokenizerError``, ``TranslatorError``, ``MemoryError`` for a hyperlink range too
+    large to expand)
     become ``ValueError``, naming the kind.
     """
     cls = _ERRORS.get(kind)

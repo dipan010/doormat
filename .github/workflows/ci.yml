@@ -88,6 +88,8 @@ jobs:
           tool: cargo-llvm-cov
       - name: Rust coverage (doormat-core unit tests; floor 95% of lines)
         run: cargo llvm-cov -p doormat-core --summary-only --fail-under-lines 95 | tee rust-coverage.txt
+      - name: Rust coverage (doormat-xlsx unit tests; floor 90% of lines)
+        run: cargo llvm-cov -p doormat-xlsx --summary-only --fail-under-lines 90 | tee xlsx-coverage.txt
       - name: Python coverage (installed package; floor 90%)
         run: |
           python -m pip install --upgrade pip
@@ -103,6 +105,7 @@ jobs:
             echo "| Component | Lines |"
             echo "|---|---|"
             echo "| Rust (doormat-core) | $(grep '^TOTAL' rust-coverage.txt | awk '{print $10}') |"
+            echo "| Rust (doormat-xlsx) | $(grep '^TOTAL' xlsx-coverage.txt | awk '{print $10}') |"
             echo "| Python (doormat) | $(grep '^TOTAL' python-coverage.txt | awk '{print $NF}') |"
           } >> "$GITHUB_STEP_SUMMARY"
 
