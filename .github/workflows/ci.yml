@@ -36,7 +36,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Core tests
         # doormat-py is a Python extension module and has no Rust tests of its own.
-        run: cargo test -p doormat-core
+        run: cargo test -p doormat-core -p doormat-xlsx
 
   typing:
     name: Type check (mypy --strict)

@@ -53,6 +53,7 @@ nav:
       - decisions/0018-research-export-second-test.md
       - decisions/0019-command-line-scanner.md
       - decisions/0020-allowlists-and-baselines.md
+      - decisions/0021-rust-xlsx-reader.md
   - Security policy: security.md
   - Changelog: changelog.md
 

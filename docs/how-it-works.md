@@ -6,8 +6,9 @@ describes the algorithm as implemented in `crates/doormat-core`; every number
 below is a constant in that code, cited by file so it can be checked and
 changed deliberately.
 
-The pipeline runs once per sheet, and sheets run in parallel (Rayon). Python
-only reads the file; everything below happens in Rust.
+The pipeline runs once per sheet, and sheets run in parallel (Rayon). `.xlsx`
+and `.xlsm` files are read in Rust as well (design decision 0021); other
+formats are read in Python. Everything below happens in Rust.
 
 ```
 cells ─► store ─► features ─► candidates ─► classify ─► regions
