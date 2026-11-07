@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import zipfile
 from pathlib import Path
-from xml.etree.ElementTree import ParseError
 
 from doormat import _core
 from doormat._limits import CellBudget, CellLimitError, sheet_failed
 from doormat._types import Sheet, SheetErrorHandler
+
+class ParseError(SyntaxError):
+    """Malformed XML in a workbook part (named like ElementTree's, which the openpyxl reader raised)."""
+
 
 _ERRORS: dict[str, type[Exception]] = {
     "AttributeError": AttributeError,

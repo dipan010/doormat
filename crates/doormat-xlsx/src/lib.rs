@@ -178,9 +178,17 @@ pub(crate) mod testutil {
     const SST: &str =
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml";
 
+    /// A directory for test files under the build's `target`, not the shared temp directory.
+    pub fn scratch_dir() -> PathBuf {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/doormat-xlsx-tests");
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
     /// Write a zip holding `parts` (stored, uncompressed) under a fresh temp directory.
     pub fn zip_file(name: &str, parts: &[(&str, String)]) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("doormat-xlsx-{}-{name}", std::process::id()));
+        let dir = scratch_dir().join(format!("{}-{name}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("book.xlsx");
         let mut zip = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());

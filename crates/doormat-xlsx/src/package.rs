@@ -365,17 +365,16 @@ pub fn resolve_sheets(
 mod tests {
     use super::*;
 
-    use crate::testutil::{workbook, worksheet, zip_file, REL};
+    use crate::testutil::{scratch_dir, workbook, worksheet, zip_file, REL};
 
     #[test]
     fn open_errors() {
-        let missing = std::env::temp_dir().join("doormat-xlsx-no-such-file.xlsx");
+        let missing = scratch_dir().join("no-such-file.xlsx");
         assert_eq!(
             Package::open(&missing).err().unwrap().kind,
             "FileNotFoundError"
         );
-        let junk =
-            std::env::temp_dir().join(format!("doormat-xlsx-junk-{}.xlsx", std::process::id()));
+        let junk = scratch_dir().join(format!("junk-{}.xlsx", std::process::id()));
         std::fs::write(&junk, b"PK\x03\x04 not a zip").unwrap();
         assert_eq!(Package::open(&junk).err().unwrap().kind, "BadZipFile");
     }
