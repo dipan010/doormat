@@ -66,3 +66,42 @@ quadratic version took 1,346 ms at 20,000 rows; the pipeline takes 23 ms).
 `cargo bench --bench pipeline`, run old -> new -> old in one session, shows
 no change beyond noise (`process_workbook_10x5k` 2.410, 2.395, 2.394 ms):
 the pipeline's code is the same.
+
+**Outcome (2026-11-08).** The lab's second test ran once on 63,781 new Fuse
+files and the learned scorer is again **not adopted**; the hand-set
+confidences stay (ADR 0017 stands). Counted by distinct secret per file on
+the test split (281 secrets, 6 families):
+
+| Test split | B (pipeline) | M2 (learned) |
+|---|---|---|
+| False positives (blind review) | 37 | 37 |
+| Secrets found | 60 / 281 | 61 / 281 |
+| Families with a secret found | 3 | 3 |
+
+M2 needed at most 70% of B's false positives and has 100%: it drops most of
+B's (postal PIN codes, `PWD` product codes, header cells) and adds as many
+sentences from the prose and gap pathways. Its one extra secret is a
+grouping artifact; by cell they tie at 60. Full results are in the lab's
+`RESULTS_V2.md`.
+
+The run also showed three things about B itself, reproduced since on
+synthetic workbooks against `main` and recorded here, not acted on (changes
+to the pipeline belong to their own records):
+
+- **Spaced compound labels are not password labels.** A header is a
+  password label only when its whole text is a keyword or it is an
+  identifier-style compound (`routerPassword`, `router_password`); `Router
+  Password` (with a space) is neither, so a 210-row two-column table under
+  such headers produced no finding at all (211 of the 281 test secrets,
+  missed by both systems). With `Username` beside it, `Router Password`
+  gives 0 findings where `Password` and `routerPassword` give 210.
+- **`PW` is not a keyword**, so a column under a `PW` header is not listed
+  by the pipeline or the research export (6 secrets).
+- **`inline_same_cell` fires on postal PIN codes and `PWD` product codes**
+  (`... Pin : 560001` and `... PWD 250GM` each give one finding at 250); 15
+  of B's 37 false positives, from 3 files.
+
+A table under a password header with no account label in its row gives one
+`distance` finding (its first row), not one per row; that is the table rule
+as designed, noted because the missed table above has no
+account column either.
