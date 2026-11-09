@@ -163,7 +163,8 @@ Sheets are processed in parallel with Rayon. Scoring is heuristic; there is no t
 - **[0.2.0](https://github.com/dipan010/doormat/releases/tag/v0.2.0)**: first PyPI release, published 2026-10-13
 - **[0.3.0](https://github.com/dipan010/doormat/releases/tag/v0.3.0)**: credential tables, compound labels such as `MYSQL_ROOT_PASSWORD`, TOTP secrets, far fewer false positives
 - **[0.4.0](https://github.com/dipan010/doormat/releases/tag/v0.4.0)**: more `.xls` files from the web readable, faster extraction of large workbooks, credential columns read past 1,000 rows
-- **[0.5.0](https://github.com/dipan010/doormat/milestone/4)**: a command-line scanner with SARIF and JSON output, tables without an account column, a Rust `.xlsx` reader for dense workbooks
+- **[0.5.0](https://github.com/dipan010/doormat/releases/tag/v0.5.0)**: `doormat scan` with SARIF and JSON output, allowlists and baselines; a Rust `.xlsx` reader, up to 5.5 times faster, with no runtime dependencies
+- **Next**: fewer false positives (postal PIN codes, captions and formula literals, header cells), `PW` column headers, and tables without an account column (#16)
 
 All planned work is tracked in [milestones](https://github.com/dipan010/doormat/milestones); changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
