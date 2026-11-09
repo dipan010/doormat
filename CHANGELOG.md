@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-11-09
+
+A command-line scanner for CI gates and file-share sweeps, with masked output, SARIF, allowlists and location-only baselines; and `.xlsx` files read by doormat's own Rust reader, up to 5.5 times faster on large workbooks with output identical to 0.4.0's. doormat now installs no other packages. Findings on the Enron corpus and evaluation sets A, A2 and B are the same as 0.4.0's.
 
 ### Added
 
