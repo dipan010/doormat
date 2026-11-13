@@ -1,7 +1,9 @@
 use crate::candidates::{
     inline_value, FORMULA_KEYWORD_REGEX, FORMULA_STRING_REGEX, INLINE_CREDENTIAL_REGEX,
 };
-use crate::features::{is_boolean_literal, normalize, secret_assignment};
+use crate::features::{
+    is_boolean_literal, is_postal_pin, is_quantity, normalize, secret_assignment,
+};
 use crate::store::CellStore;
 use crate::types::*;
 
@@ -61,6 +63,10 @@ pub fn detect_inline_credentials(store: &CellStore, candidate_ids: &[u32]) -> Ve
             };
             if raw_value.len() < MIN_CANDIDATE_LENGTH || is_boolean_literal(&normalize(&raw_value))
             {
+                return None;
+            }
+            // A product's `PWD 250GM` (powder) and an address's `Pin : 560001`.
+            if is_quantity(&raw_value) || is_postal_pin(&key, &raw_value) {
                 return None;
             }
 
@@ -433,5 +439,24 @@ mod tests {
     #[test]
     fn strip_quotes_no_quotes() {
         assert_eq!(strip_quotes("hello"), "hello");
+    }
+
+    #[test]
+    fn inline_skips_quantities_and_postal_pins() {
+        for text in [
+            "FAKE BRAND 500ML PWD 250GM",
+            "12 Fake Road, Faketown, Pin : 560001",
+            "Pin: 560 001",
+        ] {
+            let store = build_store(vec![raw(0, 0, text, "", "")]);
+            let candidates = reduce_candidate_space(&store);
+            assert!(
+                detect_inline_credentials(&store, &candidates).is_empty(),
+                "{text}"
+            );
+        }
+        let store = build_store(vec![raw(0, 0, "Card PIN: 4821", "", "")]);
+        let candidates = reduce_candidate_space(&store);
+        assert_eq!(detect_inline_credentials(&store, &candidates).len(), 1);
     }
 }

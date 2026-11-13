@@ -799,7 +799,7 @@ mod tests {
     #[test]
     fn prose_label_takes_the_next_cell() {
         let candidates = export_sheet(vec![
-            raw(1, 1, "System user password:"),
+            raw(1, 1, "Password for the system user:"),
             raw(1, 2, "Fake-next-1"),
         ]);
         let gap = candidates

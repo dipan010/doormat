@@ -1,7 +1,8 @@
 use ahash::{AHashMap, AHashSet};
 
 use crate::features::{
-    is_boolean_literal, is_compound_credential_label, is_key_material, is_numeric_amount,
+    is_ambiguous_label, is_boolean_literal, is_compound_credential_label, is_date_like,
+    is_key_material, is_numeric_amount, is_quantity, is_spaced_credential_label, is_url_or_email,
     is_variable_name,
 };
 use crate::scoring::score_candidate;
@@ -128,6 +129,75 @@ pub(crate) fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32>
         .collect()
 }
 
+/// Find a password column with no account column: a password header over one
+/// secret per row (`Router Password` | ... with no username label in its row).
+///
+/// Only for headers that `detect_table_column` does not take (it needs an
+/// account label in the header row) and whose label is not ambiguous (`Pwd`
+/// for powder, a machine `PIN`), that does not end in `:` and has no
+/// credential value to its right (a form field). The column runs down from the header while
+/// filled, allowing `TABLE_MAX_GAP` empty rows and ending at a new label. It
+/// qualifies when at least `TABLE_TOKEN_SHARE` of its cells are single tokens,
+/// at least `PASSWORD_COLUMN_MIN_ROWS` are credential values
+/// (`is_credential_value`, and not a date, URL, e-mail address or quantity),
+/// and at least `PASSWORD_COLUMN_DISTINCT_SHARE` of those are distinct. A
+/// column repeating one default password does not qualify and is paired as
+/// before. Returns the credential values, or an empty vector.
+pub(crate) fn detect_password_column(store: &CellStore, header_id: u32) -> Vec<u32> {
+    let h = header_id as usize;
+    // Variable names in a header row have their own rule (`detect_variable_values`).
+    let label = store.get_value(h);
+    if is_ambiguous_label(label) || is_variable_name(label) {
+        return Vec::new();
+    }
+    let (row, col) = (store.get_row(h), store.get_col(h));
+    // A form field (`Password:`, or `Password | value`): the value is beside
+    // the label, and the column below holds other fields or unrelated data.
+    let value_beside = filled(store, row, col + 1).is_some_and(|id| {
+        let id = id as usize;
+        is_credential_value(store, id) && !is_table_label(store, id)
+    });
+    if label.trim_end().ends_with(':') || value_beside {
+        return Vec::new();
+    }
+    let mut gap = 0;
+    let cells: Vec<u32> = (row + 1..=u32::MAX)
+        .map(|r| filled(store, r, col))
+        .take_while(|cell| {
+            gap = if cell.is_some() { 0 } else { gap + 1 };
+            gap <= TABLE_MAX_GAP && !cell.is_some_and(|id| is_table_label(store, id as usize))
+        })
+        .flatten()
+        .collect();
+    let filled_cells = cells.len();
+    let tokens = cells
+        .iter()
+        .filter(|&&id| is_table_token(store, id as usize))
+        .count();
+    let values: Vec<u32> = cells
+        .into_iter()
+        .filter(|&id| {
+            let id = id as usize;
+            let value = store.get_value(id).trim();
+            is_credential_value(store, id)
+                && !is_date_like(value)
+                && !is_url_or_email(value)
+                && !is_quantity(value)
+        })
+        .collect();
+    let distinct: AHashSet<&str> = values
+        .iter()
+        .map(|&id| store.get_value(id as usize).trim())
+        .collect();
+    if values.len() < PASSWORD_COLUMN_MIN_ROWS
+        || (tokens as f32) < TABLE_TOKEN_SHARE * filled_cells as f32
+        || (distinct.len() as f32) < PASSWORD_COLUMN_DISTINCT_SHARE * values.len() as f32
+    {
+        return Vec::new();
+    }
+    values
+}
+
 /// True when a cell can be reported as a credential value next to a label:
 /// a single token of at least `TABLE_MIN_VALUE_LEN` characters with a letter or
 /// digit, and not a placeholder, a switch or an amount.
@@ -218,7 +288,14 @@ pub(crate) fn detect_variable_values(store: &CellStore, header_id: u32) -> Optio
 /// header, not end in `:`, and have no horizontal neighbour. If >= 2 parts
 /// found, each < 30 chars, and the combined string >= 6 chars, returns
 /// `(combined_value, first_below_cell_id)`.
+///
+/// A spaced label (`Router Password`) never heads a split password: a
+/// multi-word label over a column is more often a row of data (a list of
+/// systems whose password sits in another column) than a form label.
 pub(crate) fn detect_split_password(store: &CellStore, header_id: u32) -> Option<(String, u32)> {
+    if is_spaced_credential_label(store.get_value(header_id as usize)) {
+        return None;
+    }
     let h = header_id as usize;
     let header_row = store.get_row(h);
     let header_col = store.get_col(h);
@@ -321,10 +398,16 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
         let password_label = store.feature_flags[h] & FLAG_IS_PASSWORD_HEADER != 0;
 
         // 0. A credential table: one relationship per row of the column
-        let table = if password_label {
+        let mut table = if password_label {
             detect_table_column(store, header_id)
         } else {
             Vec::new()
+        };
+        let (confidence, reason) = if table.is_empty() && password_label {
+            table = detect_password_column(store, header_id);
+            (PASSWORD_COLUMN_CONFIDENCE, "password_column")
+        } else {
+            (TABLE_COLUMN_CONFIDENCE, "table_column")
         };
         if !table.is_empty() {
             for value_id in table {
@@ -334,8 +417,8 @@ pub fn infer_relationships(store: &CellStore, dist_table: &DistanceTable) -> Vec
                     value_cell_id: value_id as usize,
                     key: store.get_value(h).to_string(),
                     value: store.get_value(value_id as usize).to_string(),
-                    confidence: TABLE_COLUMN_CONFIDENCE,
-                    reason: "table_column".into(),
+                    confidence,
+                    reason: reason.into(),
                 });
             }
             continue;
@@ -928,5 +1011,64 @@ mod tests {
         for rel in &rels {
             assert_ne!(rel.reason, "split_password");
         }
+    }
+
+    #[test]
+    fn password_column_without_an_account_column() {
+        let mut cells = vec![raw(1, 1, "Router Password 24"), raw(1, 2, "Site Name")];
+        for r in 2..=8 {
+            cells.push(raw(r, 1, &format!("FAKE{r}xq")));
+            cells.push(raw(r, 2, &format!("Fake site {r}")));
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert_eq!(rels.len(), 7);
+        assert!(rels
+            .iter()
+            .all(|r| r.reason == "password_column" && r.confidence == PASSWORD_COLUMN_CONFIDENCE));
+    }
+
+    #[test]
+    fn password_column_needs_distinct_values_and_enough_rows() {
+        let mut repeated = vec![raw(1, 1, "Password")];
+        for r in 2..=8 {
+            repeated.push(raw(r, 1, "Fake-default-1"));
+        }
+        let rels = infer_relationships(&pipeline_store(repeated), &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "password_column"));
+
+        let mut short = vec![raw(1, 1, "Router Password")];
+        for r in 2..=4 {
+            short.push(raw(r, 1, &format!("fakeword{r}")));
+        }
+        let rels = infer_relationships(&pipeline_store(short), &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "password_column"));
+
+        let mut ambiguous = vec![raw(1, 1, "Pwd")];
+        for r in 2..=8 {
+            ambiguous.push(raw(r, 1, &format!("FAKE{r}xq")));
+        }
+        let rels = infer_relationships(&pipeline_store(ambiguous), &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "password_column"));
+    }
+
+    #[test]
+    fn spaced_label_does_not_head_a_split_password() {
+        let store = pipeline_store(vec![
+            raw(1, 1, "Fake board password"),
+            raw(2, 1, "FakeBoardOne"),
+            raw(3, 1, "FakeBoardTwo"),
+        ]);
+        let rels = infer_relationships(&store, &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "split_password"));
+    }
+
+    #[test]
+    fn form_field_does_not_head_a_password_column() {
+        let mut cells = vec![raw(1, 1, "Password"), raw(1, 2, "s3cRet!99")];
+        for r in 2..=8 {
+            cells.push(raw(r, 1, &format!("field{r}")));
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "password_column"));
     }
 }
