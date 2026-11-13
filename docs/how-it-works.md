@@ -58,8 +58,21 @@ so `bypass` never matches. Labels whose final part is `key` or `salt`
 (`KEY_PARTS`, `WORDPRESS_AUTH_KEY`) are weaker: they count only in lists of
 configuration variables (step 8) and only for values that look like key
 material (at least **16** characters mixing upper case, lower case and digits,
-entropy at least **3.5**; `KEY_MATERIAL_MIN_LEN`). Labels with spaces
-(`Admin Password`) are matched as before.
+entropy at least **3.5**; `KEY_MATERIAL_MIN_LEN`).
+
+**Spaced labels.** A label with spaces (letters, digits, spaces and `_ . -
+# ( )`, at most 64 characters) is also a password label when, after a
+trailing number, `#`, `#n` or `(n)` is set aside, it has at most **4** words
+(`SPACED_LABEL_MAX_WORDS`) and its last word is `password`, `passwd`,
+`passphrase`, `passcode` or one of the non-English password words
+(`SPACED_LABEL_HEADS`): `Router Password 24`, `WiFi Admin Passcode:`,
+`Backup Password (1)`. Everyday words (`pass`, `pwd`, `pin`, `secret`, `key`,
+`token`) are left out, so `Bus Pass`, `Top Secret` and `NH PWD` are not
+labels. A word before the last from `SPACED_LABEL_BLOCKERS` (`forgot`,
+`reset`, `change`, `enter`, `with`, `your`, ...) makes it something else
+(`Forgot Password`, `Trouble with her password`), as do a numbered step
+(`2. Enter Password`) and a trailing `..`. Sentences and labels such as
+`User / Password` are never spaced labels.
 
 Shannon entropy is computed only for values of at least **8** characters
 (`ENTROPY_MIN_LENGTH`, `types.rs`); shorter values skip the floating-point work.
@@ -111,6 +124,11 @@ A switch (`yes`, `no`, `true`, `false`, `on`, `off`, `y`, `n`, `0`, `1`;
 `BOOLEAN_LITERALS`) is never a credential value, so
 `MYSQL_ALLOW_EMPTY_PASSWORD=true` is not reported.
 
+Two everyday uses of the keywords are not reported: a quantity with a unit
+after `pwd` (`FAKE BRAND 500ML PWD 250GM` is powder; `QUANTITY_UNITS`), and a
+six-digit postal PIN code after `pin` in an address, written `999 999` or
+after text holding a comma (`12 Fake Road, Faketown, Pin : 560001`).
+
 Formula cells are skipped here; their text is a formula, handled by the
 formula pathways in the table below.
 
@@ -123,6 +141,7 @@ formula pathways in the table below.
 | comment containing `password: x` | `comment_contains_credential` | 220 |
 | value split down a column under a label | `split_password` | 200 |
 | one row of a credential table (step 6) | `table_column` | 190 |
+| one row of a password column with no account column (step 6) | `password_column` | 150 |
 | the value of a configuration variable (step 8) | `variable_value` | 190 |
 
 ## 6. Credential tables (`inference.rs`)
@@ -153,6 +172,21 @@ per row; placeholders from the labelling rubric (`N/A`, `TBD`, `none`, `?`,
 `xxxx`, `****`; `TABLE_PLACEHOLDERS`) are skipped. The header is not paired
 again by the steps below.
 
+**Password columns without an account column.** A password label that does
+not head a credential table (no account label in its row) still heads a
+**password column** when its label is not ambiguous (`Pwd`, `PIN`, `Pass`)
+and not a variable name, it is not a form field (it does not end in `:`, and
+the cell to its right is not a credential value: `Password | x` over other
+data pairs `x` as before), and the cells below it (to a new label or more than
+**1** empty row) hold at least **5** credential values
+(`PASSWORD_COLUMN_MIN_ROWS`; single tokens of at least 3 characters, not a
+placeholder, switch, amount, date, URL, e-mail address or quantity), at least
+**80%** of the cells are single tokens, and at least **half** of the values
+are distinct (`PASSWORD_COLUMN_DISTINCT_SHARE`). Each value is reported at
+**150** (`PASSWORD_COLUMN_CONFIDENCE`), lower than a table with an account
+column. A column that repeats one default password does not qualify and is
+paired by the steps below, as before.
+
 A password label that occurs **3** or more times in its own column
 (`CATEGORY_REPEAT`) is a category value in a data column (a ticket log's
 `Category: Password`). It may still head a credential table, since stacked
@@ -164,7 +198,9 @@ Before pairing, doormat checks whether a password label sits above a value
 split across 2 to 5 cells in the same column. Each fragment must be a value,
 under 30 characters, not end in `:`, and have **no horizontal neighbour**: a
 cell with something beside it is a form row or a table row, not a fragment.
-The joined value must be at least 6 characters.
+The joined value must be at least 6 characters. A spaced label (`Router
+Password`) never heads a split value: a multi-word label over a column is
+more often one row of a list whose password sits in another column.
 
 ## 8. Pairing and scoring (`spatial.rs`, `scoring.rs`, `inference.rs`)
 

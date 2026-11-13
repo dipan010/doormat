@@ -39,6 +39,7 @@ DETECTORS = {
     "distance": "spatial",
     "split_password": "split",  # nosec B105 - a detection pathway name, not a password
     "table_column": "table",
+    "password_column": "table",
     "variable_value": "variable",
     "inline_same_cell": "inline",
     "formula_concatenated": "formula",

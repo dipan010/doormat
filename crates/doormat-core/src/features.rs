@@ -178,6 +178,59 @@ pub fn is_compound_credential_label(value: &str) -> bool {
             .any(|s| last.len() > s.len() && last.ends_with(s))
 }
 
+/// True when `value` is a short spaced label whose last word names a password:
+/// `Router Password`, `Admin PW:`, `WiFi Passcode 2`, `Backup Password (1)`.
+///
+/// Words are split at whitespace; a trailing number, `#`, `#n` or `(n)` is
+/// ignored. What is left must be at most `SPACED_LABEL_MAX_WORDS` words, the
+/// last one in `SPACED_LABEL_HEADS`, with no word of `SPACED_LABEL_BLOCKERS`
+/// before it (`Forgot Password`, `Trouble with her password`). Labels with
+/// other punctuation (`User / Password`, sentences), a trailing `..`, a
+/// numbered step (`2. Enter Password`) and single words (exact keywords are
+/// matched elsewhere) do not count.
+pub fn is_spaced_credential_label(value: &str) -> bool {
+    let label = value.trim().trim_end_matches([':', '=']).trim_end();
+    if label.is_empty()
+        || label.len() > COMPOUND_LABEL_MAX_LEN
+        || !label.contains(char::is_whitespace)
+        || label.ends_with("..")
+        || !label.chars().all(|c| {
+            c.is_alphanumeric()
+                || c.is_whitespace()
+                || matches!(c, '_' | '.' | '-' | '#' | '(' | ')')
+        })
+    {
+        return false;
+    }
+    let mut words: Vec<String> = label.split_whitespace().map(str::to_lowercase).collect();
+    let is_suffix = |w: &str| {
+        let inner = w
+            .trim_start_matches('#')
+            .trim_start_matches('(')
+            .trim_end_matches(')');
+        inner.is_empty() || inner.chars().all(|c| c.is_ascii_digit())
+    };
+    while words.last().is_some_and(|w| is_suffix(w)) {
+        words.pop();
+    }
+    // A numbered step (`2. Enter Password`) is an instruction, not a label.
+    let numbered = words.first().is_some_and(|w| {
+        w.ends_with(['.', ')']) && w[..w.len() - 1].chars().all(|c| c.is_ascii_digit())
+    });
+    let Some((head, before)) = words.split_last() else {
+        return false;
+    };
+    if numbered {
+        return false;
+    }
+    let head = head.trim_matches(['.', '-', '_']);
+    words.len() <= SPACED_LABEL_MAX_WORDS
+        && SPACED_LABEL_HEADS.contains(&head)
+        && !before
+            .iter()
+            .any(|w| SPACED_LABEL_BLOCKERS.contains(&w.as_str()))
+}
+
 /// True when `value` is an identifier-style label whose final part names key
 /// material (`WORDPRESS_AUTH_KEY`, `WORDPRESS_NONCE_SALT`; `KEY_PARTS`).
 pub fn is_compound_key_label(value: &str) -> bool {
@@ -228,6 +281,32 @@ pub fn is_numeric_amount(value: &str) -> bool {
     digits(whole)
         && (fraction.is_empty() || fraction.chars().all(|c| c.is_ascii_digit()))
         && (signed || !fraction.is_empty())
+}
+
+/// True when `value` is a quantity with a unit (`250GM`, `1.5 kg`, `500ML`):
+/// a number, optional whitespace, then one of `QUANTITY_UNITS`.
+pub fn is_quantity(value: &str) -> bool {
+    let v = value.trim();
+    let split = v
+        .find(|c: char| !(c.is_ascii_digit() || c == '.' || c == ','))
+        .unwrap_or(v.len());
+    let (number, unit) = v.split_at(split);
+    number.chars().any(|c| c.is_ascii_digit())
+        && QUANTITY_UNITS.contains(&unit.trim_start().to_lowercase().as_str())
+}
+
+/// True when an inline `pin` value reads as an Indian postal PIN code in an
+/// address rather than a credential: six digits written `999 999`, or six
+/// digits after text holding a comma (`12 Fake Road, Faketown, Pin : 560001`).
+pub fn is_postal_pin(key: &str, value: &str) -> bool {
+    let words = label_words(key);
+    if words.last().map(String::as_str) != Some("pin") {
+        return false;
+    }
+    let digits: String = value.chars().filter(|c| !c.is_whitespace()).collect();
+    let six = digits.len() == 6 && digits.chars().all(|c| c.is_ascii_digit());
+    let spaced = value.trim().len() == 7 && value.trim().chars().nth(3) == Some(' ');
+    six && (spaced || key.contains(','))
 }
 
 /// True when a normalized value is a switch (`yes`, `true`, `0`, ...), which is
@@ -296,8 +375,11 @@ pub fn is_url_or_email(value: &str) -> bool {
 /// `FLAG_IS_PASSWORD_HEADER`: a password keyword, or a compound label that
 /// holds one.
 pub fn is_password_label(value: &str) -> bool {
-    let (exact, credential_word) = ac_scan(&PASSWORD_AC, &normalize(value));
-    exact || (credential_word && is_compound_credential_label(value))
+    let normalized = normalize(value);
+    let (exact, credential_word) = ac_scan(&PASSWORD_AC, &normalized);
+    exact
+        || (credential_word && is_compound_credential_label(value))
+        || (credential_word && is_spaced_credential_label(value))
 }
 
 /// True when the whole of `text` (normalized) is a password keyword
@@ -576,7 +658,10 @@ pub fn precompute_features(store: &mut CellStore) {
         if credential_word {
             flags |= FLAG_HAS_CREDENTIAL_WORD;
         }
-        if exact || (credential_word && is_compound_credential_label(value)) {
+        if exact
+            || (credential_word && is_compound_credential_label(value))
+            || (credential_word && is_spaced_credential_label(value))
+        {
             flags |= FLAG_IS_PASSWORD_HEADER;
         } else if (norm_buf.ends_with("key") || norm_buf.ends_with("salt"))
             && is_compound_key_label(value)
@@ -959,5 +1044,52 @@ mod tests {
         assert!(has_non_secret_part("MYSQL_RANDOM_ROOT_PASSWORD"));
         assert!(has_non_secret_part("ALLOW_EMPTY_PASSWORD"));
         assert!(!has_non_secret_part("POSTGRES_PASSWORD"));
+    }
+
+    #[test]
+    fn spaced_labels_ending_in_a_password_word() {
+        for label in [
+            "Router Password",
+            "Router Password 24",
+            "Backup Password (1)",
+            "WiFi Admin Passcode:",
+            "Password 2",
+        ] {
+            assert!(is_spaced_credential_label(label), "{label}");
+            assert!(is_password_label(label), "{label}");
+        }
+        for label in [
+            "Password Policy",
+            "Last Password Change",
+            "Forgot Password",
+            "Change your password",
+            "Bus Pass",
+            "Top Secret",
+            "Router PIN",
+            "Admin PW",
+            "Admin Pwd",
+            "2. Enter Password",
+            "Trouble with her password...",
+            "Your Password",
+            "User / Password",
+            "Enter the new admin password here now",
+            "Password",
+        ] {
+            assert!(!is_spaced_credential_label(label), "{label}");
+        }
+    }
+
+    #[test]
+    fn quantities_and_postal_pins() {
+        assert!(is_quantity("250GM"));
+        assert!(is_quantity("1.5 kg"));
+        assert!(is_quantity("500ML"));
+        assert!(!is_quantity("Fake250GMx"));
+        assert!(!is_quantity("123456"));
+        assert!(is_postal_pin("12 Fake Road, Faketown, Pin", "560001"));
+        assert!(is_postal_pin("Pin", "560 001"));
+        assert!(!is_postal_pin("Pin", "560001"));
+        assert!(!is_postal_pin("Bank card PIN, branch", "1234"));
+        assert!(!is_postal_pin("Password, admin", "560001"));
     }
 }

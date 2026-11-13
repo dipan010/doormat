@@ -70,6 +70,8 @@ def test_detector_vocabulary_is_frozen(tmp_path):
             **{f"D{r}": f"user{r}" for r in range(2, 5)},
             **{f"E{r}": f"fakeroot{r}x" for r in range(2, 5)},
             **{f"F{r}": "db.local" for r in range(2, 5)},
+            "M1": "Router Password",
+            **{f"M{r}": f"FAKE{r}rq" for r in range(2, 8)},
         },
     )
     files = [*sorted(FIXTURES.glob("*.xlsx")), vocab]

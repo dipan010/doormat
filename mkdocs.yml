@@ -54,6 +54,7 @@ nav:
       - decisions/0019-command-line-scanner.md
       - decisions/0020-allowlists-and-baselines.md
       - decisions/0021-rust-xlsx-reader.md
+      - decisions/0022-spaced-labels-and-password-columns.md
   - Security policy: security.md
   - Changelog: changelog.md
 

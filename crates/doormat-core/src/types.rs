@@ -321,6 +321,95 @@ pub const TABLE_MAX_GAP: u32 = 1;
 pub const TABLE_TOKEN_SHARE: f32 = 0.8;
 /// Shortest cell reported from a credential table column.
 pub const TABLE_MIN_VALUE_LEN: usize = 3;
+/// Confidence of a value in a password column with no account column beside
+/// it (`Router Password` over one secret per row).
+pub const PASSWORD_COLUMN_CONFIDENCE: f32 = 150.0;
+/// A password column without an account column needs at least this many
+/// credential values below its header.
+pub const PASSWORD_COLUMN_MIN_ROWS: usize = 5;
+/// Share of a password column's credential values that must be distinct (one
+/// secret per row, not a default repeated down the column).
+pub const PASSWORD_COLUMN_DISTINCT_SHARE: f32 = 0.5;
+
+// ---------- Spaced labels ----------
+
+/// Most words in a spaced password label (`Router Admin Password`), not
+/// counting a trailing number or `#`.
+pub const SPACED_LABEL_MAX_WORDS: usize = 4;
+/// Last words that make a spaced label a password label. Words with everyday
+/// meanings (`pass`, `pwd`, `pin`, `secret`, `key`, `token`) are left out:
+/// `Bus Pass`, `Top Secret`, `NH PWD`.
+pub const SPACED_LABEL_HEADS: &[&str] = &[
+    "password",
+    "passwd",
+    "passphrase",
+    "passcode",
+    "passwort",
+    "contraseña",
+    "senha",
+    "пароль",
+    "wachtwoord",
+    "hasło",
+    "lösenord",
+];
+/// Words that, before the last word, make a spaced label something other
+/// than a credential's label (`Forgot Password`, `Change Password`).
+pub const SPACED_LABEL_BLOCKERS: &[&str] = &[
+    "forgot",
+    "forgotten",
+    "reset",
+    "change",
+    "changed",
+    "changing",
+    "wrong",
+    "invalid",
+    "incorrect",
+    "expired",
+    "expiring",
+    "lost",
+    "strong",
+    "weak",
+    "no",
+    "without",
+    "need",
+    "ask",
+    "see",
+    "minimum",
+    "maximum",
+    "min",
+    "max",
+    "enter",
+    "type",
+    "use",
+    "trouble",
+    "help",
+    "with",
+    "her",
+    "his",
+    "their",
+    "your",
+    "my",
+    "our",
+    "the",
+    "a",
+    "an",
+    "to",
+    "for",
+    "of",
+    "is",
+    "by",
+    "on",
+    "in",
+    "at",
+    "and",
+    "or",
+];
+/// Units after a number that make an inline value a quantity
+/// (`PWD 250GM` is 250 grams of powder), compared lower-case.
+pub const QUANTITY_UNITS: &[&str] = &[
+    "g", "gm", "gms", "gram", "grams", "kg", "kgs", "mg", "ml", "l", "lt", "ltr", "oz", "lb",
+    "lbs", "pc", "pcs", "nos", "mm", "cm", "m",
+];
 
 // ---------- Entropy constants ----------
 
