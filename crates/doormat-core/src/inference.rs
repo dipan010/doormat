@@ -134,8 +134,9 @@ pub(crate) fn detect_table_column(store: &CellStore, header_id: u32) -> Vec<u32>
 ///
 /// Only for headers that `detect_table_column` does not take (it needs an
 /// account label in the header row) and whose label is not ambiguous (`Pwd`
-/// for powder, a machine `PIN`), that does not end in `:` and has no
-/// credential value to its right (a form field). The column runs down from the header while
+/// for powder, a machine `PIN`), that does not end in `:`, has no credential
+/// value to its right (a form field) and has no single token directly above
+/// it (one entry of a list of keys). The column runs down from the header while
 /// filled, allowing `TABLE_MAX_GAP` empty rows and ending at a new label. It
 /// qualifies when at least `TABLE_TOKEN_SHARE` of its cells are single tokens,
 /// at least `PASSWORD_COLUMN_MIN_ROWS` are credential values
@@ -157,7 +158,13 @@ pub(crate) fn detect_password_column(store: &CellStore, header_id: u32) -> Vec<u
         let id = id as usize;
         is_credential_value(store, id) && !is_table_label(store, id)
     });
-    if label.trim_end().ends_with(':') || value_beside {
+    // One entry of a list (`ChangePassword` among other keys): the cell above
+    // is a single token too, so the label does not head the column.
+    let in_a_list = row
+        .checked_sub(1)
+        .and_then(|r| filled(store, r, col))
+        .is_some_and(|id| is_table_token(store, id as usize));
+    if label.trim_end().ends_with(':') || value_beside || in_a_list {
         return Vec::new();
     }
     let mut gap = 0;
@@ -1067,6 +1074,19 @@ mod tests {
         let mut cells = vec![raw(1, 1, "Password"), raw(1, 2, "s3cRet!99")];
         for r in 2..=8 {
             cells.push(raw(r, 1, &format!("field{r}")));
+        }
+        let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
+        assert!(rels.iter().all(|r| r.reason != "password_column"));
+    }
+
+    #[test]
+    fn list_entry_does_not_head_a_password_column() {
+        let mut cells = vec![raw(1, 1, "SaveSettings"), raw(1, 2, "Fake save text")];
+        cells.push(raw(2, 1, "ChangePassword"));
+        cells.push(raw(2, 2, "Fake change text"));
+        for r in 3..=10 {
+            cells.push(raw(r, 1, &format!("FakeKey{r}Name")));
+            cells.push(raw(r, 2, &format!("Fake text {r}")));
         }
         let rels = infer_relationships(&pipeline_store(cells), &DISTANCE_TABLE);
         assert!(rels.iter().all(|r| r.reason != "password_column"));

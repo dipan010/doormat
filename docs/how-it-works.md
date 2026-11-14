@@ -177,7 +177,9 @@ not head a credential table (no account label in its row) still heads a
 **password column** when its label is not ambiguous (`Pwd`, `PIN`, `Pass`)
 and not a variable name, it is not a form field (it does not end in `:`, and
 the cell to its right is not a credential value: `Password | x` over other
-data pairs `x` as before), and the cells below it (to a new label or more than
+data pairs `x` as before), it is not one entry of a list (the cell directly
+above it is not a single token, as in a column of keys where one is
+`ChangePassword`), and the cells below it (to a new label or more than
 **1** empty row) hold at least **5** credential values
 (`PASSWORD_COLUMN_MIN_ROWS`; single tokens of at least 3 characters, not a
 placeholder, switch, amount, date, URL, e-mail address or quantity), at least

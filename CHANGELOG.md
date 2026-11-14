@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Spaced password labels are recognised: a label of at most 4 words whose last word is `password`, `passwd`, `passphrase`, `passcode` or a non-English password word (`Router Password 24`, `WiFi Admin Passcode:`), unless a word before it changes the meaning (`Forgot Password`, `Change Password`, `Trouble with her password`) or it is a numbered step. Everyday words (`pass`, `pwd`, `pin`, `secret`) are not label endings (design decision 0022)
-- A password column with no account column beside it is reported, one finding per row at confidence 150 (reason `password_column`, pathway `table` in baselines), when at least 5 values sit below the header and at least half are distinct; a column repeating one default password is paired as before (design decision 0022)
+- A password column with no account column beside it is reported, one finding per row at confidence 150 (reason `password_column`, pathway `table` in baselines), when at least 5 values sit below the header and at least half are distinct; a column repeating one default password is paired as before, and a label with a single token directly above it (one key in a list of keys) heads no column (design decision 0022)
 - `pwd` followed by a quantity (`PWD 250GM`) and `pin` followed by a six-digit postal code in an address are no longer reported inline. Findings on Enron and sets A and A2 are unchanged; set B loses 2 false positives (design decision 0022)
 
 ## [0.5.0] - 2026-11-09
