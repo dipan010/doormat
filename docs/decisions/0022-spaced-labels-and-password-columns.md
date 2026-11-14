@@ -86,3 +86,17 @@ in spreadsheets with spaced password headers. The blocker list is short and
 chosen from the false positives seen here; a label it misses (`Password Hint
 Answer`) is a prose case to add from evidence, not by guesswork. `PW` stays
 unrecognised.
+
+**Revision (2026-11-14, before any release).** The lab's third test (doormat-lab
+`RESULTS_V3.md`) found the password-column rule's first false positive on
+new data: in a workbook of translation keys, a key ending in `Password`
+(`AaaaaaAaaaaaaa`, a compound label) sits in the key column, with a
+translation beside it (text with spaces, so the form-field guard did not
+apply), and the rule reported the 392 keys below it at 150. A password
+column's header now must not have a single token directly above it in its
+column (`is_table_token`): such a label is one entry of a list, not the head
+of a column. A title above a header (text with spaces) does not count.
+Before and after, every finding on Enron (322), set B (83), set A (2,231)
+and set A2 (708) is identical, the synthetic cases above are unchanged, and
+on the translation workbook B3's findings at >= 120 fall from 407 to 17.
+That file is the case the guard was designed from, so the drop is in-sample.
